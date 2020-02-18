@@ -22,3 +22,5 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 opex62541-*.tar
 
+# Ignore VS Elixir backend.
+/.elixir_ls

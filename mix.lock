@@ -1,0 +1,3 @@
+%{
+  "elixir_cmake": {:git, "https://github.com/valiot/elixir-cmake.git", "416eecf12cf5f7e4546d0fc00111c6d928ab739b", [branch: "dev"]},
+}
