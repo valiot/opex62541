@@ -6,10 +6,21 @@ defmodule Opex62541.MixProject do
       app: :opex62541,
       version: "0.1.0",
       elixir: "~> 1.9",
+      name: "ABex",
+      description: description(),
+      #package: package(),
+      source_url: "https://github.com/valiot/opex62541",
       start_permanent: Mix.env() == :prod,
-      cmake_lists: "src/CMakeLists.txt",
+      compilers: [:cmake] ++ Mix.compilers(),
+      docs: [extras: ["README.md"], main: "readme"],
+      build_embedded: true,
+      cmake_lists: "src/",
       deps: deps()
     ]
+  end
+
+  defp description() do
+    "Elixir wrapper for open62541, An open source implementation of OPC UA (OPC Unified Architecture) aka IEC 62541."
   end
 
   # Run "mix help compile.app" to learn about applications.
