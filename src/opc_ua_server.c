@@ -1,7 +1,24 @@
+#include "erlcmd.h"
 #include <open62541.h>
-
+#include <err.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <poll.h>
+#include <stdio.h>
+
+static const char response_id = 'r';
+
+static void send_ok_response()
+{
+    char resp[256];
+    int resp_index = sizeof(uint16_t); // Space for payload size
+    resp[resp_index++] = response_id;
+    ei_encode_version(resp, &resp_index);
+    ei_encode_atom(resp, &resp_index, "ok");
+    erlcmd_send(resp, resp_index);
+}
 
 static volatile UA_Boolean running = true;
 static void stopHandler(int sig) {
@@ -25,6 +42,7 @@ int main(int argc, char *argv[]) {
     else
     {
         UA_ServerConfig_setDefault(UA_Server_getConfig(server));
+        send_ok_response();
     }
     
     if(argc > 1)

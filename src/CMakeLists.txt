@@ -88,18 +88,25 @@ else(NOT MANUAL_BUILD)
     
     include(ExternalProject)
     
+    # open62541 logs collide with opex62541 backend interface, therefore logs are turned off (-DUA_LOGLEVEL > 600).
     ExternalProject_Add(open62541
         GIT_REPOSITORY    https://github.com/open62541/open62541.git
         GIT_TAG           ${DOWNLOAD_VERSION}
         SOURCE_DIR        "${CMAKE_BINARY_DIR}/open62541-src"
         BINARY_DIR        "${CMAKE_BINARY_DIR}/open62541-build"
         CONFIGURE_COMMAND ""
-        BUILD_COMMAND     cmake ${CMAKE_BINARY_DIR}/open62541-src -DCMAKE_INSTALL_PREFIX=${CMAKE_LIBRARY_OUTPUT_DIRECTORY} ${OPEN62541_BUILD_ARGS} && make
+        BUILD_COMMAND     cmake ${CMAKE_BINARY_DIR}/open62541-src -DUA_LOGLEVEL=601 -DCMAKE_INSTALL_PREFIX=${CMAKE_LIBRARY_OUTPUT_DIRECTORY} ${OPEN62541_BUILD_ARGS} && make
         INSTALL_COMMAND   make install
         TEST_COMMAND      ""
     )
 
 endif(NOT MANUAL_BUILD)
+
+include_directories($ENV{ERL_EI_INCLUDE_DIR})
+
+include_directories($ENV{CMAKE_SOURCE_DIR})
+
+file(GLOB STATIC_LIBS "$ENV{ERL_EI_LIBDIR}/*.a")
 
 # OPEX62541 SOURCE CODE BUILD
 # C compiler specific settings
@@ -125,8 +132,12 @@ endif()
 set(BASE_C_FLAGS "${BASE_FLAGS} -std=c99")
 set(BASE_CXX_FLAGS "${BASE_FLAGS}")
 
-add_executable(main ${PROJECT_SOURCE_DIR}/compile_test.c)
-set_property(TARGET main PROPERTY RULE_LAUNCH_COMPILE "${CMAKE_COMMAND} -E time")
-target_link_libraries(main ${install_dir}/libopen62541.so)
+set (opex62541_PROGRAMS opc_ua_server opc_ua_client)
 
-message(STATUS "Debugs $ENV{MIX_ENV}, ${__TIME__}")
+foreach(opex62541_PROGRAM ${opex62541_PROGRAMS})
+    add_executable( ${opex62541_PROGRAM} "${CMAKE_SOURCE_DIR}/${opex62541_PROGRAM}.c" "${CMAKE_SOURCE_DIR}/erlcmd.c" "${CMAKE_SOURCE_DIR}/util.c" )
+    target_link_libraries(${opex62541_PROGRAM} ${STATIC_LIBS})
+    target_link_libraries(${opex62541_PROGRAM} ${install_dir}/libopen62541.so)
+endforeach(opex62541_PROGRAM)
+
+message(STATUS "Debugs $ENV{MIX_ENV}, $ENV{ERL_EI_INCLUDE_DIR}, $ENV{ERL_EI_LIBDIR}, ${SOURCES}, $ENV{MIX_CONSOLIDATION_PATH}, ${CMAKE_SOURCE_DIR}")
