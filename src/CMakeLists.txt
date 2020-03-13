@@ -75,6 +75,46 @@ if(NOT MANUAL_BUILD)
 
     set(install_dir ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${EXTRACTED_FILE}/lib)
 
+    include_directories($ENV{ERL_EI_INCLUDE_DIR})
+
+    include_directories($ENV{CMAKE_SOURCE_DIR})
+
+    include_directories(open62541)
+
+    file(GLOB STATIC_LIBS "$ENV{ERL_EI_LIBDIR}/*.a")
+
+    # OPEX62541 SOURCE CODE BUILD
+    # C compiler specific settings
+    if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
+        # using Clang
+        set(BASE_RELEASE_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+        set(BASE_DEBUG_FLAGS "${CMAKE_C_FLAGS}  -std=c99")
+    elseif (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        # using GCC
+        set(BASE_RELEASE_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+        set(BASE_DEBUG_FLAGS "${CMAKE_C_FLAGS}  -std=c99")
+    elseif (CMAKE_C_COMPILER_ID STREQUAL "Intel")
+        # using Intel C/C++
+        MESSAGE("Intel C compiler not supported!")
+    endif()
+
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(BASE_FLAGS "${BASE_DEBUG_FLAGS}")
+    else()
+        set(BASE_FLAGS "${BASE_RELEASE_FLAGS}")
+    endif()
+
+    set(BASE_C_FLAGS "${BASE_FLAGS} -std=c99")
+    set(BASE_CXX_FLAGS "${BASE_FLAGS}")
+
+    set (opex62541_PROGRAMS opc_ua_server opc_ua_client)
+
+    foreach(opex62541_PROGRAM ${opex62541_PROGRAMS})
+        add_executable( ${opex62541_PROGRAM} "${CMAKE_SOURCE_DIR}/${opex62541_PROGRAM}.c" "${CMAKE_SOURCE_DIR}/erlcmd.c" "${CMAKE_SOURCE_DIR}/util.c" )
+        target_link_libraries(${opex62541_PROGRAM} ${STATIC_LIBS})
+        target_link_libraries(${opex62541_PROGRAM} ${install_dir}/libopen62541.so)
+    endforeach(opex62541_PROGRAM)    
+
 else(NOT MANUAL_BUILD)
 
     set(install_dir ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/lib)
@@ -100,44 +140,66 @@ else(NOT MANUAL_BUILD)
         TEST_COMMAND      ""
     )
 
+    include_directories($ENV{ERL_EI_INCLUDE_DIR})
+
+    include_directories($ENV{CMAKE_SOURCE_DIR})
+
+    include_directories(open62541)
+
+    file(GLOB STATIC_LIBS "$ENV{ERL_EI_LIBDIR}/*.a")
+
+    # OPEX62541 SOURCE CODE BUILD
+    # C compiler specific settings
+    if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
+        # using Clang
+        set(BASE_RELEASE_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+        set(BASE_DEBUG_FLAGS "${CMAKE_C_FLAGS}  -std=c99")
+    elseif (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        # using GCC
+        set(BASE_RELEASE_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+        set(BASE_DEBUG_FLAGS "${CMAKE_C_FLAGS}  -std=c99")
+    elseif (CMAKE_C_COMPILER_ID STREQUAL "Intel")
+        # using Intel C/C++
+        MESSAGE("Intel C compiler not supported!")
+    endif()
+
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(BASE_FLAGS "${BASE_DEBUG_FLAGS}")
+    else()
+        set(BASE_FLAGS "${BASE_RELEASE_FLAGS}")
+    endif()
+
+    set(BASE_C_FLAGS "${BASE_FLAGS} -std=c99")
+    set(BASE_CXX_FLAGS "${BASE_FLAGS}")
+
+    set (opex62541_PROGRAMS opc_ua_server opc_ua_client)
+
+    #ExternalProject_Get_Property(open62541 install_dir)
+    include_directories(${install_dir})
+
+
+    # add_executable(opc_ua_client ${PROJECT_SOURCE_DIR}/opc_ua_client.c ${CMAKE_SOURCE_DIR}/erlcmd.c ${CMAKE_SOURCE_DIR}/util.c)
+    # add_dependencies(opc_ua_client open62541)
+    # target_link_libraries(opc_ua_client ${STATIC_LIBS})
+    # target_link_libraries(opc_ua_client ${install_dir}/libopen62541.so)
+
+    # add_executable(opc_ua_server ${PROJECT_SOURCE_DIR}/opc_ua_server.c ${CMAKE_SOURCE_DIR}/erlcmd.c ${CMAKE_SOURCE_DIR}/util.c)
+    # add_dependencies(opc_ua_server open62541)
+    # target_link_libraries(opc_ua_server ${STATIC_LIBS})
+    # target_link_libraries(opc_ua_server ${install_dir}/libopen62541.so)
+
+    # add_executable( ${opex62541_PROGRAM} "${CMAKE_SOURCE_DIR}/${opex62541_PROGRAM}.c" "${CMAKE_SOURCE_DIR}/erlcmd.c" "${CMAKE_SOURCE_DIR}/util.c" )
+    #     target_link_libraries(${opex62541_PROGRAM} ${STATIC_LIBS})
+    #     target_link_libraries(${opex62541_PROGRAM} ${install_dir}/libopen62541.so)
+
+
+    foreach(opex62541_PROGRAM ${opex62541_PROGRAMS})
+        add_executable( ${opex62541_PROGRAM} ${CMAKE_SOURCE_DIR}/${opex62541_PROGRAM}.c ${CMAKE_SOURCE_DIR}/erlcmd.c ${CMAKE_SOURCE_DIR}/util.c)
+        add_dependencies(${opex62541_PROGRAM} open62541)
+        target_link_libraries(${opex62541_PROGRAM} ${STATIC_LIBS})
+        target_link_libraries(${opex62541_PROGRAM} ${install_dir}/libopen62541.so)
+    endforeach(opex62541_PROGRAM)
+
 endif(NOT MANUAL_BUILD)
 
-include_directories($ENV{ERL_EI_INCLUDE_DIR})
-
-include_directories($ENV{CMAKE_SOURCE_DIR})
-
-file(GLOB STATIC_LIBS "$ENV{ERL_EI_LIBDIR}/*.a")
-
-# OPEX62541 SOURCE CODE BUILD
-# C compiler specific settings
-if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
-    # using Clang
-    set(BASE_RELEASE_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-    set(BASE_DEBUG_FLAGS "${CMAKE_C_FLAGS}  -std=c99")
-elseif (CMAKE_C_COMPILER_ID STREQUAL "GNU")
-    # using GCC
-    set(BASE_RELEASE_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-    set(BASE_DEBUG_FLAGS "${CMAKE_C_FLAGS}  -std=c99")
-elseif (CMAKE_C_COMPILER_ID STREQUAL "Intel")
-    # using Intel C/C++
-    MESSAGE("Intel C compiler not supported!")
-endif()
-
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(BASE_FLAGS "${BASE_DEBUG_FLAGS}")
-else()
-    set(BASE_FLAGS "${BASE_RELEASE_FLAGS}")
-endif()
-
-set(BASE_C_FLAGS "${BASE_FLAGS} -std=c99")
-set(BASE_CXX_FLAGS "${BASE_FLAGS}")
-
-set (opex62541_PROGRAMS opc_ua_server opc_ua_client)
-
-foreach(opex62541_PROGRAM ${opex62541_PROGRAMS})
-    add_executable( ${opex62541_PROGRAM} "${CMAKE_SOURCE_DIR}/${opex62541_PROGRAM}.c" "${CMAKE_SOURCE_DIR}/erlcmd.c" "${CMAKE_SOURCE_DIR}/util.c" )
-    target_link_libraries(${opex62541_PROGRAM} ${STATIC_LIBS})
-    target_link_libraries(${opex62541_PROGRAM} ${install_dir}/libopen62541.so)
-endforeach(opex62541_PROGRAM)
-
-message(STATUS "Debugs $ENV{MIX_ENV}, $ENV{ERL_EI_INCLUDE_DIR}, $ENV{ERL_EI_LIBDIR}, ${SOURCES}, $ENV{MIX_CONSOLIDATION_PATH}, ${CMAKE_SOURCE_DIR}")
+message(STATUS "Debugs $ENV{MIX_ENV}, $ENV{ERL_EI_INCLUDE_DIR}, $ENV{ERL_EI_LIBDIR}, ${SOURCES}, $ENV{MIX_CONSOLIDATION_PATH}, ${CMAKE_SOURCE_DIR}, ${PROJECT_SOURCE_DIR}, ${CMAKE_SOURCE_DIR}")
