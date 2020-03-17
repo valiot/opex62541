@@ -104,28 +104,5 @@ defmodule CClientLifecycleTest do
 
     assert c_response == :ok
   end
-
-  test "Connect client by url", state do
-    url = "opc.tcp://localhost:4840"
-    n_chars = String.length(url)
-    msg = {:connect_client_by_url, {n_chars, url}}
-    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
-
-    c_response =
-      receive do
-        {_, {:data, <<?r, response::binary>>}} ->
-          :erlang.binary_to_term(response)
-
-        x ->
-          IO.inspect(x)
-          :error
-      after
-        1000 ->
-          # Not sure how this can be recovered
-          exit(:port_timed_out)
-      end
-
-    assert c_response == :ok
-  end
 end
 

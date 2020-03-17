@@ -1,16 +1,33 @@
-#include "erlcmd.h"
+
 #include <open62541.h>
 #include <err.h>
-#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <poll.h>
 #include <stdio.h>
+#include "erlcmd.h"
 
 static const char response_id = 'r';
 
 UA_Client *client;
+
+/*****************************/
+/* Elixir Message assemblers */
+/*****************************/
+// https://open62541.org/doc/current/statuscodes.html?highlight=error
+static void send_opex_response(uint32_t reason)
+{
+    char resp[256];
+    int resp_index = sizeof(uint16_t); // Space for payload size
+    resp[resp_index++] = response_id;
+    ei_encode_version(resp, &resp_index);
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "error");
+    ei_encode_ulong(resp, &resp_index, reason);
+    erlcmd_send(resp, resp_index);
+}
+
 
 static void encode_client_config(char *resp, int *resp_index, void *data)
 {
@@ -113,44 +130,9 @@ static void handle_test(const char *req, int *req_index)
     send_ok_response();    
 }
 
-/*
- * Gets the current client connection state. 
-*/
-static void handle_get_client_state(const char *req, int *req_index)
-{
-    UA_ClientState state = UA_Client_getState(client);
-
-    switch(state)
-    {
-        case UA_CLIENTSTATE_DISCONNECTED:
-            send_data_response("Disconnected", 3, 0);
-        break;
-
-        case UA_CLIENTSTATE_WAITING_FOR_ACK:
-            send_data_response("Wating for ACK", 3, 0);
-        break;
-
-        case UA_CLIENTSTATE_CONNECTED:
-            send_data_response("Connected", 3, 0);
-        break;
-
-        case UA_CLIENTSTATE_SECURECHANNEL:
-            send_data_response("Secure Channel", 3, 0);
-        break;
-
-        case UA_CLIENTSTATE_SESSION:
-            send_data_response("Session", 3, 0);
-        break;
-
-        case UA_CLIENTSTATE_SESSION_DISCONNECTED:
-            send_data_response("Session disconnected", 3, 0);
-        break;
-
-        case UA_CLIENTSTATE_SESSION_RENEWED:
-            send_data_response("session renewed", 3, 0);
-        break;
-    }
-}
+/***************************************/
+/* Configuration & Lifecycle Functions */
+/***************************************/
 
 /**
  *  This is function allows to configure the client. 
@@ -204,51 +186,236 @@ static void handle_get_client_config(const char *req, int *req_index)
     send_data_response(config, 7, 0);
 }
 
+/*
+ * Gets the current client connection state. 
+*/
+static void handle_get_client_state(const char *req, int *req_index)
+{
+    UA_ClientState state = UA_Client_getState(client);
+
+    switch(state)
+    {
+        case UA_CLIENTSTATE_DISCONNECTED:
+            send_data_response("Disconnected", 3, 0);
+        break;
+
+        case UA_CLIENTSTATE_WAITING_FOR_ACK:
+            send_data_response("Wating for ACK", 3, 0);
+        break;
+
+        case UA_CLIENTSTATE_CONNECTED:
+            send_data_response("Connected", 3, 0);
+        break;
+
+        case UA_CLIENTSTATE_SECURECHANNEL:
+            send_data_response("Secure Channel", 3, 0);
+        break;
+
+        case UA_CLIENTSTATE_SESSION:
+            send_data_response("Session", 3, 0);
+        break;
+
+        case UA_CLIENTSTATE_SESSION_DISCONNECTED:
+            send_data_response("Session disconnected", 3, 0);
+        break;
+
+        case UA_CLIENTSTATE_SESSION_RENEWED:
+            send_data_response("session renewed", 3, 0);
+        break;
+    }
+}
+
 /* 
 *   Resets a client. 
 */
 static void handle_reset_client(const char *req, int *req_index)
 {
-
     UA_Client_reset(client);
     send_ok_response();
 }
 
-/* Connect to the server
+/************************/
+/* Connection Functions */
+/************************/
+
+/* Connect to the server by passing only the url.
  *
  * @return Indicates whether the operation succeeded or returns an error code */
 static void handle_connect_client_by_url(const char *req, int *req_index)
 {
-    const char data_len = 1;
-    int term_type;
     int term_size;
+    int term_type;
+
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 2)
         errx(EXIT_FAILURE, ":connect_client_by_url requires a 2-tuple, term_size = %d", term_size);
 
-    unsigned long start;
-    if (ei_decode_ulong(req, req_index, &start) < 0) {
+    unsigned long str_len;
+    if (ei_decode_ulong(req, req_index, &str_len) < 0) {
         send_error_response("einval");
         return;
     }
 
-    unsigned long size;
-    if (ei_decode_ulong(req, req_index, &size) < 0) {
-        send_error_response("einval");
+    char url[str_len + 1];
+    long binary_len;
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+            term_type != ERL_BINARY_EXT ||
+            term_size >= (int) sizeof(url) ||
+            ei_decode_binary(req, req_index, url, &binary_len) < 0) {
+        // The name is almost certainly too long, so report that it
+        // doesn't exist.
+        send_error_response("enoent");
         return;
     }
-    
-    unsigned char data[data_len*size];
-    int result = Cli_ABRead(Client, (int)start, (int)size, &data);
-    if (result != 0){
-        //the paramater was invalid.
-        send_snap7_errors(result);
+    url[binary_len] = '\0';
+
+    UA_StatusCode retval = UA_Client_connect(client, url);
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
         return;
     }
     
     send_ok_response();
 }
 
+/* Connect to the server by passing a url, username and password.
+ *
+ * @return Indicates whether the operation succeeded or returns an error code */
+static void handle_connect_client_by_username(const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    unsigned long str_len;
+    unsigned long binary_len;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 || term_size != 6)
+        errx(EXIT_FAILURE, ":connect_client_by_username requires a 6-tuple, term_size = %d", term_size);
+    
+    
+    // url_size
+    if (ei_decode_ulong(req, req_index, &str_len) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    // url
+    char url[str_len + 1];
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+            term_type != ERL_BINARY_EXT ||
+            term_size >= (int) sizeof(url) ||
+            ei_decode_binary(req, req_index, url, &binary_len) < 0) {
+        // The name is almost certainly too long, so report that it
+        // doesn't exist.
+        send_error_response("enoent");
+        return;
+    }
+    url[binary_len] = '\0';
+
+    // username_size
+    if (ei_decode_ulong(req, req_index, &str_len) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    // username
+    char username[str_len + 1];
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+            term_type != ERL_BINARY_EXT ||
+            term_size >= (int) sizeof(username) ||
+            ei_decode_binary(req, req_index, username, &binary_len) < 0) {
+        // The name is almost certainly too long, so report that it
+        // doesn't exist.
+        send_error_response("enoent");
+        return;
+    }
+    username[binary_len] = '\0';
+
+    // password_size
+    if (ei_decode_ulong(req, req_index, &str_len) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    // password
+    char password[str_len + 1];
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+            term_type != ERL_BINARY_EXT ||
+            term_size >= (int) sizeof(password) ||
+            ei_decode_binary(req, req_index, password, &binary_len) < 0) {
+        // The name is almost certainly too long, so report that it
+        // doesn't exist.
+        send_error_response("enoent");
+        return;
+    }
+    password[binary_len] = '\0';
+
+    UA_StatusCode retval = UA_Client_connect_username(client, url, username, password);
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+    
+    send_ok_response();
+}
+
+/* Connect to the server without creating a session.
+ *
+ * @return Indicates whether the operation succeeded or returns an error code */
+static void handle_connect_client_no_session(const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":connect_client_no_session requires a 2-tuple, term_size = %d", term_size);
+
+    unsigned long str_len;
+    if (ei_decode_ulong(req, req_index, &str_len) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    char url[str_len + 1];
+    long binary_len;
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+            term_type != ERL_BINARY_EXT ||
+            term_size >= (int) sizeof(url) ||
+            ei_decode_binary(req, req_index, url, &binary_len) < 0) {
+        // The name is almost certainly too long, so report that it
+        // doesn't exist.
+        send_error_response("enoent");
+        return;
+    }
+    url[binary_len] = '\0';
+    
+    UA_StatusCode retval = UA_Client_connect_noSession(client, url);
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+    
+    send_ok_response();
+}
+
+/* Disconnect and close a connection to the selected server.
+ *
+ * @return Indicates whether the operation succeeded or returns an error code */
+static void handle_disconnect_client(const char *req, int *req_index)
+{
+    
+    UA_StatusCode retval = UA_Client_disconnect(client);
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+    
+    send_ok_response();
+}
+
+/*******************************/
+/* Elixir -> C Message Handler */
+/*******************************/
 
 struct request_handler {
     const char *name;
@@ -256,15 +423,20 @@ struct request_handler {
 };
 
 /*  Elixir request handler table
- *  Ordered roughly based on most frequent calls to least (WIP).
+ *  FIXME: Order roughly based on most frequent calls to least (WIP).
  */
 static struct request_handler request_handlers[] = {
     {"test", handle_test},
+    // lifecycle functions
     {"get_client_state", handle_get_client_state},     
     {"set_client_config", handle_set_client_config},     
     {"get_client_config", handle_get_client_config},     
     {"reset_client", handle_reset_client},
-    {"connect_client_by_url", handle_connect_client_by_url},     
+    // connections functions
+    {"connect_client_by_url", handle_connect_client_by_url},
+    {"connect_client_by_username", handle_connect_client_by_username},     
+    {"connect_client_no_session", handle_connect_client_no_session},     
+    {"disconnect_client", handle_disconnect_client},     
     { NULL, NULL }
 };
 

@@ -22,15 +22,16 @@ else()
 endif($ENV{MANUAL_BUILD})
 
 # set version
-if($ENV{OPEN62541_DOWNLOAD_VERSION})
-set(DOWNLOAD_VERSION $ENV{OPEN62541_DOWNLOAD_VERSION})
-else($ENV{OPEN62541_DOWNLOAD_VERSION})
-set(DOWNLOAD_VERSION "v1.0")
-endif($ENV{OPEN62541_DOWNLOAD_VERSION})
+if($ENV{OPEN62541_DOWNLOAD_VERSION} STREQUAL "")
+    set(DOWNLOAD_VERSION "v1.0")    
+else($ENV{OPEN62541_DOWNLOAD_VERSION} STREQUAL "")
+    set(DOWNLOAD_VERSION $ENV{OPEN62541_DOWNLOAD_VERSION})    
+endif($ENV{OPEN62541_DOWNLOAD_VERSION} STREQUAL "")
 
 # BUILDING OPEN62541
 
 if(NOT MANUAL_BUILD)
+    message(STATUS "DOWNLOAD_BUILD")
     set(BASE_URL "https://github.com/open62541/open62541/releases/download")
     
     # define ARCH
@@ -107,7 +108,7 @@ if(NOT MANUAL_BUILD)
     set(BASE_C_FLAGS "${BASE_FLAGS} -std=c99")
     set(BASE_CXX_FLAGS "${BASE_FLAGS}")
 
-    set (opex62541_PROGRAMS opc_ua_server opc_ua_client)
+    set (opex62541_PROGRAMS opc_ua_server opc_ua_client client_example)
 
     foreach(opex62541_PROGRAM ${opex62541_PROGRAMS})
         add_executable( ${opex62541_PROGRAM} "${CMAKE_SOURCE_DIR}/${opex62541_PROGRAM}.c" "${CMAKE_SOURCE_DIR}/erlcmd.c" "${CMAKE_SOURCE_DIR}/util.c" )
@@ -117,13 +118,14 @@ if(NOT MANUAL_BUILD)
 
 else(NOT MANUAL_BUILD)
 
+    message(STATUS "MANUAL_BUILD")
     set(install_dir ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/lib)
 
     # set version
     if($ENV{OPEN62541_BUILD_ARGS})
     set(OPEN62541_BUILD_ARGS $ENV{OPEN62541_BUILD_ARGS})
     else($ENV{OPEN62541_BUILD_ARGS})
-    set(OPEN62541_BUILD_ARGS "-DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUA_NAMESPACE_ZERO=FULL")
+    set(OPEN62541_BUILD_ARGS -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUA_NAMESPACE_ZERO=FULL -DUA_LOGLEVEL=601)
     endif($ENV{OPEN62541_BUILD_ARGS})
     
     include(ExternalProject)
@@ -135,7 +137,8 @@ else(NOT MANUAL_BUILD)
         SOURCE_DIR        "${CMAKE_BINARY_DIR}/open62541-src"
         BINARY_DIR        "${CMAKE_BINARY_DIR}/open62541-build"
         CONFIGURE_COMMAND ""
-        BUILD_COMMAND     cmake ${CMAKE_BINARY_DIR}/open62541-src -DUA_LOGLEVEL=601 -DCMAKE_INSTALL_PREFIX=${CMAKE_LIBRARY_OUTPUT_DIRECTORY} ${OPEN62541_BUILD_ARGS} && make
+        BUILD_COMMAND     cmake ${CMAKE_BINARY_DIR}/open62541-src ${OPEN62541_BUILD_ARGS}  -DCMAKE_INSTALL_PREFIX=${CMAKE_LIBRARY_OUTPUT_DIRECTORY} && make
+        #BUILD_COMMAND     cmake ${CMAKE_BINARY_DIR}/open62541-src -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUA_NAMESPACE_ZERO=FULL -DUA_ENABLE_AMALGAMATION=ON -DCMAKE_INSTALL_PREFIX=${CMAKE_LIBRARY_OUTPUT_DIRECTORY} && make
         INSTALL_COMMAND   make install
         TEST_COMMAND      ""
     )
@@ -172,26 +175,9 @@ else(NOT MANUAL_BUILD)
     set(BASE_C_FLAGS "${BASE_FLAGS} -std=c99")
     set(BASE_CXX_FLAGS "${BASE_FLAGS}")
 
-    set (opex62541_PROGRAMS opc_ua_server opc_ua_client)
+    set (opex62541_PROGRAMS opc_ua_server opc_ua_client client_example)
 
-    #ExternalProject_Get_Property(open62541 install_dir)
     include_directories(${install_dir})
-
-
-    # add_executable(opc_ua_client ${PROJECT_SOURCE_DIR}/opc_ua_client.c ${CMAKE_SOURCE_DIR}/erlcmd.c ${CMAKE_SOURCE_DIR}/util.c)
-    # add_dependencies(opc_ua_client open62541)
-    # target_link_libraries(opc_ua_client ${STATIC_LIBS})
-    # target_link_libraries(opc_ua_client ${install_dir}/libopen62541.so)
-
-    # add_executable(opc_ua_server ${PROJECT_SOURCE_DIR}/opc_ua_server.c ${CMAKE_SOURCE_DIR}/erlcmd.c ${CMAKE_SOURCE_DIR}/util.c)
-    # add_dependencies(opc_ua_server open62541)
-    # target_link_libraries(opc_ua_server ${STATIC_LIBS})
-    # target_link_libraries(opc_ua_server ${install_dir}/libopen62541.so)
-
-    # add_executable( ${opex62541_PROGRAM} "${CMAKE_SOURCE_DIR}/${opex62541_PROGRAM}.c" "${CMAKE_SOURCE_DIR}/erlcmd.c" "${CMAKE_SOURCE_DIR}/util.c" )
-    #     target_link_libraries(${opex62541_PROGRAM} ${STATIC_LIBS})
-    #     target_link_libraries(${opex62541_PROGRAM} ${install_dir}/libopen62541.so)
-
 
     foreach(opex62541_PROGRAM ${opex62541_PROGRAMS})
         add_executable( ${opex62541_PROGRAM} ${CMAKE_SOURCE_DIR}/${opex62541_PROGRAM}.c ${CMAKE_SOURCE_DIR}/erlcmd.c ${CMAKE_SOURCE_DIR}/util.c)
@@ -200,6 +186,10 @@ else(NOT MANUAL_BUILD)
         target_link_libraries(${opex62541_PROGRAM} ${install_dir}/libopen62541.so)
     endforeach(opex62541_PROGRAM)
 
+    # add_executable(example ${CMAKE_SOURCE_DIR}/client_example.c)
+    # add_dependencies(example open62541)
+    # target_link_libraries(example ${install_dir}/libopen62541.so)
+
 endif(NOT MANUAL_BUILD)
 
-message(STATUS "Debugs $ENV{MIX_ENV}, $ENV{ERL_EI_INCLUDE_DIR}, $ENV{ERL_EI_LIBDIR}, ${SOURCES}, $ENV{MIX_CONSOLIDATION_PATH}, ${CMAKE_SOURCE_DIR}, ${PROJECT_SOURCE_DIR}, ${CMAKE_SOURCE_DIR}")
+message(STATUS "Debugs ${OPEN62541_BUILD_ARGS}, $ENV{ERL_EI_INCLUDE_DIR}, $ENV{ERL_EI_LIBDIR}, ${SOURCES}, $ENV{MIX_CONSOLIDATION_PATH}, ${CMAKE_SOURCE_DIR}, ${PROJECT_SOURCE_DIR}, ${CMAKE_SOURCE_DIR}")
