@@ -15,6 +15,7 @@ UA_Client *client;
 /*****************************/
 /* Elixir Message assemblers */
 /*****************************/
+
 // https://open62541.org/doc/current/statuscodes.html?highlight=error
 static void send_opex_response(uint32_t reason)
 {
@@ -42,6 +43,132 @@ static void encode_client_config(char *resp, int *resp_index, void *data)
     ei_encode_long(resp, resp_index,((UA_ClientConfig *)data)->requestedSessionTimeout);
 }
 
+static void encode_server_on_the_network_struct(char *resp, int *resp_index, void *data, int data_len)
+{
+    UA_ServerOnNetwork *serverOnNetwork = ((UA_ServerOnNetwork *)data);
+
+    ei_encode_list_header(resp, resp_index, data_len);
+
+    for(size_t i = 0; i < data_len; i++) {
+        UA_ServerOnNetwork *server = &serverOnNetwork[i];
+        ei_encode_map_header(resp, resp_index, 4);
+        
+        ei_encode_binary(resp, resp_index, "server_name", 11);
+        ei_encode_binary(resp, resp_index, server->serverName.data, (int)server->serverName.length);
+
+        ei_encode_binary(resp, resp_index, "record_id", 9);
+        ei_encode_long(resp, resp_index, (int)server->recordId);
+
+        ei_encode_binary(resp, resp_index, "discovery_url", 13);
+        ei_encode_binary(resp, resp_index, server->discoveryUrl.data, (int)server->discoveryUrl.length);
+
+        ei_encode_binary(resp, resp_index, "capabilities", 12);
+
+        ei_encode_list_header(resp, resp_index, server->serverCapabilitiesSize);
+        for(size_t j = 0; j < server->serverCapabilitiesSize; j++) {
+            ei_encode_binary(resp, resp_index, server->serverCapabilities[j].data, (int) server->serverCapabilities[j].length);
+        }
+        ei_encode_empty_list(resp, resp_index);
+    }
+
+    ei_encode_empty_list(resp, resp_index);
+}
+
+static void encode_application_description_struct(char *resp, int *resp_index, void *data, int data_len)
+{
+    UA_ApplicationDescription *applicationDescriptionArray = ((UA_ApplicationDescription *)data);
+
+    ei_encode_list_header(resp, resp_index, data_len);
+
+    for(size_t i = 0; i < data_len; i++) {
+        UA_ApplicationDescription *description = &applicationDescriptionArray[i];
+        ei_encode_map_header(resp, resp_index, 6);
+        
+        ei_encode_binary(resp, resp_index, "server", 6);
+        ei_encode_binary(resp, resp_index, description->applicationUri.data, (int) description->applicationUri.length);
+
+        ei_encode_binary(resp, resp_index, "name", 4);
+        ei_encode_binary(resp, resp_index, description->applicationName.text.data, (int) description->applicationName.text.length);
+
+        ei_encode_binary(resp, resp_index, "application_uri", 15);
+        ei_encode_binary(resp, resp_index, description->applicationUri.data, (int) description->applicationUri.length);
+
+        ei_encode_binary(resp, resp_index, "product_uri", 11);
+        ei_encode_binary(resp, resp_index, description->productUri.data, (int) description->productUri.length);
+
+        ei_encode_binary(resp, resp_index, "type", 4);
+        switch(description->applicationType) {
+            case UA_APPLICATIONTYPE_SERVER:
+                ei_encode_binary(resp, resp_index, "server", 6);
+                break;
+            case UA_APPLICATIONTYPE_CLIENT:
+                ei_encode_binary(resp, resp_index, "client", 6);
+                break;
+            case UA_APPLICATIONTYPE_CLIENTANDSERVER:
+                ei_encode_binary(resp, resp_index, "client_and_server", 17);
+                break;
+            case UA_APPLICATIONTYPE_DISCOVERYSERVER:
+                ei_encode_binary(resp, resp_index, "discovery_server", 16);
+                break;
+            default:
+                ei_encode_binary(resp, resp_index, "unknown", 7);
+        }
+
+        ei_encode_binary(resp, resp_index, "discovery_url", 13);
+        ei_encode_list_header(resp, resp_index, description->discoveryUrlsSize);
+        for(size_t j = 0; j < description->discoveryUrlsSize; j++) {
+            ei_encode_binary(resp, resp_index, description->discoveryUrls[j].data, (int) description->discoveryUrls[j].length);
+        }
+        ei_encode_empty_list(resp, resp_index);
+    }
+
+    ei_encode_empty_list(resp, resp_index);
+}
+
+static void encode_endpoint_description_struct(char *resp, int *resp_index, void *data, int data_len)
+{
+    UA_EndpointDescription *endpointArray = ((UA_EndpointDescription *)data);
+
+    ei_encode_list_header(resp, resp_index, data_len);
+
+    for(size_t i = 0; i < data_len; i++) {
+        UA_EndpointDescription *endpoint = &endpointArray[i];
+        ei_encode_map_header(resp, resp_index, 5);
+
+        ei_encode_binary(resp, resp_index, "endpoint_url", 12);
+        ei_encode_binary(resp, resp_index, endpoint->endpointUrl.data, (int) endpoint->endpointUrl.length);
+
+        ei_encode_binary(resp, resp_index, "transport_profile_uri", 21);
+        ei_encode_binary(resp, resp_index, endpoint->transportProfileUri.data, (int) endpoint->transportProfileUri.length);
+
+        ei_encode_binary(resp, resp_index, "security_mode", 13);
+        switch(endpoint->securityMode) {
+            case UA_APPLICATIONTYPE_SERVER:
+                ei_encode_binary(resp, resp_index, "invalid", 7);
+                break;
+            case UA_APPLICATIONTYPE_CLIENT:
+                ei_encode_binary(resp, resp_index, "none", 4);
+                break;
+            case UA_APPLICATIONTYPE_CLIENTANDSERVER:
+                ei_encode_binary(resp, resp_index, "sign", 4);
+                break;
+            case UA_APPLICATIONTYPE_DISCOVERYSERVER:
+                ei_encode_binary(resp, resp_index, "sign_and_encrypt", 16);
+                break;
+            default:
+                ei_encode_binary(resp, resp_index, "unknown", 7);
+        }
+
+        ei_encode_binary(resp, resp_index, "security_profile_uri", 20);
+        ei_encode_binary(resp, resp_index, endpoint->securityPolicyUri.data, (int) endpoint->securityPolicyUri.length);
+
+        ei_encode_binary(resp, resp_index, "security_level", 14);
+        ei_encode_long(resp, resp_index, endpoint->securityLevel);
+    }
+
+    ei_encode_empty_list(resp, resp_index);
+}
+
 /**
  * @brief Send :ok back to Elixir
  */
@@ -60,7 +187,7 @@ static void send_ok_response()
  */
 static void send_data_response(void *data, int data_type, int data_len)
 {
-    char resp[256];
+    char resp[1024];
     char version[5];
     char r_len = 1;
     long i_struct;
@@ -85,7 +212,7 @@ static void send_data_response(void *data, int data_type, int data_len)
         break;
 
         case 4: //doubles
-            ei_encode_double(resp, &resp_index, *(double *)data );
+            ei_encode_double(resp, &resp_index, *(double *)data);
         break;
 
         case 5: //arrays (byte type)
@@ -98,6 +225,18 @@ static void send_data_response(void *data, int data_type, int data_len)
 
         case 7: //UA_ClientConfig
             encode_client_config(resp, &resp_index, data);
+        break;
+
+        case 8: //UA_ServerOnNetwork
+            encode_server_on_the_network_struct(resp, &resp_index, data, data_len);
+        break;
+
+        case 9: //UA_ApplicationDescription
+            encode_application_description_struct(resp, &resp_index, data, data_len);
+        break;
+
+        case 10: //UA_EndpointDescription
+            encode_endpoint_description_struct(resp, &resp_index, data, data_len);
         break;
 
         default:
@@ -147,7 +286,7 @@ static void handle_set_client_config(const char *req, int *req_index)
     UA_ClientConfig_setDefault(config);
 
     if(ei_decode_map_header(req, req_index, &term_size) < 0)
-    errx(EXIT_FAILURE, ":set_client_config inconsistent argument arity = %d", term_size);    
+        errx(EXIT_FAILURE, ":set_client_config inconsistent argument arity = %d", term_size);    
     for(i_key = 0; i_key < term_size; i_key++)
     {
         char atom[30];
@@ -413,10 +552,150 @@ static void handle_disconnect_client(const char *req, int *req_index)
     send_ok_response();
 }
 
+/***********************/
+/* Discovery Functions */
+/***********************/
+
+/* Get a list of all known server in the network. Only supported by LDS servers.
+ *
+ * @param url to connect (for example "opc.tcp://localhost:4840")
+ * @return Indicates whether the operation succeeded or returns an error code */
+static void handle_find_servers_on_network(const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_ServerOnNetwork *serverOnNetwork = NULL;
+    size_t serverOnNetworkSize = 0;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":find_servers_on_network requires a 2-tuple, term_size = %d", term_size);
+
+    unsigned long str_len;
+    if (ei_decode_ulong(req, req_index, &str_len) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    char url[str_len + 1];
+    long binary_len;
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+            term_type != ERL_BINARY_EXT ||
+            term_size >= (int) sizeof(url) ||
+            ei_decode_binary(req, req_index, url, &binary_len) < 0) {
+        // The name is almost certainly too long, so report that it
+        // doesn't exist.
+        send_error_response("enoent");
+        return;
+    }
+    url[binary_len] = '\0';
+
+    UA_StatusCode retval = UA_Client_findServersOnNetwork(client, url, 0, 0, 0, NULL, &serverOnNetworkSize, &serverOnNetwork);
+    
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+    
+    send_data_response(serverOnNetwork, 8, serverOnNetworkSize);
+}
+
+/* Gets a list of all registered servers at the given server.
+ *
+ * @param serverUrl url to connect (for example "opc.tcp://localhost:4840")
+ * @return Indicates whether the operation succeeded or returns an error code */
+static void handle_find_servers(const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+
+    UA_ApplicationDescription *applicationDescriptionArray = NULL;
+    size_t applicationDescriptionArraySize = 0;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":find_servers requires a 2-tuple, term_size = %d", term_size);
+
+    unsigned long str_len;
+    if (ei_decode_ulong(req, req_index, &str_len) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    char url[str_len + 1];
+    long binary_len;
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+            term_type != ERL_BINARY_EXT ||
+            term_size >= (int) sizeof(url) ||
+            ei_decode_binary(req, req_index, url, &binary_len) < 0) {
+        // The name is almost certainly too long, so report that it
+        // doesn't exist.
+        send_error_response("enoent");
+        return;
+    }
+    url[binary_len] = '\0';
+
+    UA_StatusCode retval = UA_Client_findServers(client, url, 0, NULL, 0, NULL, &applicationDescriptionArraySize, &applicationDescriptionArray);
+    
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+    
+    send_data_response(applicationDescriptionArray, 9, applicationDescriptionArraySize);
+}
+
+/* Gets a list of endpoints of a server
+ *
+ * @param url to connect (for example "opc.tcp://localhost:4840")
+ * @return Indicates whether the operation succeeded or returns an error code */
+static void handle_get_endpoints(const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+
+    UA_EndpointDescription *endpointArray = NULL;
+        size_t endpointArraySize = 0;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":get_endpoint requires a 2-tuple, term_size = %d", term_size);
+
+    unsigned long str_len;
+    if (ei_decode_ulong(req, req_index, &str_len) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    char url[str_len + 1];
+    long binary_len;
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+            term_type != ERL_BINARY_EXT ||
+            term_size >= (int) sizeof(url) ||
+            ei_decode_binary(req, req_index, url, &binary_len) < 0) {
+        // The name is almost certainly too long, so report that it
+        // doesn't exist.
+        send_error_response("enoent");
+        return;
+    }
+    url[binary_len] = '\0';
+
+    UA_StatusCode retval = UA_Client_getEndpoints(client, url, &endpointArraySize, &endpointArray);
+    
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+    
+    send_data_response(endpointArray, 10, endpointArraySize);
+    
+    UA_Array_delete(endpointArray, endpointArraySize, &UA_TYPES[UA_TYPES_ENDPOINTDESCRIPTION]);
+}
+
+
 /*******************************/
 /* Elixir -> C Message Handler */
 /*******************************/
-
 struct request_handler {
     const char *name;
     void (*handler)(const char *req, int *req_index);
@@ -436,7 +715,11 @@ static struct request_handler request_handlers[] = {
     {"connect_client_by_url", handle_connect_client_by_url},
     {"connect_client_by_username", handle_connect_client_by_username},     
     {"connect_client_no_session", handle_connect_client_no_session},     
-    {"disconnect_client", handle_disconnect_client},     
+    {"disconnect_client", handle_disconnect_client}, 
+    // discovery functions
+    {"find_servers_on_network", handle_find_servers_on_network},
+    {"find_servers", handle_find_servers}, 
+    {"get_endpoints", handle_get_endpoints}, 
     { NULL, NULL }
 };
 
