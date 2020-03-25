@@ -19,13 +19,14 @@ UA_Client *client;
 // https://open62541.org/doc/current/statuscodes.html?highlight=error
 static void send_opex_response(uint32_t reason)
 {
+    const char *status_code = UA_StatusCode_name(reason);
     char resp[256];
     int resp_index = sizeof(uint16_t); // Space for payload size
     resp[resp_index++] = response_id;
     ei_encode_version(resp, &resp_index);
     ei_encode_tuple_header(resp, &resp_index, 2);
     ei_encode_atom(resp, &resp_index, "error");
-    ei_encode_ulong(resp, &resp_index, reason);
+    ei_encode_binary(resp, &resp_index, status_code, strlen(status_code));
     erlcmd_send(resp, resp_index);
 }
 
@@ -33,13 +34,13 @@ static void send_opex_response(uint32_t reason)
 static void encode_client_config(char *resp, int *resp_index, void *data)
 {
     ei_encode_map_header(resp, resp_index, 3);
-    ei_encode_atom(resp, resp_index, "timeout");
+    ei_encode_binary(resp, resp_index, "timeout", 7);
     ei_encode_long(resp, resp_index,((UA_ClientConfig *)data)->timeout);
     
-    ei_encode_atom(resp, resp_index, "secureChannelLifeTime");
+    ei_encode_binary(resp, resp_index, "secureChannelLifeTime", 21);
     ei_encode_long(resp, resp_index,((UA_ClientConfig *)data)->secureChannelLifeTime);
     
-    ei_encode_atom(resp, resp_index, "requestedSessionTimeout");
+    ei_encode_binary(resp, resp_index, "requestedSessionTimeout", 23);
     ei_encode_long(resp, resp_index,((UA_ClientConfig *)data)->requestedSessionTimeout);
 }
 
@@ -68,10 +69,11 @@ static void encode_server_on_the_network_struct(char *resp, int *resp_index, voi
         for(size_t j = 0; j < server->serverCapabilitiesSize; j++) {
             ei_encode_binary(resp, resp_index, server->serverCapabilities[j].data, (int) server->serverCapabilities[j].length);
         }
-        ei_encode_empty_list(resp, resp_index);
+        if(server->serverCapabilitiesSize)
+            ei_encode_empty_list(resp, resp_index);
     }
-
-    ei_encode_empty_list(resp, resp_index);
+    if(data_len)
+        ei_encode_empty_list(resp, resp_index);
 }
 
 static void encode_application_description_struct(char *resp, int *resp_index, void *data, int data_len)
@@ -119,10 +121,11 @@ static void encode_application_description_struct(char *resp, int *resp_index, v
         for(size_t j = 0; j < description->discoveryUrlsSize; j++) {
             ei_encode_binary(resp, resp_index, description->discoveryUrls[j].data, (int) description->discoveryUrls[j].length);
         }
-        ei_encode_empty_list(resp, resp_index);
+        if(description->discoveryUrlsSize)
+            ei_encode_empty_list(resp, resp_index);
     }
-
-    ei_encode_empty_list(resp, resp_index);
+    if(data_len)
+        ei_encode_empty_list(resp, resp_index);
 }
 
 static void encode_endpoint_description_struct(char *resp, int *resp_index, void *data, int data_len)
@@ -165,8 +168,8 @@ static void encode_endpoint_description_struct(char *resp, int *resp_index, void
         ei_encode_binary(resp, resp_index, "security_level", 14);
         ei_encode_long(resp, resp_index, endpoint->securityLevel);
     }
-
-    ei_encode_empty_list(resp, resp_index);
+    if(data_len)
+        ei_encode_empty_list(resp, resp_index);
 }
 
 /**
@@ -639,10 +642,13 @@ static void handle_find_servers(const char *req, int *req_index)
     
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
+        UA_Array_delete(applicationDescriptionArray, applicationDescriptionArraySize, &UA_TYPES[UA_TYPES_APPLICATIONDESCRIPTION]);
         return;
     }
     
     send_data_response(applicationDescriptionArray, 9, applicationDescriptionArraySize);
+
+    UA_Array_delete(applicationDescriptionArray, applicationDescriptionArraySize, &UA_TYPES[UA_TYPES_APPLICATIONDESCRIPTION]);
 }
 
 /* Gets a list of endpoints of a server
@@ -684,6 +690,7 @@ static void handle_get_endpoints(const char *req, int *req_index)
     
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
+        UA_Array_delete(endpointArray, endpointArraySize, &UA_TYPES[UA_TYPES_ENDPOINTDESCRIPTION]);
         return;
     }
     
