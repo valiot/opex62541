@@ -17,129 +17,128 @@ defmodule CServerLifecycleTest do
     %{port: port}
   end
 
-  # test "Set/Get client config", state do
-  #   desired_config = %{
-  #     "application_description" => %{
-  #         "application_uri" => "urn:open62541.server.application",
-  #         "discovery_url" => [],
-  #         "name" => "open62541-based OPC UA Application",
-  #         "product_uri" => "http://open62541.org",
-  #         "server" => "urn:open62541.server.application",
-  #         "type" => "server"
-  #       },
-  #     "endpoint_description" => [
-  #       %{
-  #         "endpoint_url" => "",
-  #         "security_level" => 1,
-  #         "security_mode" => "none",
-  #         "security_profile_uri" => "http://opcfoundation.org/UA/SecurityPolicy#None",
-  #         "transport_profile_uri" =>
-  #           "http://opcfoundation.org/UA-Profile/Transport/uatcp-uasc-uabinary"
-  #       }
-  #     ],
-  #     "hostname" => "localhost",
-  #     "network_layer" => [{"", 0}],
-  #     "n_threads" => 1
-  #   }
+  test "Set/Get client config", state do
+    desired_config = %{
+      "application_description" => %{
+          "application_uri" => "urn:open62541.server.application",
+          "discovery_url" => [],
+          "name" => "open62541-based OPC UA Application",
+          "product_uri" => "http://open62541.org",
+          "server" => "urn:open62541.server.application",
+          "type" => "server"
+        },
+      "endpoint_description" => [
+        %{
+          "endpoint_url" => "",
+          "security_level" => 1,
+          "security_mode" => "none",
+          "security_profile_uri" => "http://opcfoundation.org/UA/SecurityPolicy#None",
+          "transport_profile_uri" =>
+            "http://opcfoundation.org/UA-Profile/Transport/uatcp-uasc-uabinary"
+        }
+      ],
+      "hostname" => "localhost",
+      "n_threads" => 1
+    }
 
-  #   msg = {:set_default_server_config, nil}
-  #   send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+    msg = {:set_default_server_config, nil}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
-  #   c_response =
-  #     receive do
-  #       {_, {:data, <<?r, response::binary>>}} ->
-  #         :erlang.binary_to_term(response)
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
 
-  #       x ->
-  #         IO.inspect(x)
-  #         :error
-  #     after
-  #       1000 ->
-  #         # Not sure how this can be recovered
-  #         exit(:port_timed_out)
-  #     end
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
 
-  #   assert c_response == :ok
+    assert c_response == :ok
 
-  #   msg = {:get_server_config, nil}
-  #   send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+    msg = {:get_server_config, nil}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
-  #   c_response =
-  #     receive do
-  #       {_, {:data, <<?r, response::binary>>}} ->
-  #         :erlang.binary_to_term(response)
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
 
-  #       x ->
-  #         IO.inspect(x)
-  #         :error
-  #     after
-  #       1000 ->
-  #         # Not sure how this can be recovered
-  #         exit(:port_timed_out)
-  #     end
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
 
-  #   assert c_response == {:ok, desired_config}
-  # end
+    assert c_response == {:ok, desired_config}
+  end
 
-  # test "Set hostname", state do
-  #   msg = {:set_default_server_config, nil}
-  #   send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+  test "Set hostname", state do
+    msg = {:set_default_server_config, nil}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
-  #   c_response =
-  #     receive do
-  #       {_, {:data, <<?r, response::binary>>}} ->
-  #         :erlang.binary_to_term(response)
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
 
-  #       x ->
-  #         IO.inspect(x)
-  #         :error
-  #     after
-  #       1000 ->
-  #         # Not sure how this can be recovered
-  #         exit(:port_timed_out)
-  #     end
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
 
-  #   assert c_response == :ok
+    assert c_response == :ok
 
-  #   msg = {:set_hostname, {7,"alde103"}}
-  #   send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+    msg = {:set_hostname, {7,"alde103"}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
-  #   c_response =
-  #     receive do
-  #       {_, {:data, <<?r, response::binary>>}} ->
-  #         :erlang.binary_to_term(response)
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
 
-  #       x ->
-  #         IO.inspect(x)
-  #         :error
-  #     after
-  #       1000 ->
-  #         # Not sure how this can be recovered
-  #         exit(:port_timed_out)
-  #     end
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
 
-  #   assert c_response == :ok
+    assert c_response == :ok
 
-  #   msg = {:get_server_config, nil}
-  #   send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+    msg = {:get_server_config, nil}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
-  #   c_response =
-  #     receive do
-  #       {_, {:data, <<?r, response::binary>>}} ->
-  #         :erlang.binary_to_term(response)
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
 
-  #       x ->
-  #         IO.inspect(x)
-  #         :error
-  #     after
-  #       1000 ->
-  #         # Not sure how this can be recovered
-  #         exit(:port_timed_out)
-  #     end
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
 
-  #     {:ok, server_config} = c_response
-  #   assert server_config["hostname"] == "alde103"
-  # end
+      {:ok, server_config} = c_response
+    assert server_config["hostname"] == "alde103"
+  end
 
   test "Set port_number", state do
     msg = {:set_default_server_config, nil}
@@ -179,8 +178,10 @@ defmodule CServerLifecycleTest do
       end
 
     assert c_response == :ok
+  end
 
-    msg = {:get_server_config, nil}
+  test "Set users", state do
+    msg = {:set_default_server_config, nil}
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =
@@ -197,7 +198,65 @@ defmodule CServerLifecycleTest do
           exit(:port_timed_out)
       end
 
-      {:ok, server_config} = c_response
-    assert server_config["network_layer"] == [{"alde103", 0}]
+    assert c_response == :ok
+
+    msg = {:set_users, [{4, "alde", 4, "edla"}, {5, "pedro", 5, "ordep"}]}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+  end
+
+  test "start_server", state do
+    msg = {:set_default_server_config, nil}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:start_server, nil}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
   end
 end

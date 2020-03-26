@@ -8,33 +8,44 @@
 #include <stdio.h>
 #include "erlcmd.h"
 
-#define LIST_HEAD(name, type)						\
-struct name {								\
-    struct type *lh_first;	/* first element */			\
-}
-
-#define LIST_ENTRY(type)						\
-struct {								\
-    struct type *le_next;	/* next element */			\
-    struct type **le_prev;	/* address of previous next element */	\
-}
-
-typedef struct ConnectionEntry {
-    UA_Connection connection;
-    LIST_ENTRY(ConnectionEntry) pointers;
-} ConnectionEntry;
-
-typedef struct {
-    const UA_Logger *logger;
-    UA_UInt16 port;
-    UA_SOCKET serverSockets[FD_SETSIZE];
-    UA_UInt16 serverSocketsSize;
-    LIST_HEAD(, ConnectionEntry) connections;
-} ServerNetworkLayerTCP;
-
 static const char response_id = 'r';
 
+int server_pid;
+
+pthread_t server_tid;
+pthread_attr_t server_attr;
+UA_Boolean running = true;
+
 UA_Server *server;
+
+static UA_Boolean
+allowAddNode(UA_Server *server, UA_AccessControl *ac,
+             const UA_NodeId *sessionId, void *sessionContext,
+             const UA_AddNodesItem *item)  {return UA_TRUE;}
+
+static UA_Boolean
+allowAddReference(UA_Server *server, UA_AccessControl *ac,
+                  const UA_NodeId *sessionId, void *sessionContext,
+                  const UA_AddReferencesItem *item) {return UA_TRUE;}
+
+static UA_Boolean
+allowDeleteNode(UA_Server *server, UA_AccessControl *ac,
+                const UA_NodeId *sessionId, void *sessionContext,
+                const UA_DeleteNodesItem *item) {return UA_FALSE;} // Do not allow deletion from client
+
+static UA_Boolean
+allowDeleteReference(UA_Server *server, UA_AccessControl *ac,
+                     const UA_NodeId *sessionId, void *sessionContext,
+                     const UA_DeleteReferencesItem *item) {return UA_TRUE;}
+
+void* server_runner(void* arg)
+{
+	UA_StatusCode retval = UA_Server_run(server, &running);
+    if(retval != UA_STATUSCODE_GOOD) {
+        errx(EXIT_FAILURE, "Unexpected Server error %s", UA_StatusCode_name(retval));
+    }
+    return NULL;
+}
 
 /*****************************/
 /* Elixir Message assemblers */
@@ -144,37 +155,9 @@ static void encode_endpoint_description_struct(char *resp, int *resp_index, void
         ei_encode_empty_list(resp, resp_index);
 }
 
-static void encode_server_network_layers_struct(char *resp, int *resp_index, void *data, int data_len)
-{
-    UA_ServerNetworkLayer *serverNetworkLayerArray = ((UA_ServerNetworkLayer *)data);
-
-
-    UA_ServerNetworkLayer serverNetworkLayer = serverNetworkLayerArray[1];
-    //errx(EXIT_FAILURE, "error: %ld", ((ServerNetworkLayerTCP *)serverNetworkLayer.handle)->port);
-    errx(EXIT_FAILURE, "error: %s", serverNetworkLayer.discoveryUrl.data);
-
-    // ei_encode_list_header(resp, resp_index, data_len);
-
-    // errx(EXIT_FAILURE, "expecting command atom %ld", data_len);
-
-    // for(size_t i = 0; i < data_len; i++) {
-    //     UA_ServerNetworkLayer *serverNetworkLayer = &serverNetworkLayerArray[i];
-    //     ei_encode_tuple_header(resp, resp_index, 2);
-    //     ei_encode_binary(resp, resp_index, serverNetworkLayer->discoveryUrl.data, serverNetworkLayer->discoveryUrl.length);
-    //     if (serverNetworkLayer->handle)
-    //         ei_encode_long(resp, resp_index, ((ServerNetworkLayerTCP *)serverNetworkLayer->handle)->port);
-    //     else
-    //         ei_encode_atom(resp, resp_index, "nil");
-        
-    // }
-
-    if(data_len)
-        ei_encode_empty_list(resp, resp_index);
-}
-TCPClientConnec
 static void encode_server_config(char *resp, int *resp_index, void *data)
 {   
-    ei_encode_map_header(resp, resp_index, 5);
+    ei_encode_map_header(resp, resp_index, 4);
     ei_encode_binary(resp, resp_index, "n_threads", 9);
     ei_encode_long(resp, resp_index,((UA_ServerConfig *)data)->nThreads);
     ei_encode_binary(resp, resp_index, "hostname", 8);
@@ -188,11 +171,6 @@ static void encode_server_config(char *resp, int *resp_index, void *data)
 
     ei_encode_binary(resp, resp_index, "application_description", 23);
     encode_application_description_struct(resp, resp_index, &((UA_ServerConfig *)data)->applicationDescription, 1);
-    
-    ei_encode_binary(resp, resp_index, "network_layer", 13);
-    errx(EXIT_FAILURE, "error: %s", ((UA_ServerConfig *)data)->networkLayers[1]->discoveryUrl);
-    encode_server_network_layers_struct(resp, resp_index, &((UA_ServerConfig *)data)->networkLayers, ((UA_ServerConfig *)data)->networkLayersSize);
-
 }
 
 /**
@@ -365,6 +343,98 @@ static void handle_set_port(const char *req, int *req_index)
     send_ok_response();
 }
 
+/* 
+*   sets the server port. 
+*/
+static void handle_set_users_and_passwords(const char *req, int *req_index)
+{
+    int list_arity;
+    int tuple_arity;
+    int term_type;
+    int term_size;
+
+    if(ei_decode_list_header(req, req_index, &list_arity) < 0)
+        errx(EXIT_FAILURE, ":handle_set_users_and_passwords has an empty list");
+
+    UA_UsernamePasswordLogin logins[list_arity];
+    
+    for(size_t i = 0; i < list_arity; i++) {
+        if(ei_decode_tuple_header(req, req_index, &tuple_arity) < 0 || tuple_arity != 4)
+            errx(EXIT_FAILURE, ":handle_set_host_name requires a 4-tuple, term_size = %d", tuple_arity);
+
+        unsigned long str_len;
+        if (ei_decode_ulong(req, req_index, &str_len) < 0) {
+            send_error_response("einval");
+            return;
+        }
+
+        char username[str_len + 1];
+        long binary_len;
+        if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+                term_type != ERL_BINARY_EXT ||
+                term_size >= (int) sizeof(username) ||
+                ei_decode_binary(req, req_index, username, &binary_len) < 0) {
+            // The name is almost certainly too long, so report that it
+            // doesn't exist.
+            send_error_response("enoent");
+            return;
+        }
+        username[binary_len] = '\0';
+
+        if (ei_decode_ulong(req, req_index, &str_len) < 0) {
+            send_error_response("einval");
+            return;
+        }
+
+        char password[str_len + 1];
+        if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+                term_type != ERL_BINARY_EXT ||
+                term_size >= (int) sizeof(password) ||
+                ei_decode_binary(req, req_index, password, &binary_len) < 0) {
+            // The name is almost certainly too long, so report that it
+            // doesn't exist.
+            send_error_response("enoent");
+            return;
+        }
+        password[binary_len] = '\0';
+
+        logins[i].username = UA_STRING(username);
+        logins[i].password = UA_STRING(password);
+    }
+
+    UA_ServerConfig *config = UA_Server_getConfig(server);
+    config->accessControl.clear(&config->accessControl);
+    UA_StatusCode retval = UA_AccessControl_default(config, false, &config->securityPolicies[config->securityPoliciesSize-1].policyUri, list_arity, logins);
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    config->accessControl.allowAddNode = allowAddNode;
+    config->accessControl.allowAddReference = allowAddReference;
+    config->accessControl.allowDeleteNode = allowDeleteNode;
+    config->accessControl.allowDeleteReference = allowDeleteReference;
+
+    send_ok_response();
+}
+
+static void handle_start_server(const char *req, int *req_index)
+{
+    //pthread_create(&server_tid, NULL, server_runner, NULL);
+    server_pid = fork();
+    if(server_pid == 0)
+    {
+        //child process
+        UA_StatusCode retval = UA_Server_run(server, &running);
+        if(retval != UA_STATUSCODE_GOOD) {
+            errx(EXIT_FAILURE, "Unexpected Server error %s", UA_StatusCode_name(retval));
+        }
+        return;
+    }
+
+    send_ok_response();
+}
+
 /*******************************/
 /* Elixir -> C Message Handler */
 /*******************************/
@@ -378,10 +448,13 @@ struct request_handler {
  */
 static struct request_handler request_handlers[] = {
     {"test", handle_test},
+    // lifecycle functions
     {"get_server_config", handle_get_server_config},
     {"set_default_server_config", handle_set_default_server_config},
     {"set_hostname", handle_set_hostname},
     {"set_port", handle_set_port},
+    {"set_users", handle_set_users_and_passwords},
+    {"start_server", handle_start_server},
     // lifecycle functions
     { NULL, NULL }
 };
