@@ -3,6 +3,7 @@
 #include <err.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 #include <unistd.h>
 #include <poll.h>
 #include <stdio.h>
@@ -17,6 +18,7 @@ pthread_attr_t server_attr;
 UA_Boolean running = true;
 
 UA_Server *server;
+
 
 static UA_Boolean
 allowAddNode(UA_Server *server, UA_AccessControl *ac,
@@ -256,6 +258,164 @@ static void send_error_response(const char *reason)
     erlcmd_send(resp, resp_index);
 }
 
+UA_NodeId assemble_node_id(const char *req, int *req_index)
+{
+    enum node_type{Numeric, String, GUID, ByteString}; 
+
+    int term_size;
+    int term_type;
+    UA_NodeId node_id = UA_NODEID_NULL;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 3)
+        errx(EXIT_FAILURE, "assemble_node_id requires a 3-tuple, term_size = %d", term_size);
+    
+    unsigned long node_type;
+    if (ei_decode_ulong(req, req_index, &node_type) < 0)
+        errx(EXIT_FAILURE, "Invalid node_type");
+
+    unsigned long ns_index;
+    if (ei_decode_ulong(req, req_index, &ns_index) < 0)
+        errx(EXIT_FAILURE, "Invalid ns_index");
+
+    switch (node_type)
+    {
+        case Numeric:
+            {
+                unsigned long identifier;
+                if (ei_decode_ulong(req, req_index, &identifier) < 0) 
+                    errx(EXIT_FAILURE, "Invalid identifier");
+
+                node_id = UA_NODEID_NUMERIC(ns_index, (UA_UInt32)identifier);
+            }
+        break;
+
+        case String:
+            {
+                if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+                term_size != 2)
+                    errx(EXIT_FAILURE, "Invalid string, term_size = %d", term_size);
+
+                unsigned long str_len;
+                if (ei_decode_ulong(req, req_index, &str_len) < 0)
+                    errx(EXIT_FAILURE, "Invalid string length");
+
+                char node_string[str_len + 1];
+                long binary_len;
+                if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+                        term_type != ERL_BINARY_EXT ||
+                        term_size >= (int) sizeof(node_string) ||
+                        ei_decode_binary(req, req_index, node_string, &binary_len) < 0) {
+                errx(EXIT_FAILURE, "Invalid node_string");
+                }
+                node_string[binary_len] = '\0';
+
+                node_id = UA_NODEID_STRING(ns_index, node_string);
+            }
+        break;
+
+        case GUID:
+            {   
+                UA_Guid node_guid;
+
+                if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+                term_size != 4)
+                    errx(EXIT_FAILURE, "Invalid string, term_size = %d", term_size);
+
+                unsigned long guid_data1;
+                if (ei_decode_ulong(req, req_index, &guid_data1) < 0)
+                    errx(EXIT_FAILURE, "Invalid GUID data1");
+                
+                unsigned long guid_data2;
+                if (ei_decode_ulong(req, req_index, &guid_data2) < 0)
+                    errx(EXIT_FAILURE, "Invalid GUID data2");
+                
+                unsigned long guid_data3;
+                if (ei_decode_ulong(req, req_index, &guid_data3) < 0)
+                    errx(EXIT_FAILURE, "Invalid GUID data3");
+
+                // UA_Byte guid_data4[9];
+                long binary_len;
+                if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+                        term_type != ERL_BINARY_EXT ||
+                        term_size > (int) sizeof(node_guid.data4) ||
+                        ei_decode_binary(req, req_index, node_guid.data4, &binary_len) < 0) 
+                    errx(EXIT_FAILURE, "Invalid GUID data4 %d >= %d, %d", term_size,(int) sizeof(node_guid.data4), term_size >= (int) sizeof(node_guid.data4));
+                
+                node_guid.data1 = guid_data1;
+                node_guid.data2 = guid_data2;
+                node_guid.data3 = guid_data3;
+                //node_guid.data4[0] = guid_data4[0];
+                
+                node_id = UA_NODEID_GUID(ns_index, node_guid);
+            }
+        break;
+        
+        case ByteString:
+            {
+                if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+                term_size != 2)
+                    errx(EXIT_FAILURE, "Invalid byte-string, term_size = %d", term_size);
+
+                unsigned long byte_str_len;
+                if (ei_decode_ulong(req, req_index, &byte_str_len) < 0)
+                    errx(EXIT_FAILURE, "Invalid byte-string length");
+
+                char node_bytestring[byte_str_len + 1];
+                
+                long binary_len;
+                if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+                        term_type != ERL_BINARY_EXT ||
+                        term_size >= (int) sizeof(node_bytestring) ||
+                        ei_decode_binary(req, req_index, node_bytestring, &binary_len) < 0) {
+                errx(EXIT_FAILURE, "Invalid bytestring");
+                }
+                node_bytestring[byte_str_len] = '\0';
+
+                node_id = UA_NODEID_BYTESTRING(ns_index, node_bytestring);    
+            }
+        break;
+        
+        default:
+            errx(EXIT_FAILURE, "Unknown node_type");
+        break;
+    }
+
+    return node_id;
+}
+
+UA_QualifiedName assemble_qualified_name(const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_QualifiedName qualified_name;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 3)
+        errx(EXIT_FAILURE, "assemble_node_id requires a 3-tuple, term_size = %d", term_size);
+
+    unsigned long ns_index;
+    if (ei_decode_ulong(req, req_index, &ns_index) < 0)
+        errx(EXIT_FAILURE, "Invalid ns_index");
+    
+    unsigned long qualified_name_str_len;
+    if (ei_decode_ulong(req, req_index, &qualified_name_str_len) < 0)
+        errx(EXIT_FAILURE, "Invalid qualified_name-string length");
+
+    char node_qualified_name_str[qualified_name_str_len + 1];
+    
+    long binary_len;
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+            term_type != ERL_BINARY_EXT ||
+            term_size >= (int) sizeof(node_qualified_name_str) ||
+            ei_decode_binary(req, req_index, node_qualified_name_str, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid bytestring");
+
+    node_qualified_name_str[qualified_name_str_len] = '\0';
+
+    return UA_QUALIFIEDNAME(ns_index, node_qualified_name_str);
+}
+
 static void handle_test(const char *req, int *req_index)
 {
     send_opex_response(UA_STATUSCODE_BADSECURITYCHECKSFAILED);    
@@ -360,7 +520,7 @@ static void handle_set_users_and_passwords(const char *req, int *req_index)
     
     for(size_t i = 0; i < list_arity; i++) {
         if(ei_decode_tuple_header(req, req_index, &tuple_arity) < 0 || tuple_arity != 4)
-            errx(EXIT_FAILURE, ":handle_set_host_name requires a 4-tuple, term_size = %d", tuple_arity);
+            errx(EXIT_FAILURE, ":handle_set_users_and_passwords requires a 4-tuple, term_size = %d", tuple_arity);
 
         unsigned long str_len;
         if (ei_decode_ulong(req, req_index, &str_len) < 0) {
@@ -420,24 +580,251 @@ static void handle_set_users_and_passwords(const char *req, int *req_index)
 
 static void handle_start_server(const char *req, int *req_index)
 {
-    //pthread_create(&server_tid, NULL, server_runner, NULL);
-    server_pid = fork();
-    if(server_pid == 0)
-    {
-        //child process
-        UA_StatusCode retval = UA_Server_run(server, &running);
-        if(retval != UA_STATUSCODE_GOOD) {
-            errx(EXIT_FAILURE, "Unexpected Server error %s", UA_StatusCode_name(retval));
-        }
+    pthread_create(&server_tid, NULL, server_runner, NULL);
+    // server_pid = fork();
+    // if(server_pid == 0)
+    // {
+    //     //child process
+    //     UA_StatusCode retval = UA_Server_run(server, &running);
+    //     if(retval != UA_STATUSCODE_GOOD) {
+    //         errx(EXIT_FAILURE, "Unexpected Server error %s", UA_StatusCode_name(retval));
+    //     }
+    //     return;
+    // }
+
+    send_ok_response();
+}
+
+static void handle_stop_server(const char *req, int *req_index)
+{
+    running = false;
+    send_ok_response();
+}
+
+/******************************/
+/* Node Addition and Deletion */
+/******************************/
+
+/* 
+ *  Add a new namespace to the server. Returns the index of the new namespace 
+ */
+static void handle_add_namespace(const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":handle_add_namespace requires a 2-tuple, term_size = %d", term_size);
+
+    unsigned long str_len;
+    if (ei_decode_ulong(req, req_index, &str_len) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    char namespace[str_len + 1];
+    long binary_len;
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+            term_type != ERL_BINARY_EXT ||
+            term_size >= (int) sizeof(namespace) ||
+            ei_decode_binary(req, req_index, namespace, &binary_len) < 0) {
+        // The name is almost certainly too long, so report that it
+        // doesn't exist.
+        send_error_response("enoent");
+        return;
+    }
+    namespace[binary_len] = '\0';
+
+    UA_Int16 ns_id = UA_Server_addNamespace(server, namespace);
+
+    send_data_response(&ns_id, 2, 0);
+}
+
+/* 
+ *  Add a new variable node to the server. 
+ */
+static void handle_add_variable_node(const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 5)
+        errx(EXIT_FAILURE, ":handle_add_variable_node requires a 5-tuple, term_size = %d", term_size);
+    
+    UA_NodeId requested_new_node_id = assemble_node_id(req, req_index);
+    UA_NodeId parent_node_id = assemble_node_id(req, req_index);
+    UA_NodeId reference_type_node_id = assemble_node_id(req, req_index);
+    UA_QualifiedName browse_name = assemble_qualified_name(req, req_index);
+    UA_NodeId type_definition = assemble_node_id(req, req_index);
+
+    UA_VariableAttributes vAttr = UA_VariableAttributes_default;
+    
+    UA_StatusCode retval =  UA_Server_addVariableNode(server, requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, type_definition, vAttr, NULL, NULL);
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
         return;
     }
 
     send_ok_response();
 }
 
+static void handle_add_variable_type_node(const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 5)
+        errx(EXIT_FAILURE, ":handle_add_variable_type_node requires a 5-tuple, term_size = %d", term_size);
+    
+    UA_NodeId requested_new_node_id = assemble_node_id(req, req_index);
+    UA_NodeId parent_node_id = assemble_node_id(req, req_index);
+    UA_NodeId reference_type_node_id = assemble_node_id(req, req_index);
+    UA_QualifiedName browse_name = assemble_qualified_name(req, req_index);
+    UA_NodeId type_definition = assemble_node_id(req, req_index);
+
+    UA_VariableTypeAttributes vtAttr = UA_VariableTypeAttributes_default;
+    
+    UA_StatusCode retval =  UA_Server_addVariableTypeNode(server, requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, type_definition, vtAttr, NULL, NULL);
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
+static void handle_add_object_node(const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 5)
+        errx(EXIT_FAILURE, ":handle_add_object_node requires a 5-tuple, term_size = %d", term_size);
+    
+    UA_NodeId requested_new_node_id = assemble_node_id(req, req_index);
+    UA_NodeId parent_node_id = assemble_node_id(req, req_index);
+    UA_NodeId reference_type_node_id = assemble_node_id(req, req_index);
+    UA_QualifiedName browse_name = assemble_qualified_name(req, req_index);
+    UA_NodeId type_definition = assemble_node_id(req, req_index);
+
+    UA_ObjectAttributes oAttr = UA_ObjectAttributes_default;
+    
+    UA_StatusCode retval =  UA_Server_addObjectNode(server, requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, type_definition, oAttr, NULL, NULL);
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
+static void handle_add_object_type_node(const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 4)
+        errx(EXIT_FAILURE, ":handle_add_object_type_node requires a 4-tuple, term_size = %d", term_size);
+    
+    UA_NodeId requested_new_node_id = assemble_node_id(req, req_index);
+    UA_NodeId parent_node_id = assemble_node_id(req, req_index);
+    UA_NodeId reference_type_node_id = assemble_node_id(req, req_index);
+    UA_QualifiedName browse_name = assemble_qualified_name(req, req_index);
+
+    UA_ObjectTypeAttributes otAttr = UA_ObjectTypeAttributes_default;
+    
+    UA_StatusCode retval =  UA_Server_addObjectTypeNode(server, requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, otAttr, NULL, NULL);
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
+static void handle_add_view_node(const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 4)
+        errx(EXIT_FAILURE, ":handle_add_view_node requires a 4-tuple, term_size = %d", term_size);
+    
+    UA_NodeId requested_new_node_id = assemble_node_id(req, req_index);
+    UA_NodeId parent_node_id = assemble_node_id(req, req_index);
+    UA_NodeId reference_type_node_id = assemble_node_id(req, req_index);
+    UA_QualifiedName browse_name = assemble_qualified_name(req, req_index);
+
+    UA_ViewAttributes vwAttr = UA_ViewAttributes_default;
+    
+    UA_StatusCode retval =  UA_Server_addViewNode(server, requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, vwAttr, NULL, NULL);
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
+static void handle_add_reference_type_node(const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 4)
+        errx(EXIT_FAILURE, ":handle_add_reference_type_node requires a 4-tuple, term_size = %d", term_size);
+    
+    UA_NodeId requested_new_node_id = assemble_node_id(req, req_index);
+    UA_NodeId parent_node_id = assemble_node_id(req, req_index);
+    UA_NodeId reference_type_node_id = assemble_node_id(req, req_index);
+    UA_QualifiedName browse_name = assemble_qualified_name(req, req_index);
+
+    UA_ReferenceTypeAttributes rtAttr = UA_ReferenceTypeAttributes_default;
+    
+    UA_StatusCode retval =  UA_Server_addReferenceTypeNode(server, requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, rtAttr, NULL, NULL);
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
+static void handle_add_data_type_node(const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 4)
+        errx(EXIT_FAILURE, ":handle_add_data_type_node requires a 4-tuple, term_size = %d", term_size);
+    
+    UA_NodeId requested_new_node_id = assemble_node_id(req, req_index);
+    UA_NodeId parent_node_id = assemble_node_id(req, req_index);
+    UA_NodeId reference_type_node_id = assemble_node_id(req, req_index);
+    UA_QualifiedName browse_name = assemble_qualified_name(req, req_index);
+
+    UA_DataTypeAttributes dtAttr = UA_DataTypeAttributes_default;
+    
+    UA_StatusCode retval =  UA_Server_addDataTypeNode(server, requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, dtAttr, NULL, NULL);
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
 /*******************************/
 /* Elixir -> C Message Handler */
 /*******************************/
+
 struct request_handler {
     const char *name;
     void (*handler)(const char *req, int *req_index);
@@ -448,16 +835,27 @@ struct request_handler {
  */
 static struct request_handler request_handlers[] = {
     {"test", handle_test},
-    // lifecycle functions
+    // configuration & lifecycle functions
     {"get_server_config", handle_get_server_config},
     {"set_default_server_config", handle_set_default_server_config},
     {"set_hostname", handle_set_hostname},
     {"set_port", handle_set_port},
     {"set_users", handle_set_users_and_passwords},
     {"start_server", handle_start_server},
-    // lifecycle functions
+    {"stop_server", handle_stop_server},
+    // Node Addition and Deletion
+    {"add_namespace", handle_add_namespace},
+    {"add_variable_node", handle_add_variable_node},
+    {"add_variable_type_node", handle_add_variable_type_node},
+    {"add_object_node", handle_add_object_node},
+    {"add_object_type_node", handle_add_object_type_node},
+    {"add_view_node", handle_add_view_node},
+    {"add_reference_type_node", handle_add_reference_type_node},
+    {"add_data_type_node", handle_add_data_type_node},
+    
     { NULL, NULL }
 };
+
 
 /**
  * @brief Decode and forward requests from Elixir to the appropriate handlers
@@ -527,5 +925,6 @@ int main()
     
     /* Disconnects the client internally */
     free(handler);
+    running = false;
     UA_Server_delete(server); 
 }
