@@ -79,7 +79,7 @@ defmodule CServerNodeAdditionAndDeletionTest do
     # node_id => {node_type, ns_index, node_id_params}
     # name {ns_index, str_len, node_id_params}
     #msg = {:add_variable_node, {{0, 1, 103}, {1,1,{4, "hola"}}, {2, 1, {102, 103, 103, "holahola"}}, 11, "Hola Elixir", nil}}
-    msg = {:add_object_type_node, {{0, 1, 10000}, {0, 0, 58}, {0, 0, 45}, {1, 3, "Obj"}}}
+    msg = {:add_object_type_node, {{0, 1, 10000}, {0, 0, 58}, {0, 0, 45}, {1, "Obj"}}}
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =
@@ -101,7 +101,7 @@ defmodule CServerNodeAdditionAndDeletionTest do
     # node_id => {node_type, ns_index, node_id_params}
     # name {ns_index, str_len, node_id_params}
     #msg = {:add_variable_node, {{0, 1, 103}, {1,1,{4, "hola"}}, {2, 1, {102, 103, 103, "holahola"}}, 11, "Hola Elixir", nil}}
-    msg = {:add_variable_node, {{0, 1, 10001}, {0, 1, 10000}, {0, 0, 46}, {1, 3, "Var"}, {0, 0, 63}}}
+    msg = {:add_variable_node, {{0, 1, 10001}, {0, 1, 10000}, {0, 0, 46}, {1, "Var"}, {0, 0, 63}}}
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =
