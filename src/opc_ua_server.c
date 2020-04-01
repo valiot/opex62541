@@ -292,23 +292,34 @@ UA_NodeId assemble_node_id(const char *req, int *req_index)
 
         case String:
             {
-                if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-                term_size != 2)
-                    errx(EXIT_FAILURE, "Invalid string, term_size = %d", term_size);
+                if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+                    errx(EXIT_FAILURE, "Invalid bytestring (size)");
 
-                unsigned long str_len;
-                if (ei_decode_ulong(req, req_index, &str_len) < 0)
-                    errx(EXIT_FAILURE, "Invalid string length");
-
-                char node_string[str_len + 1];
+                char *node_string;
+                node_string = (char *)malloc(term_size + 1);
                 long binary_len;
-                if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
-                        term_type != ERL_BINARY_EXT ||
-                        term_size >= (int) sizeof(node_string) ||
-                        ei_decode_binary(req, req_index, node_string, &binary_len) < 0) {
-                errx(EXIT_FAILURE, "Invalid node_string");
-                }
+                if (ei_decode_binary(req, req_index, node_string, &binary_len) < 0) 
+                    errx(EXIT_FAILURE, "Invalid bytestring");
+
                 node_string[binary_len] = '\0';
+
+                // if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+                // term_size != 2)
+                //     errx(EXIT_FAILURE, "Invalid string, term_size = %d", term_size);
+
+                // unsigned long str_len;
+                // if (ei_decode_ulong(req, req_index, &str_len) < 0)
+                //     errx(EXIT_FAILURE, "Invalid string length");
+
+                // char node_string[str_len + 1];
+                // long binary_len;
+                // if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+                //         term_type != ERL_BINARY_EXT ||
+                //         term_size >= (int) sizeof(node_string) ||
+                //         ei_decode_binary(req, req_index, node_string, &binary_len) < 0) {
+                // errx(EXIT_FAILURE, "Invalid node_string");
+                // }
+                // node_string[binary_len] = '\0';
 
                 node_id = UA_NODEID_STRING(ns_index, node_string);
             }
@@ -353,24 +364,16 @@ UA_NodeId assemble_node_id(const char *req, int *req_index)
         
         case ByteString:
             {
-                if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-                term_size != 2)
-                    errx(EXIT_FAILURE, "Invalid byte-string, term_size = %d", term_size);
+                if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+                    errx(EXIT_FAILURE, "Invalid bytestring (size)");
 
-                unsigned long byte_str_len;
-                if (ei_decode_ulong(req, req_index, &byte_str_len) < 0)
-                    errx(EXIT_FAILURE, "Invalid byte-string length");
-
-                char node_bytestring[byte_str_len + 1];
-                
+                char *node_bytestring;
+                node_bytestring = (char *)malloc(term_size + 1);
                 long binary_len;
-                if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
-                        term_type != ERL_BINARY_EXT ||
-                        term_size >= (int) sizeof(node_bytestring) ||
-                        ei_decode_binary(req, req_index, node_bytestring, &binary_len) < 0) {
-                errx(EXIT_FAILURE, "Invalid bytestring");
-                }
-                node_bytestring[byte_str_len] = '\0';
+                if (ei_decode_binary(req, req_index, node_bytestring, &binary_len) < 0) 
+                    errx(EXIT_FAILURE, "Invalid bytestring");
+
+                node_bytestring[binary_len] = '\0';
 
                 node_id = UA_NODEID_BYTESTRING(ns_index, node_bytestring);    
             }
@@ -418,23 +421,33 @@ UA_ExpandedNodeId assemble_expanded_node_id(const char *req, int *req_index)
 
         case String:
             {
-                if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-                term_size != 2)
-                    errx(EXIT_FAILURE, "Invalid string, term_size = %d", term_size);
+                if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+                    errx(EXIT_FAILURE, "Invalid bytestring (size)");
 
-                unsigned long str_len;
-                if (ei_decode_ulong(req, req_index, &str_len) < 0)
-                    errx(EXIT_FAILURE, "Invalid string length");
-
-                char node_string[str_len + 1];
+                char *node_string;
+                node_string = (char *)malloc(term_size + 1);
                 long binary_len;
-                if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
-                        term_type != ERL_BINARY_EXT ||
-                        term_size >= (int) sizeof(node_string) ||
-                        ei_decode_binary(req, req_index, node_string, &binary_len) < 0) {
-                errx(EXIT_FAILURE, "Invalid node_string");
-                }
+                if (ei_decode_binary(req, req_index, node_string, &binary_len) < 0) 
+                    errx(EXIT_FAILURE, "Invalid bytestring");
+
                 node_string[binary_len] = '\0';
+                // if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+                // term_size != 2)
+                //     errx(EXIT_FAILURE, "Invalid string, term_size = %d", term_size);
+
+                // unsigned long str_len;
+                // if (ei_decode_ulong(req, req_index, &str_len) < 0)
+                //     errx(EXIT_FAILURE, "Invalid string length");
+
+                // char node_string[str_len + 1];
+                // long binary_len;
+                // if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+                //         term_type != ERL_BINARY_EXT ||
+                //         term_size >= (int) sizeof(node_string) ||
+                //         ei_decode_binary(req, req_index, node_string, &binary_len) < 0) {
+                // errx(EXIT_FAILURE, "Invalid node_string");
+                // }
+                // node_string[binary_len] = '\0';
 
                 node_id = UA_EXPANDEDNODEID_STRING(ns_index, node_string);
             }
@@ -471,7 +484,6 @@ UA_ExpandedNodeId assemble_expanded_node_id(const char *req, int *req_index)
                 node_guid.data1 = guid_data1;
                 node_guid.data2 = guid_data2;
                 node_guid.data3 = guid_data3;
-                //node_guid.data4[0] = guid_data4[0];
                 
                 node_id = UA_EXPANDEDNODEID_STRING_GUID(ns_index, node_guid);
             }
@@ -479,24 +491,16 @@ UA_ExpandedNodeId assemble_expanded_node_id(const char *req, int *req_index)
         
         case ByteString:
             {
-                if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-                term_size != 2)
-                    errx(EXIT_FAILURE, "Invalid byte-string, term_size = %d", term_size);
+                if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+                    errx(EXIT_FAILURE, "Invalid bytestring (size)");
 
-                unsigned long byte_str_len;
-                if (ei_decode_ulong(req, req_index, &byte_str_len) < 0)
-                    errx(EXIT_FAILURE, "Invalid byte-string length");
-
-                char node_bytestring[byte_str_len + 1];
-                
+                char *node_bytestring;
+                node_bytestring = (char *)malloc(term_size + 1);
                 long binary_len;
-                if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
-                        term_type != ERL_BINARY_EXT ||
-                        term_size >= (int) sizeof(node_bytestring) ||
-                        ei_decode_binary(req, req_index, node_bytestring, &binary_len) < 0) {
-                errx(EXIT_FAILURE, "Invalid bytestring");
-                }
-                node_bytestring[byte_str_len] = '\0';
+                if (ei_decode_binary(req, req_index, node_bytestring, &binary_len) < 0) 
+                    errx(EXIT_FAILURE, "Invalid bytestring");
+
+                node_bytestring[binary_len] = '\0';
 
                 node_id = UA_EXPANDEDNODEID_BYTESTRING(ns_index, node_bytestring);    
             }
@@ -518,7 +522,7 @@ UA_QualifiedName assemble_qualified_name(const char *req, int *req_index)
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 2)
-        errx(EXIT_FAILURE, "assemble_node_id requires a 2-tuple, term_size = %d", term_size);
+        errx(EXIT_FAILURE, "assemble_qualified_name requires a 2-tuple, term_size = %d", term_size);
 
     unsigned long ns_index;
     if (ei_decode_ulong(req, req_index, &ns_index) < 0)
@@ -527,13 +531,14 @@ UA_QualifiedName assemble_qualified_name(const char *req, int *req_index)
     // String
     if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
         errx(EXIT_FAILURE, "Invalid bytestring (size)");
-    
-    char node_qualified_name_str[term_size + 1];
+
+    char *node_qualified_name_str;
+    node_qualified_name_str = (char *)malloc(term_size + 1);
     long binary_len;
     if (ei_decode_binary(req, req_index, node_qualified_name_str, &binary_len) < 0) 
         errx(EXIT_FAILURE, "Invalid bytestring");
 
-    node_qualified_name_str[binary_len + 1] = '\0';
+    node_qualified_name_str[binary_len] = '\0';
 
     return UA_QUALIFIEDNAME(ns_index, node_qualified_name_str);
 }
@@ -758,7 +763,7 @@ static void handle_add_namespace(const char *req, int *req_index)
     }
     namespace[binary_len] = '\0';
 
-    UA_Int16 ns_id = UA_Server_addNamespace(server, namespace);
+    UA_Int16 *ns_id = UA_Server_addNamespace(server, namespace);
 
     send_data_response(&ns_id, 2, 0);
 }
@@ -874,6 +879,11 @@ static void handle_add_object_type_node(const char *req, int *req_index)
         send_opex_response(retval);
         return;
     }
+
+    UA_NodeId_clear(&requested_new_node_id);
+    UA_NodeId_clear(&parent_node_id);
+    UA_NodeId_clear(&reference_type_node_id);
+    UA_QualifiedName_clear(&browse_name);
 
     send_ok_response();
 }
@@ -1428,7 +1438,7 @@ static void handle_write_node_executable(const char *req, int *req_index)
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 2)
-        errx(EXIT_FAILURE, ":handle_write_node_historizing requires a 2-tuple, term_size = %d", term_size);
+        errx(EXIT_FAILURE, ":handle_write_node_executable requires a 2-tuple, term_size = %d", term_size);
     
     UA_NodeId node_id = assemble_node_id(req, req_index);
 
@@ -1440,6 +1450,55 @@ static void handle_write_node_executable(const char *req, int *req_index)
     }
     
     UA_StatusCode retval = UA_Server_writeHistorizing(server, node_id, (UA_Boolean)executable);
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
+/* 
+ *  Change 'value' of a node in the server. 
+ */
+static void handle_write_node_value(const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 3)
+        errx(EXIT_FAILURE, ":handle_write_node_value requires a 3-tuple, term_size = %d", term_size);
+    
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    unsigned long data_type;
+    if (ei_decode_ulong(req, req_index, &data_type) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    UA_Variant value;
+    switch (data_type)
+    {
+        case UA_TYPES_BOOLEAN:
+        {
+            int boolean_data;
+            if (ei_decode_boolean(req, req_index, &boolean_data) < 0) {
+                send_error_response("einval");
+                return;
+            }
+            UA_Boolean data = boolean_data;
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_BOOLEAN]);
+        }
+        break;
+    
+        default:
+            errx(EXIT_FAILURE, ":handle_write_node_value invalid data_type = %ld", data_type);
+        break;
+    }
+    
+    UA_StatusCode retval = UA_Server_writeValue(server, node_id, value);
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -1464,6 +1523,7 @@ static struct request_handler request_handlers[] = {
     {"test", handle_test},
     // Reading and Writing Node Attributes
     // TODO: Add UA_Server_writeArrayDimensions, 
+    {"write_node_value", handle_write_node_value},
     {"write_node_browse_name", handle_write_node_browse_name},
     {"write_node_display_name", handle_write_node_display_name},
     {"write_node_description", handle_write_node_description},
