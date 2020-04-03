@@ -400,7 +400,235 @@ defmodule WriteReadAttrTest do
 
     assert c_response == :ok
 
-    msg = {:start_server, nil}
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 1, 20}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 2, 20}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 3, 20}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 4, 20}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 5, 20}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 6, 20}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 7, 20}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 8, 20}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 9, 21.5}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 10, 21.5}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 11, "Hola"}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 12, 132304152032503440}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 13, {103,103,103, "holahola"}}}
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =
@@ -420,6 +648,253 @@ defmodule WriteReadAttrTest do
     assert c_response == :ok
 
 
-  Process.sleep(5000000)
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 14, "holahola"}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    xml = "<note>\n<to>Tove</to>\n<from>Jani</from>\n<heading>Reminder</heading>\n<body>Don't forget me this weekend!</body>\n</note>\n"
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 15, xml}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 16, {1, node_id, "R1_TS1_Temperature"}}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 17, {1, node_id, "R1_TS1_Temperature"}}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 18, 0}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 19, {node_id, "TEMMPERATURE"}}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 20, {"en-US", "A String"}}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 25, {{1, node_id, "R1_TS1_Temperature"}, {1, node_id, "R1_TS1_Temperature"}}}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 26, "10/02/20"}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 28, 21212321321}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 29, {103.1, 103.0}}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:write_node_value, {{1, node_id, "R1_TS1_Temperature"}, 30, 21212321321}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+
+    msg = {:start_server, nil}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
   end
 end

@@ -707,6 +707,7 @@ static void handle_set_users_and_passwords(const char *req, int *req_index)
 
 static void handle_start_server(const char *req, int *req_index)
 {
+    running = true;
     pthread_create(&server_tid, NULL, server_runner, NULL);
     // server_pid = fork();
     // if(server_pid == 0)
@@ -789,6 +790,14 @@ static void handle_add_variable_node(const char *req, int *req_index)
     UA_VariableAttributes vAttr = UA_VariableAttributes_default;
     
     UA_StatusCode retval = UA_Server_addVariableNode(server, requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, type_definition, vAttr, NULL, NULL);
+
+    UA_NodeId_clear(&requested_new_node_id);
+    UA_NodeId_clear(&parent_node_id);
+    UA_NodeId_clear(&reference_type_node_id);
+    UA_QualifiedName_clear(&browse_name);
+    UA_NodeId_clear(&type_definition);
+
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -818,6 +827,14 @@ static void handle_add_variable_type_node(const char *req, int *req_index)
     UA_VariableTypeAttributes vtAttr = UA_VariableTypeAttributes_default;
     
     UA_StatusCode retval = UA_Server_addVariableTypeNode(server, requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, type_definition, vtAttr, NULL, NULL);
+
+    UA_NodeId_clear(&requested_new_node_id);
+    UA_NodeId_clear(&parent_node_id);
+    UA_NodeId_clear(&reference_type_node_id);
+    UA_QualifiedName_clear(&browse_name);
+    UA_NodeId_clear(&type_definition);
+
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -847,6 +864,13 @@ static void handle_add_object_node(const char *req, int *req_index)
     UA_ObjectAttributes oAttr = UA_ObjectAttributes_default;
     
     UA_StatusCode retval = UA_Server_addObjectNode(server, requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, type_definition, oAttr, NULL, NULL);
+
+    UA_NodeId_clear(&requested_new_node_id);
+    UA_NodeId_clear(&parent_node_id);
+    UA_NodeId_clear(&reference_type_node_id);
+    UA_QualifiedName_clear(&browse_name);
+    UA_NodeId_clear(&type_definition);
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -875,15 +899,16 @@ static void handle_add_object_type_node(const char *req, int *req_index)
     UA_ObjectTypeAttributes otAttr = UA_ObjectTypeAttributes_default;
     
     UA_StatusCode retval = UA_Server_addObjectTypeNode(server, requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, otAttr, NULL, NULL);
-    if(retval != UA_STATUSCODE_GOOD) {
-        send_opex_response(retval);
-        return;
-    }
-
+    
     UA_NodeId_clear(&requested_new_node_id);
     UA_NodeId_clear(&parent_node_id);
     UA_NodeId_clear(&reference_type_node_id);
     UA_QualifiedName_clear(&browse_name);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
 
     send_ok_response();
 }
@@ -908,6 +933,12 @@ static void handle_add_view_node(const char *req, int *req_index)
     UA_ViewAttributes vwAttr = UA_ViewAttributes_default;
     
     UA_StatusCode retval = UA_Server_addViewNode(server, requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, vwAttr, NULL, NULL);
+
+    UA_NodeId_clear(&requested_new_node_id);
+    UA_NodeId_clear(&parent_node_id);
+    UA_NodeId_clear(&reference_type_node_id);
+    UA_QualifiedName_clear(&browse_name);
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -936,6 +967,12 @@ static void handle_add_reference_type_node(const char *req, int *req_index)
     UA_ReferenceTypeAttributes rtAttr = UA_ReferenceTypeAttributes_default;
     
     UA_StatusCode retval = UA_Server_addReferenceTypeNode(server, requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, rtAttr, NULL, NULL);
+
+    UA_NodeId_clear(&requested_new_node_id);
+    UA_NodeId_clear(&parent_node_id);
+    UA_NodeId_clear(&reference_type_node_id);
+    UA_QualifiedName_clear(&browse_name);
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -964,6 +1001,12 @@ static void handle_add_data_type_node(const char *req, int *req_index)
     UA_DataTypeAttributes dtAttr = UA_DataTypeAttributes_default;
     
     UA_StatusCode retval = UA_Server_addDataTypeNode(server, requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, dtAttr, NULL, NULL);
+
+    UA_NodeId_clear(&requested_new_node_id);
+    UA_NodeId_clear(&parent_node_id);
+    UA_NodeId_clear(&reference_type_node_id);
+    UA_QualifiedName_clear(&browse_name);
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -992,6 +1035,11 @@ static void handle_add_reference(const char *req, int *req_index)
     ei_decode_boolean(req, req_index, &is_forward);
     
     UA_StatusCode retval =  UA_Server_addReference(server, source_id, reference_type_id, target_id, (UA_Boolean)is_forward);
+
+    UA_NodeId_clear(&source_id);
+    UA_NodeId_clear(&reference_type_id);
+    UA_ExpandedNodeId_clear(&target_id);
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -1023,6 +1071,11 @@ static void handle_delete_reference(const char *req, int *req_index)
     ei_decode_boolean(req, req_index, &delete_bidirectional);
     
     UA_StatusCode retval =  UA_Server_deleteReference(server, source_id, reference_type_id, (UA_Boolean)is_forward, target_id, (UA_Boolean)delete_bidirectional);
+
+    UA_NodeId_clear(&source_id);
+    UA_NodeId_clear(&reference_type_id);
+    UA_ExpandedNodeId_clear(&target_id);
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -1049,6 +1102,9 @@ static void handle_delete_node(const char *req, int *req_index)
     ei_decode_boolean(req, req_index, &delete_references);
     
     UA_StatusCode retval = UA_Server_deleteNode(server, node_id, (UA_Boolean)delete_references);
+
+    UA_NodeId_clear(&node_id);
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -1077,6 +1133,10 @@ static void handle_write_node_browse_name(const char *req, int *req_index)
     UA_QualifiedName browse_name = assemble_qualified_name(req, req_index);
     
     UA_StatusCode retval = UA_Server_writeBrowseName(server, node_id, browse_name);
+
+    UA_NodeId_clear(&node_id);
+    UA_QualifiedName_clear(&browse_name);
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -1123,6 +1183,9 @@ static void handle_write_node_display_name(const char *req, int *req_index)
     UA_LocalizedText display_name =  UA_LOCALIZEDTEXT(locale, name_str);
     
     UA_StatusCode retval = UA_Server_writeDescription(server, node_id, display_name);
+
+    UA_NodeId_clear(&node_id);
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -1169,6 +1232,9 @@ static void handle_write_node_description(const char *req, int *req_index)
     UA_LocalizedText description =  UA_LOCALIZEDTEXT(locale, description_str);
     
     UA_StatusCode retval = UA_Server_writeDescription(server, node_id, description);
+
+    UA_NodeId_clear(&node_id);
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -1199,6 +1265,9 @@ static void handle_write_node_write_mask(const char *req, int *req_index)
     }
     
     UA_StatusCode retval = UA_Server_writeWriteMask(server, node_id, (UA_UInt32) write_mask);
+    
+    UA_NodeId_clear(&node_id);
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -1229,6 +1298,9 @@ static void handle_write_node_is_abstract(const char *req, int *req_index)
     }
     
     UA_StatusCode retval = UA_Server_writeIsAbstract(server, node_id, (UA_Boolean)is_abstract);
+
+    UA_NodeId_clear(&node_id);
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -1275,6 +1347,9 @@ static void handle_write_node_inverse_name(const char *req, int *req_index)
     UA_LocalizedText inverse_name =  UA_LOCALIZEDTEXT(locale, inverse_name_str);
     
     UA_StatusCode retval = UA_Server_writeInverseName(server, node_id, inverse_name);
+
+    UA_NodeId_clear(&node_id);
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -1298,8 +1373,11 @@ static void handle_write_node_data_type(const char *req, int *req_index)
     UA_NodeId node_id = assemble_node_id(req, req_index);
     UA_NodeId data_type_node_id = assemble_node_id(req, req_index);
 
-    
     UA_StatusCode retval = UA_Server_writeDataType(server, node_id, data_type_node_id);
+
+    UA_NodeId_clear(&node_id);
+    UA_NodeId_clear(&data_type_node_id);
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -1330,6 +1408,9 @@ static void handle_write_node_value_rank(const char *req, int *req_index)
     }
     
     UA_StatusCode retval = UA_Server_writeValueRank(server, node_id, (UA_UInt32) value_rank);
+
+    UA_NodeId_clear(&node_id);
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -1360,6 +1441,9 @@ static void handle_write_node_access_level(const char *req, int *req_index)
     }
     
     UA_StatusCode retval = UA_Server_writeAccessLevel(server, node_id, (UA_Byte) access_level);
+
+    UA_NodeId_clear(&node_id);
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -1390,6 +1474,9 @@ static void handle_write_node_minimum_sampling_interval(const char *req, int *re
     }
     
     UA_StatusCode retval = UA_Server_writeAccessLevel(server, node_id, (UA_Double) sampling_interval);
+
+    UA_NodeId_clear(&node_id);
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -1420,6 +1507,9 @@ static void handle_write_node_historizing(const char *req, int *req_index)
     }
     
     UA_StatusCode retval = UA_Server_writeHistorizing(server, node_id, (UA_Boolean)historizing);
+
+    UA_NodeId_clear(&node_id);
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -1450,6 +1540,9 @@ static void handle_write_node_executable(const char *req, int *req_index)
     }
     
     UA_StatusCode retval = UA_Server_writeHistorizing(server, node_id, (UA_Boolean)executable);
+
+    UA_NodeId_clear(&node_id);
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -1459,18 +1552,28 @@ static void handle_write_node_executable(const char *req, int *req_index)
 }
 
 /* 
- *  Change 'value' of a node in the server. 
+ *  Change 'value' of a node in the server.
+ *  BUG String is allocated in memory 
  */
 static void handle_write_node_value(const char *req, int *req_index)
 {
     int term_size;
     int term_type;
+    UA_NodeId node_id_arg_1;
+    UA_NodeId node_id_arg_2;
+    UA_ExpandedNodeId expanded_node_id_arg_1;
+    UA_QualifiedName qualified_name;
+
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 3)
         errx(EXIT_FAILURE, ":handle_write_node_value requires a 3-tuple, term_size = %d", term_size);
     
     UA_NodeId node_id = assemble_node_id(req, req_index);
+    
+    UA_Variant previous_value;
+    UA_Server_readValue(server, node_id, &previous_value);
+    UA_Variant_clear(&previous_value);
 
     unsigned long data_type;
     if (ei_decode_ulong(req, req_index, &data_type) < 0) {
@@ -1492,13 +1595,418 @@ static void handle_write_node_value(const char *req, int *req_index)
             UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_BOOLEAN]);
         }
         break;
+
+        case UA_TYPES_SBYTE:
+        {
+            long sbyte_data;
+            if (ei_decode_long(req, req_index, &sbyte_data) < 0) {
+                send_error_response("einval");
+                return;
+            }
+            UA_SByte data = sbyte_data;
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_SBYTE]);
+        }
+        break;
+
+        case UA_TYPES_BYTE:
+        {
+            unsigned long byte_data;
+            if (ei_decode_ulong(req, req_index, &byte_data) < 0) {
+                send_error_response("einval");
+                return;
+            }
+            UA_SByte data = byte_data;
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_BYTE]);
+        }
+        break;
+
+        case UA_TYPES_INT16:
+        {
+            long int16_data;
+            if (ei_decode_long(req, req_index, &int16_data) < 0) {
+                send_error_response("einval");
+                return;
+            }
+            UA_Int16 data = int16_data;
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_INT16]);
+        }
+        break;
+
+        case UA_TYPES_UINT16:
+        {
+            unsigned long uint16_data;
+            if (ei_decode_ulong(req, req_index, &uint16_data) < 0) {
+                send_error_response("einval");
+                return;
+            }
+            UA_UInt16 data = uint16_data;
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_UINT16]);
+        }
+        break;
+
+        case UA_TYPES_INT32:
+        {
+            long int32_data;
+            if (ei_decode_long(req, req_index, &int32_data) < 0) {
+                send_error_response("einval");
+                return;
+            }
+            UA_Int32 data = int32_data;
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_INT32]);
+        }
+        break;
+
+        case UA_TYPES_UINT32:
+        {
+            unsigned long uint32_data;
+            if (ei_decode_ulong(req, req_index, &uint32_data) < 0) {
+                send_error_response("einval");
+                return;
+            }
+            UA_UInt32 data = uint32_data;
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_UINT32]);
+        }
+        break;
+
+        case UA_TYPES_INT64:
+        {
+            long long int64_data;
+            if (ei_decode_longlong(req, req_index, &int64_data) < 0) {
+                send_error_response("einval");
+                return;
+            }
+            UA_Int64 data = int64_data;
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_INT64]);
+        }
+        break;
+
+        case UA_TYPES_UINT64:
+        {
+            unsigned long long uint64_data;
+            if (ei_decode_ulonglong(req, req_index, &uint64_data) < 0) {
+                send_error_response("einval");
+                return;
+            }
+            UA_UInt64 data = uint64_data;
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_UINT64]);
+        }
+        break;
+
+        case UA_TYPES_FLOAT:
+        {
+            double float_data;
+            if (ei_decode_double(req, req_index, &float_data) < 0) {
+                send_error_response("einval");
+                return;
+            }
+            UA_Float data = (float) float_data;
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_FLOAT]);
+        }
+        break;
+
+        case UA_TYPES_DOUBLE:
+        {
+            double double_data;
+            if (ei_decode_double(req, req_index, &double_data) < 0) {
+                send_error_response("einval");
+                return;
+            }
+            UA_Double data = double_data;
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_DOUBLE]);
+        }
+        break;
+
+        case UA_TYPES_STRING:
+        {
+            if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+                errx(EXIT_FAILURE, "Invalid string (size)");
+
+            char *string_data;
+            string_data = (char *)malloc(term_size + 1);
     
+            long binary_len;
+            if (ei_decode_binary(req, req_index, string_data, &binary_len) < 0) 
+                errx(EXIT_FAILURE, "Invalid string");
+
+            string_data[binary_len] = '\0';
+
+            UA_String data = UA_STRING(string_data);
+
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_STRING]);
+        }
+        break;
+
+        case UA_TYPES_DATETIME:
+        {
+            long long date_time_data;
+            if (ei_decode_longlong(req, req_index, &date_time_data) < 0) {
+                send_error_response("einval");
+                return;
+            }
+            
+            UA_DateTime data = date_time_data;
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_DATETIME]);
+        }
+        break;
+
+        case UA_TYPES_GUID:
+        {
+            UA_Guid guid;
+
+            if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+            term_size != 4)
+                errx(EXIT_FAILURE, "Invalid string, term_size = %d", term_size);
+
+            unsigned long guid_data1;
+            if (ei_decode_ulong(req, req_index, &guid_data1) < 0)
+                errx(EXIT_FAILURE, "Invalid GUID data1");
+            
+            unsigned long guid_data2;
+            if (ei_decode_ulong(req, req_index, &guid_data2) < 0)
+                errx(EXIT_FAILURE, "Invalid GUID data2");
+            
+            unsigned long guid_data3;
+            if (ei_decode_ulong(req, req_index, &guid_data3) < 0)
+                errx(EXIT_FAILURE, "Invalid GUID data3");
+
+            // UA_Byte guid_data4[9];
+            long binary_len;
+            if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+                    term_type != ERL_BINARY_EXT ||
+                    term_size > (int) sizeof(guid.data4) ||
+                    ei_decode_binary(req, req_index, guid.data4, &binary_len) < 0) 
+                errx(EXIT_FAILURE, "Invalid GUID data4 %d >= %d, %d", term_size,(int) sizeof(guid.data4), term_size >= (int) sizeof(guid.data4));
+            
+            guid.data1 = guid_data1;
+            guid.data2 = guid_data2;
+            guid.data3 = guid_data3;
+
+            UA_Variant_setScalar(&value, &guid, &UA_TYPES[UA_TYPES_GUID]);
+        }
+        break;
+
+        case UA_TYPES_BYTESTRING:
+        {
+            if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+                errx(EXIT_FAILURE, "Invalid byte_string (size)");
+
+            char *byte_string_data;
+                byte_string_data = (char *)malloc(term_size + 1);
+    
+            long binary_len;
+            if (ei_decode_binary(req, req_index, byte_string_data, &binary_len) < 0) 
+                errx(EXIT_FAILURE, "Invalid byte_string");
+
+            byte_string_data[binary_len] = '\0';
+
+            UA_ByteString data = UA_BYTESTRING(byte_string_data);
+
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_BYTESTRING]);
+        }
+        break;
+
+        case UA_TYPES_XMLELEMENT:
+        {
+            if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+                errx(EXIT_FAILURE, "Invalid xml (size)");
+
+            char xml_data[term_size + 1];
+    
+            long binary_len;
+            if (ei_decode_binary(req, req_index, xml_data, &binary_len) < 0) 
+                errx(EXIT_FAILURE, "Invalid xml");
+
+            xml_data[binary_len] = '\0';
+
+            UA_XmlElement data = UA_STRING(xml_data);
+
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_XMLELEMENT]);
+        }
+        break;
+
+        case UA_TYPES_NODEID:
+        {
+            node_id_arg_1 = assemble_node_id(req, req_index);
+            UA_Variant_setScalar(&value, &node_id_arg_1, &UA_TYPES[UA_TYPES_NODEID]);
+        }
+        break;
+
+        case UA_TYPES_EXPANDEDNODEID:
+        {
+            expanded_node_id_arg_1 = assemble_expanded_node_id(req, req_index);
+            UA_Variant_setScalar(&value, &expanded_node_id_arg_1, &UA_TYPES[UA_TYPES_EXPANDEDNODEID]);
+        }
+        break;
+
+        case UA_TYPES_STATUSCODE:
+        {
+            unsigned long status_code_data;
+            if (ei_decode_ulong(req, req_index, &status_code_data) < 0) {
+                send_error_response("einval");
+                return;
+            }
+            UA_StatusCode data = status_code_data;
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_STATUSCODE]);
+        }
+        break;
+
+        case UA_TYPES_QUALIFIEDNAME:
+        {
+            qualified_name = assemble_qualified_name(req, req_index);
+            UA_Variant_setScalar(&value, &qualified_name, &UA_TYPES[UA_TYPES_QUALIFIEDNAME]);
+        }
+        break;
+
+        case UA_TYPES_LOCALIZEDTEXT:
+        {
+            if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+                term_size != 2)
+                errx(EXIT_FAILURE, ":handle_write_node_value requires a 2-tuple, term_size = %d", term_size);
+
+            // locale
+            if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+                errx(EXIT_FAILURE, "Invalid locale (size)");
+
+            char *locale_data;
+                locale_data = (char *)malloc(term_size + 1);
+    
+            long binary_len;
+            if (ei_decode_binary(req, req_index, locale_data, &binary_len) < 0) 
+                errx(EXIT_FAILURE, "Invalid locale");
+
+            locale_data[binary_len] = '\0';
+
+            // text
+            if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+                errx(EXIT_FAILURE, "Invalid text (size)");
+
+            char *text_data;
+                text_data = (char *)malloc(term_size + 1);
+    
+            if (ei_decode_binary(req, req_index, text_data, &binary_len) < 0) 
+                errx(EXIT_FAILURE, "Invalid text");
+
+            text_data[binary_len] = '\0';
+
+            UA_LocalizedText data = UA_LOCALIZEDTEXT(locale_data, text_data);
+
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_LOCALIZEDTEXT]);
+        }
+        break;
+
+        //UA_TYPES_EXTENSIONOBJECT:
+
+        //UA_TYPES_DATAVALUE
+
+        //UA_TYPES_VARIANT
+
+        //UA_TYPES_DIAGNOSTICINFO:
+
+        case UA_TYPES_SEMANTICCHANGESTRUCTUREDATATYPE:
+        {
+            if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+                term_size != 2)
+                errx(EXIT_FAILURE, ":handle_write_node_value requires a 2-tuple, term_size = %d", term_size);
+
+            node_id_arg_1 = assemble_node_id(req, req_index);
+            node_id_arg_2 = assemble_node_id(req, req_index);
+            UA_SemanticChangeStructureDataType data;
+            data.affected = node_id_arg_1;
+            data.affectedType = node_id_arg_2;
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_SEMANTICCHANGESTRUCTUREDATATYPE]);
+        }
+        break;
+
+        case UA_TYPES_TIMESTRING:
+        {
+             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+                errx(EXIT_FAILURE, "Invalid time_string (size)");
+
+            char *time_string_data;
+                time_string_data = (char *)malloc(term_size + 1);
+    
+            long binary_len;
+            if (ei_decode_binary(req, req_index, time_string_data, &binary_len) < 0) 
+                errx(EXIT_FAILURE, "Invalid time_string");
+
+            time_string_data[binary_len] = '\0';
+
+            UA_TimeString data = UA_STRING(time_string_data);
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_TIMESTRING]);
+        }
+        break;
+
+        //UA_TYPES_VIEWATTRIBUTES
+
+        case UA_TYPES_UADPNETWORKMESSAGECONTENTMASK:
+        {
+            unsigned long content_mask_data;
+            if (ei_decode_ulong(req, req_index, &content_mask_data) < 0) {
+                send_error_response("einval");
+                return;
+            }
+            UA_UadpNetworkMessageContentMask data = content_mask_data;
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_UADPNETWORKMESSAGECONTENTMASK]);
+        }
+        break;
+
+        case UA_TYPES_XVTYPE:
+        {
+            if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+                term_size != 2)
+                errx(EXIT_FAILURE, ":handle_write_node_value (UA_TYPES_XVTYPE) requires a 2-tuple, term_size = %d", term_size);
+
+            double float_data;
+            if (ei_decode_double(req, req_index, &float_data) < 0) {
+                send_error_response("einval");
+                return;
+            }
+
+            double double_data;
+            if (ei_decode_double(req, req_index, &double_data) < 0) {
+                send_error_response("einval");
+                return;
+            }
+
+            UA_XVType data;
+
+            data.value = (float) float_data;
+            data.x = double_data;
+            
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_XVTYPE]);
+        }
+        break;
+
+        case UA_TYPES_ELEMENTOPERAND:
+        {
+            unsigned long element_operand_data;
+            if (ei_decode_ulong(req, req_index, &element_operand_data) < 0) {
+                send_error_response("einval");
+                return;
+            }
+            UA_ElementOperand data ;
+            data.index = element_operand_data;
+            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_ELEMENTOPERAND]);
+        }
+        break;
+
+
         default:
             errx(EXIT_FAILURE, ":handle_write_node_value invalid data_type = %ld", data_type);
         break;
     }
     
     UA_StatusCode retval = UA_Server_writeValue(server, node_id, value);
+
+    UA_NodeId_clear(&node_id);
+    UA_NodeId_clear(&node_id_arg_1);
+    UA_NodeId_clear(&node_id_arg_2);
+    if(data_type == UA_TYPES_EXPANDEDNODEID)
+        UA_ExpandedNodeId_clear(&expanded_node_id_arg_1);
+    
+    if(data_type == UA_TYPES_QUALIFIEDNAME)
+        UA_QualifiedName_clear(&qualified_name);
+
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -1521,7 +2029,7 @@ struct request_handler {
  */
 static struct request_handler request_handlers[] = {
     {"test", handle_test},
-    // Reading and Writing Node Attributes
+    // Reading and Writing Node Attributes ??
     // TODO: Add UA_Server_writeArrayDimensions, 
     {"write_node_value", handle_write_node_value},
     {"write_node_browse_name", handle_write_node_browse_name},
