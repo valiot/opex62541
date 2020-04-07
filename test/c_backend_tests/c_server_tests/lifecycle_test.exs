@@ -100,7 +100,7 @@ defmodule CServerLifecycleTest do
 
     assert c_response == :ok
 
-    msg = {:set_hostname, {7,"alde103"}}
+    msg = {:set_hostname, "alde103"}
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =

@@ -577,32 +577,18 @@ static void handle_set_hostname(const char *req, int *req_index)
     int term_size;
     int term_type;
 
-    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-        term_size != 2)
-        errx(EXIT_FAILURE, ":handle_set_host_name requires a 2-tuple, term_size = %d", term_size);
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid hostname (size)");
 
-    unsigned long str_len;
-    if (ei_decode_ulong(req, req_index, &str_len) < 0) {
-        send_error_response("einval");
-        return;
-    }
-
-    char host_name[str_len + 1];
+    char host_name[term_size + 1];
     long binary_len;
-    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
-            term_type != ERL_BINARY_EXT ||
-            term_size >= (int) sizeof(host_name) ||
-            ei_decode_binary(req, req_index, host_name, &binary_len) < 0) {
-        // The name is almost certainly too long, so report that it
-        // doesn't exist.
-        send_error_response("enoent");
-        return;
-    }
+    if (ei_decode_binary(req, req_index, host_name, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid hostname");
     host_name[binary_len] = '\0';
 
     UA_String hostname;
     UA_String_init(&hostname);
-    hostname.length = str_len;
+    hostname.length = binary_len;
     hostname.data = (UA_Byte *) host_name;
 
     UA_ServerConfig_setCustomHostname(UA_Server_getConfig(server), hostname);
@@ -646,43 +632,24 @@ static void handle_set_users_and_passwords(const char *req, int *req_index)
     UA_UsernamePasswordLogin logins[list_arity];
     
     for(size_t i = 0; i < list_arity; i++) {
-        if(ei_decode_tuple_header(req, req_index, &tuple_arity) < 0 || tuple_arity != 4)
-            errx(EXIT_FAILURE, ":handle_set_users_and_passwords requires a 4-tuple, term_size = %d", tuple_arity);
+        if(ei_decode_tuple_header(req, req_index, &tuple_arity) < 0 || tuple_arity != 2)
+            errx(EXIT_FAILURE, ":handle_set_users_and_passwords requires a 2-tuple, term_size = %d", tuple_arity);
 
-        unsigned long str_len;
-        if (ei_decode_ulong(req, req_index, &str_len) < 0) {
-            send_error_response("einval");
-            return;
-        }
+        if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+            errx(EXIT_FAILURE, "Invalid hostname (size)");
 
-        char username[str_len + 1];
+        char username[term_size + 1];
         long binary_len;
-        if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
-                term_type != ERL_BINARY_EXT ||
-                term_size >= (int) sizeof(username) ||
-                ei_decode_binary(req, req_index, username, &binary_len) < 0) {
-            // The name is almost certainly too long, so report that it
-            // doesn't exist.
-            send_error_response("enoent");
-            return;
-        }
+        if (ei_decode_binary(req, req_index, username, &binary_len) < 0) 
+            errx(EXIT_FAILURE, "Invalid hostname");
         username[binary_len] = '\0';
 
-        if (ei_decode_ulong(req, req_index, &str_len) < 0) {
-            send_error_response("einval");
-            return;
-        }
+        if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+            errx(EXIT_FAILURE, "Invalid hostname (size)");
 
-        char password[str_len + 1];
-        if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
-                term_type != ERL_BINARY_EXT ||
-                term_size >= (int) sizeof(password) ||
-                ei_decode_binary(req, req_index, password, &binary_len) < 0) {
-            // The name is almost certainly too long, so report that it
-            // doesn't exist.
-            send_error_response("enoent");
-            return;
-        }
+        char password[term_size + 1];
+        if (ei_decode_binary(req, req_index, password, &binary_len) < 0) 
+            errx(EXIT_FAILURE, "Invalid hostname");
         password[binary_len] = '\0';
 
         logins[i].username = UA_STRING(username);
