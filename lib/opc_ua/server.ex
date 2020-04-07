@@ -13,14 +13,14 @@ defmodule OpcUA.Server do
 
     defstruct port: nil,
               controlling_process: nil,
-              queued_messages: []
-
+              queued_messages: [],
+              configuration: nil,
+              address_space: %{}
   end
 
   @doc """
   Starts up a OPC UA Server GenServer.
   """
-
   @spec start_link([term]) :: {:ok, pid} | {:error, term} | {:error, :einval}
   def start_link(args \\ [], opts \\ []) do
     GenServer.start_link(__MODULE__, args, opts)
@@ -112,39 +112,46 @@ defmodule OpcUA.Server do
     {:ok, state}
   end
 
+  # Handelers Lifecyle & Configuration Functions
+
   def handle_call({:get_server_config, nil}, {_from, _}, state) do
-    response = call_port(state, :get_server_config, nil)
-    {:reply, response, state}
+    {new_state, response} = call_port(state, :get_server_config, nil)
+    {:reply, response, new_state}
   end
 
   def handle_call({:set_default_server_config, nil}, {_from, _}, state) do
-    response = call_port(state, :set_default_server_config, nil)
-    {:reply, response, state}
+    {new_state, response} = call_port(state, :set_default_server_config, nil)
+    {:reply, response, new_state}
   end
 
   def handle_call({:set_hostname, hostname}, {_from, _}, state) do
-    response = call_port(state, :set_hostname, hostname)
-    {:reply, response, state}
+    {new_state, response} = call_port(state, :set_hostname, hostname)
+    {:reply, response, new_state}
   end
 
   def handle_call({:set_port, port}, {_from, _}, state) do
-    response = call_port(state, :set_port, port)
-    {:reply, response, state}
+    {new_state, response} = call_port(state, :set_port, port)
+    {:reply, response, new_state}
   end
 
   def handle_call({:start_server, nil}, {_from, _}, state) do
-    response = call_port(state, :start_server, nil)
-    {:reply, response, state}
+    {new_state, response} = call_port(state, :start_server, nil)
+    {:reply, response, new_state}
   end
 
   def handle_call({:set_users, users}, {_from, _}, state) do
-    response = call_port(state, :set_users, users)
-    {:reply, response, state}
+    {new_state, response} = call_port(state, :set_users, users)
+    {:reply, response, new_state}
   end
 
   def handle_call({:stop_server, nil}, {_from, _}, state) do
-    response = call_port(state, :stop_server, nil)
-    {:reply, response, state}
+    {new_state, response} = call_port(state, :stop_server, nil)
+    {:reply, response, new_state}
+  end
+
+  def handle_info({_port, {:data, data}}, state) do
+    Logger.warn("(#{__MODULE__}) data: #{inspect data}.")
+    {:noreply, state}
   end
 
   def handle_info({_port, {:exit_status, code}}, state) do
@@ -157,6 +164,11 @@ defmodule OpcUA.Server do
     Logger.debug("(#{__MODULE__}) Exit reason: #{inspect(reason)}")
     Process.sleep(@c_timeout) #retrying delay
     {:stop, :restart, state}
+  end
+
+  def handle_info(msg, state) do
+    Logger.warn("(#{__MODULE__}) Unhandled message: #{inspect msg}.")
+    {:noreply, state}
   end
 
   defp call_port(state, command, arguments, timeout \\ @c_timeout) do
@@ -193,7 +205,7 @@ defmodule OpcUA.Server do
   end
 
   defp dump_msgs(response, %{queued_messages: msgs} = state) do
-    Enum.each(msgs, fn(msg) -> GenServer.call(self(), msg) end)
+    Enum.each(msgs, fn(msg) -> send(self(), msg) end)
     {%State{state | queued_messages: []}, response}
   end
 end

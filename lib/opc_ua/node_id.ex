@@ -1,0 +1,39 @@
+defmodule OpcUA.NodeId do
+  @moduledoc """
+  An identifier for a node in the address space of an OPC UA Server.
+
+  An OPC UA information model is made up of nodes and references between nodes.
+  Every node has a unique NodeId. NodeIds refer to a namespace with an additional
+  identifier value that can be an integer, a string, a guid or a bytestring.
+  """
+  alias OpcUA.NodeId
+  @enforce_keys [:ns_index, :identifier_type, :identifier]
+  @identifier_types ["integer", "string", "guid", "bytestring"]
+
+  defstruct ns_index: nil,
+            identifier_type: nil,
+            identifier: nil
+
+  @doc """
+  Creates an structure for a node in the address space of an OPC UA Server.
+  """
+  @spec new(GenServer.server()) :: %NodeId{}
+  def new(ns_index: ns_index, identifier_type: id_type, identifier: identifier) when is_integer(ns_index) and id_type in @identifier_types do
+    new_node_id(ns_index, id_type, identifier)
+  end
+  def new(_invalid_data), do: raise("Invalid Namespace index or identifier type")
+
+  defp new_node_id(ns_index, "integer", identifier) when is_integer(identifier),
+    do: %NodeId{ns_index: ns_index, identifier_type: 0, identifier: identifier}
+
+  defp new_node_id(ns_index, "string", identifier) when is_binary(identifier),
+    do: %NodeId{ns_index: ns_index, identifier_type: 1, identifier: identifier}
+
+  defp new_node_id(ns_index, "guid", identifier) when is_binary(identifier),
+    do: %NodeId{ns_index: ns_index, identifier_type: 2, identifier: identifier}
+
+  defp new_node_id(ns_index, "bytestring", identifier) when is_binary(identifier),
+    do: %NodeId{ns_index: ns_index, identifier_type: 3, identifier: identifier}
+
+  defp new_node_id(_ns_index, _id_type, _identifier), do: raise("Identifier type does not match with identifier data_type")
+end
