@@ -431,23 +431,6 @@ UA_ExpandedNodeId assemble_expanded_node_id(const char *req, int *req_index)
                     errx(EXIT_FAILURE, "Invalid bytestring");
 
                 node_string[binary_len] = '\0';
-                // if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-                // term_size != 2)
-                //     errx(EXIT_FAILURE, "Invalid string, term_size = %d", term_size);
-
-                // unsigned long str_len;
-                // if (ei_decode_ulong(req, req_index, &str_len) < 0)
-                //     errx(EXIT_FAILURE, "Invalid string length");
-
-                // char node_string[str_len + 1];
-                // long binary_len;
-                // if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
-                //         term_type != ERL_BINARY_EXT ||
-                //         term_size >= (int) sizeof(node_string) ||
-                //         ei_decode_binary(req, req_index, node_string, &binary_len) < 0) {
-                // errx(EXIT_FAILURE, "Invalid node_string");
-                // }
-                // node_string[binary_len] = '\0';
 
                 node_id = UA_EXPANDEDNODEID_STRING(ns_index, node_string);
             }
@@ -708,27 +691,14 @@ static void handle_add_namespace(const char *req, int *req_index)
     int term_size;
     int term_type;
 
-    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-        term_size != 2)
-        errx(EXIT_FAILURE, ":handle_add_namespace requires a 2-tuple, term_size = %d", term_size);
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid bytestring (size)");
 
-    unsigned long str_len;
-    if (ei_decode_ulong(req, req_index, &str_len) < 0) {
-        send_error_response("einval");
-        return;
-    }
-
-    char namespace[str_len + 1];
+    char namespace[term_size + 1];
     long binary_len;
-    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
-            term_type != ERL_BINARY_EXT ||
-            term_size >= (int) sizeof(namespace) ||
-            ei_decode_binary(req, req_index, namespace, &binary_len) < 0) {
-        // The name is almost certainly too long, so report that it
-        // doesn't exist.
-        send_error_response("enoent");
-        return;
-    }
+    if (ei_decode_binary(req, req_index, namespace, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid namespace");
+
     namespace[binary_len] = '\0';
 
     UA_Int16 *ns_id = UA_Server_addNamespace(server, namespace);
@@ -763,7 +733,6 @@ static void handle_add_variable_node(const char *req, int *req_index)
     UA_NodeId_clear(&reference_type_node_id);
     UA_QualifiedName_clear(&browse_name);
     UA_NodeId_clear(&type_definition);
-
 
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
@@ -800,7 +769,6 @@ static void handle_add_variable_type_node(const char *req, int *req_index)
     UA_NodeId_clear(&reference_type_node_id);
     UA_QualifiedName_clear(&browse_name);
     UA_NodeId_clear(&type_definition);
-
 
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);

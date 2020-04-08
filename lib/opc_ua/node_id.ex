@@ -29,7 +29,7 @@ defmodule OpcUA.NodeId do
   defp new_node_id(ns_index, "string", identifier) when is_binary(identifier),
     do: %NodeId{ns_index: ns_index, identifier_type: 1, identifier: identifier}
 
-  defp new_node_id(ns_index, "guid", identifier) when is_binary(identifier),
+  defp new_node_id(ns_index, "guid", {_data1, _data2, _data3, data4} = identifier) when is_tuple(identifier) and is_binary(data4),
     do: %NodeId{ns_index: ns_index, identifier_type: 2, identifier: identifier}
 
   defp new_node_id(ns_index, "bytestring", identifier) when is_binary(identifier),
