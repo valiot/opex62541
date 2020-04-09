@@ -317,7 +317,7 @@ defmodule WriteReadAttrTest do
 
     assert c_response == :ok
 
-    msg = {:add_namespace, {4, "Room"}}
+    msg = {:add_namespace, "Room"}
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     {:ok, node_id} =
