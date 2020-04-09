@@ -42,16 +42,16 @@ defmodule OpcUA.Server do
   @doc """
   Reads an internal Server Config.
   """
-  @spec get_server_config(GenServer.server()) :: {:ok, map()} | {:error, binary()} | {:error, :einval}
-  def get_server_config(pid) do
+  @spec get_config(GenServer.server()) :: {:ok, map()} | {:error, binary()} | {:error, :einval}
+  def get_config(pid) do
     GenServer.call(pid, {:get_server_config, nil})
   end
 
   @doc """
   Sets a default Server Config.
   """
-  @spec set_default_server_config(GenServer.server()) :: :ok | {:error, binary()} | {:error, :einval}
-  def set_default_server_config(pid) do
+  @spec set_default_config(GenServer.server()) :: :ok | {:error, binary()} | {:error, :einval}
+  def set_default_config(pid) do
     GenServer.call(pid, {:set_default_server_config, nil})
   end
 
@@ -546,9 +546,9 @@ defmodule OpcUA.Server do
     {:reply, response, new_state}
   end
 
-  def handle_call({:handle_write_node_is_abstract, node_id, is_abstract?}, {_from, _}, state) when is_boolean(is_abstract?) do
+  def handle_call({:write_node_is_abstract, node_id, is_abstract?}, {_from, _}, state) when is_boolean(is_abstract?) do
     c_args = {to_c(node_id), is_abstract?}
-    {new_state, response} = call_port(state, :handle_write_node_is_abstract, c_args)
+    {new_state, response} = call_port(state, :write_node_is_abstract, c_args)
     {:reply, response, new_state}
   end
 
@@ -576,7 +576,7 @@ defmodule OpcUA.Server do
     {:reply, response, new_state}
   end
 
-  def handle_call({:write_node_minimum_sampling_interval, node_id, minimum_sampling_interval}, {_from, _}, state) when is_integer(minimum_sampling_interval) do
+  def handle_call({:write_node_minimum_sampling_interval, node_id, minimum_sampling_interval}, {_from, _}, state) when is_float(minimum_sampling_interval) do
     c_args = {to_c(node_id), minimum_sampling_interval}
     {new_state, response} = call_port(state, :write_node_minimum_sampling_interval, c_args)
     {:reply, response, new_state}
