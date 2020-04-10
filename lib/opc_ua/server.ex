@@ -11,22 +11,20 @@ defmodule OpcUA.Server do
     @moduledoc false
 
     # port: C port process
-    # controlling_process: where events get sent
+    # controlling_process: parent process
     # queued_messages: queued messages during port request.
 
     defstruct port: nil,
               controlling_process: nil,
-              queued_messages: [],
-              configuration: nil,
-              address_space: %{}
+              queued_messages: []
   end
 
   @doc """
   Starts up a OPC UA Server GenServer.
   """
-  @spec start_link([term]) :: {:ok, pid} | {:error, term} | {:error, :einval}
+  @spec start_link(term(), list()) :: {:ok, pid} | {:error, term} | {:error, :einval}
   def start_link(args \\ [], opts \\ []) do
-    GenServer.start_link(__MODULE__, args, opts)
+    GenServer.start_link(__MODULE__, {args, self()}, opts)
   end
 
   @doc """
@@ -348,7 +346,7 @@ defmodule OpcUA.Server do
 
 
   # Handlers
-  def init(_args) do
+  def init({_args, controlling_process}) do
     executable = :code.priv_dir(:opex62541) ++ '/opc_ua_server'
 
     port =
@@ -360,7 +358,7 @@ defmodule OpcUA.Server do
         :exit_status
       ])
 
-    state = %State{port: port}
+    state = %State{port: port, controlling_process: controlling_process}
     {:ok, state}
   end
 

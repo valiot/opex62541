@@ -282,35 +282,55 @@ static void handle_test(const char *req, int *req_index)
 static void handle_set_client_config(const char *req, int *req_index)
 {
     int i_key;
+    int map_size;
+
     int term_size;
+    int term_type;
     unsigned long value;
 
     UA_ClientConfig *config = UA_Client_getConfig(client);
     UA_ClientConfig_setDefault(config);
 
-    if(ei_decode_map_header(req, req_index, &term_size) < 0)
+    if(ei_decode_map_header(req, req_index, &map_size) < 0)
         errx(EXIT_FAILURE, ":set_client_config inconsistent argument arity = %d", term_size);    
-    for(i_key = 0; i_key < term_size; i_key++)
+    for(i_key = 0; i_key < map_size; i_key++)
     {
-        char atom[30];
-        if (ei_decode_atom(req, req_index, atom) < 0) {
-            send_error_response("einval");
-            return;
-        }
-        
-        if (ei_decode_ulong(req, req_index, &value) < 0) {
-            send_error_response("einval_2");
-            return;
-        }
+        if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+            errx(EXIT_FAILURE, "Invalid bytestring (size) %d", term_size);
 
-        if(!strcmp(atom, "timeout")) 
+        char key[term_size + 1];
+        long binary_len;
+        if (ei_decode_binary(req, req_index, key, &binary_len) < 0) 
+            errx(EXIT_FAILURE, "Invalid bytestring");
+        key[binary_len] = '\0';
+
+        if(!strcmp(key, "timeout"))
+        {
+            if (ei_decode_ulong(req, req_index, &value) < 0) {
+                send_error_response("einval_2");
+                return;
+            }
             config->timeout = (int)value;
-        else if(!strcmp(atom, "requestedSessionTimeout")) 
+        }
+        else if(!strcmp(key, "requestedSessionTimeout"))
+        {
+            if (ei_decode_ulong(req, req_index, &value) < 0) {
+                send_error_response("einval_2");
+                return;
+            }
             config->requestedSessionTimeout = (int)value;
-        else if(!strcmp(atom, "secureChannelLifeTime")) 
+        }
+        else if(!strcmp(key, "secureChannelLifeTime")) 
+        {
+            if (ei_decode_ulong(req, req_index, &value) < 0) {
+                send_error_response("einval_2");
+                return;
+            }
             config->secureChannelLifeTime = (int)value;
+        }
         else
         {
+            errx(EXIT_FAILURE, ":set_client_config inconsistent argument arity = %s", key);    
             send_error_response("einval");
             return;
         }
@@ -362,7 +382,7 @@ static void handle_get_client_state(const char *req, int *req_index)
         break;
 
         case UA_CLIENTSTATE_SESSION_RENEWED:
-            send_data_response("session renewed", 3, 0);
+            send_data_response("Session renewed", 3, 0);
         break;
     }
 }

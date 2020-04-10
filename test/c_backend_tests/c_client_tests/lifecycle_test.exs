@@ -39,10 +39,11 @@ defmodule CClientLifecycleTest do
   end
 
   test "Set/Get client config", state do
+
     config = %{
-      requestedSessionTimeout: 12000,
-      secureChannelLifeTime: 6000,
-      timeout: 500
+      "requestedSessionTimeout" => 12000,
+      "secureChannelLifeTime" => 6000,
+      "timeout" => 500
     }
 
     msg = {:set_client_config, config}
