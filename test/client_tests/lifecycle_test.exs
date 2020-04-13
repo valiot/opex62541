@@ -29,6 +29,20 @@ defmodule CClientLifecycleTest do
     assert c_response == {:ok, config}
   end
 
+  test "Set default client config", state do
+    config = %{
+      "requestedSessionTimeout" => 1200000,
+      "secureChannelLifeTime" => 600000,
+      "timeout" => 5000
+    }
+
+    c_response = Client.set_config(state.pid)
+    assert c_response == :ok
+
+    c_response = Client.get_config(state.pid)
+    assert c_response == {:ok, config}
+  end
+
   test "Reset client", state do
     c_response = Client.reset(state.pid)
     assert c_response == :ok

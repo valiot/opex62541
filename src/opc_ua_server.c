@@ -600,7 +600,8 @@ static void handle_set_port(const char *req, int *req_index)
 }
 
 /* 
-*   sets the server port. 
+*   Sets the server port. 
+*   TODO: free usernames/password allocated array.
 */
 static void handle_set_users_and_passwords(const char *req, int *req_index)
 {
@@ -621,7 +622,8 @@ static void handle_set_users_and_passwords(const char *req, int *req_index)
         if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
             errx(EXIT_FAILURE, "Invalid hostname (size)");
 
-        char username[term_size + 1];
+        char *username;
+        username = (char *)malloc(term_size + 1);
         long binary_len;
         if (ei_decode_binary(req, req_index, username, &binary_len) < 0) 
             errx(EXIT_FAILURE, "Invalid hostname");
@@ -630,7 +632,8 @@ static void handle_set_users_and_passwords(const char *req, int *req_index)
         if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
             errx(EXIT_FAILURE, "Invalid hostname (size)");
 
-        char password[term_size + 1];
+        char *password;
+        password = (char *)malloc(term_size + 1);
         if (ei_decode_binary(req, req_index, password, &binary_len) < 0) 
             errx(EXIT_FAILURE, "Invalid hostname");
         password[binary_len] = '\0';
@@ -640,7 +643,7 @@ static void handle_set_users_and_passwords(const char *req, int *req_index)
     }
 
     UA_ServerConfig *config = UA_Server_getConfig(server);
-    config->accessControl.clear(&config->accessControl);
+    //config->accessControl.clear(&config->accessControl);
     UA_StatusCode retval = UA_AccessControl_default(config, false, &config->securityPolicies[config->securityPoliciesSize-1].policyUri, list_arity, logins);
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);

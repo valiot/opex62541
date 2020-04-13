@@ -44,8 +44,7 @@ defmodule CClientConnectionTest do
     case state.status do
       :ok ->
         url = "opc.tcp://localhost:4840"
-        n_chars = String.length(url)
-        msg = {:connect_client_by_url, {n_chars, url}}
+        msg = {:connect_client_by_url, url}
         send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
         c_response =

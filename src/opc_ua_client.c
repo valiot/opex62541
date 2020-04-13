@@ -407,29 +407,16 @@ static void handle_connect_client_by_url(const char *req, int *req_index)
 {
     int term_size;
     int term_type;
+    
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid url (size)");
 
-    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-        term_size != 2)
-        errx(EXIT_FAILURE, ":connect_client_by_url requires a 2-tuple, term_size = %d", term_size);
-
-    unsigned long str_len;
-    if (ei_decode_ulong(req, req_index, &str_len) < 0) {
-        send_error_response("einval");
-        return;
-    }
-
-    char url[str_len + 1];
+    char url[term_size + 1];
     long binary_len;
-    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
-            term_type != ERL_BINARY_EXT ||
-            term_size >= (int) sizeof(url) ||
-            ei_decode_binary(req, req_index, url, &binary_len) < 0) {
-        // The name is almost certainly too long, so report that it
-        // doesn't exist.
-        send_error_response("enoent");
-        return;
-    }
+    if (ei_decode_binary(req, req_index, url, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid url");
     url[binary_len] = '\0';
+
 
     UA_StatusCode retval = UA_Client_connect(client, url);
     if(retval != UA_STATUSCODE_GOOD) {
@@ -450,65 +437,34 @@ static void handle_connect_client_by_username(const char *req, int *req_index)
     unsigned long str_len;
     unsigned long binary_len;
 
-    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 || term_size != 6)
-        errx(EXIT_FAILURE, ":connect_client_by_username requires a 6-tuple, term_size = %d", term_size);
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 || term_size != 3)
+        errx(EXIT_FAILURE, ":connect_client_by_username requires a 3-tuple, term_size = %d", term_size);
     
-    
-    // url_size
-    if (ei_decode_ulong(req, req_index, &str_len) < 0) {
-        send_error_response("einval");
-        return;
-    }
+    // URL
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid url (size)");
 
-    // url
-    char url[str_len + 1];
-    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
-            term_type != ERL_BINARY_EXT ||
-            term_size >= (int) sizeof(url) ||
-            ei_decode_binary(req, req_index, url, &binary_len) < 0) {
-        // The name is almost certainly too long, so report that it
-        // doesn't exist.
-        send_error_response("enoent");
-        return;
-    }
+    char url[term_size + 1];
+    if (ei_decode_binary(req, req_index, url, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid url");
     url[binary_len] = '\0';
 
-    // username_size
-    if (ei_decode_ulong(req, req_index, &str_len) < 0) {
-        send_error_response("einval");
-        return;
-    }
+    //USER
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid username (size)");
 
-    // username
-    char username[str_len + 1];
-    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
-            term_type != ERL_BINARY_EXT ||
-            term_size >= (int) sizeof(username) ||
-            ei_decode_binary(req, req_index, username, &binary_len) < 0) {
-        // The name is almost certainly too long, so report that it
-        // doesn't exist.
-        send_error_response("enoent");
-        return;
-    }
+    char username[term_size + 1];
+    if (ei_decode_binary(req, req_index, username, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid username");
     username[binary_len] = '\0';
 
-    // password_size
-    if (ei_decode_ulong(req, req_index, &str_len) < 0) {
-        send_error_response("einval");
-        return;
-    }
+    //PASSWORD
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid password (size)");
 
-    // password
-    char password[str_len + 1];
-    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
-            term_type != ERL_BINARY_EXT ||
-            term_size >= (int) sizeof(password) ||
-            ei_decode_binary(req, req_index, password, &binary_len) < 0) {
-        // The name is almost certainly too long, so report that it
-        // doesn't exist.
-        send_error_response("enoent");
-        return;
-    }
+    char password[term_size + 1];
+    if (ei_decode_binary(req, req_index, password, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid password");
     password[binary_len] = '\0';
 
     UA_StatusCode retval = UA_Client_connect_username(client, url, username, password);
@@ -527,28 +483,14 @@ static void handle_connect_client_no_session(const char *req, int *req_index)
 {
     int term_size;
     int term_type;
+    long binary_len = 0; 
 
-    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-        term_size != 2)
-        errx(EXIT_FAILURE, ":connect_client_no_session requires a 2-tuple, term_size = %d", term_size);
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid url (size)");
 
-    unsigned long str_len;
-    if (ei_decode_ulong(req, req_index, &str_len) < 0) {
-        send_error_response("einval");
-        return;
-    }
-
-    char url[str_len + 1];
-    long binary_len;
-    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
-            term_type != ERL_BINARY_EXT ||
-            term_size >= (int) sizeof(url) ||
-            ei_decode_binary(req, req_index, url, &binary_len) < 0) {
-        // The name is almost certainly too long, so report that it
-        // doesn't exist.
-        send_error_response("enoent");
-        return;
-    }
+    char url[term_size + 1];
+    if (ei_decode_binary(req, req_index, url, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid url");
     url[binary_len] = '\0';
     
     UA_StatusCode retval = UA_Client_connect_noSession(client, url);
