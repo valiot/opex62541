@@ -532,27 +532,14 @@ static void handle_find_servers_on_network(const char *req, int *req_index)
     UA_ServerOnNetwork *serverOnNetwork = NULL;
     size_t serverOnNetworkSize = 0;
 
-    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-        term_size != 2)
-        errx(EXIT_FAILURE, ":find_servers_on_network requires a 2-tuple, term_size = %d", term_size);
+    long binary_len = 0; 
 
-    unsigned long str_len;
-    if (ei_decode_ulong(req, req_index, &str_len) < 0) {
-        send_error_response("einval");
-        return;
-    }
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid url (size)");
 
-    char url[str_len + 1];
-    long binary_len;
-    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
-            term_type != ERL_BINARY_EXT ||
-            term_size >= (int) sizeof(url) ||
-            ei_decode_binary(req, req_index, url, &binary_len) < 0) {
-        // The name is almost certainly too long, so report that it
-        // doesn't exist.
-        send_error_response("enoent");
-        return;
-    }
+    char url[term_size + 1];
+    if (ei_decode_binary(req, req_index, url, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid url");
     url[binary_len] = '\0';
 
     UA_StatusCode retval = UA_Client_findServersOnNetwork(client, url, 0, 0, 0, NULL, &serverOnNetworkSize, &serverOnNetwork);
@@ -577,27 +564,14 @@ static void handle_find_servers(const char *req, int *req_index)
     UA_ApplicationDescription *applicationDescriptionArray = NULL;
     size_t applicationDescriptionArraySize = 0;
 
-    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-        term_size != 2)
-        errx(EXIT_FAILURE, ":find_servers requires a 2-tuple, term_size = %d", term_size);
+    long binary_len = 0; 
 
-    unsigned long str_len;
-    if (ei_decode_ulong(req, req_index, &str_len) < 0) {
-        send_error_response("einval");
-        return;
-    }
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid url (size)");
 
-    char url[str_len + 1];
-    long binary_len;
-    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
-            term_type != ERL_BINARY_EXT ||
-            term_size >= (int) sizeof(url) ||
-            ei_decode_binary(req, req_index, url, &binary_len) < 0) {
-        // The name is almost certainly too long, so report that it
-        // doesn't exist.
-        send_error_response("enoent");
-        return;
-    }
+    char url[term_size + 1];
+    if (ei_decode_binary(req, req_index, url, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid url");
     url[binary_len] = '\0';
 
     UA_StatusCode retval = UA_Client_findServers(client, url, 0, NULL, 0, NULL, &applicationDescriptionArraySize, &applicationDescriptionArray);
@@ -625,27 +599,14 @@ static void handle_get_endpoints(const char *req, int *req_index)
     UA_EndpointDescription *endpointArray = NULL;
         size_t endpointArraySize = 0;
 
-    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-        term_size != 2)
-        errx(EXIT_FAILURE, ":get_endpoint requires a 2-tuple, term_size = %d", term_size);
+    long binary_len = 0; 
 
-    unsigned long str_len;
-    if (ei_decode_ulong(req, req_index, &str_len) < 0) {
-        send_error_response("einval");
-        return;
-    }
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid url (size)");
 
-    char url[str_len + 1];
-    long binary_len;
-    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
-            term_type != ERL_BINARY_EXT ||
-            term_size >= (int) sizeof(url) ||
-            ei_decode_binary(req, req_index, url, &binary_len) < 0) {
-        // The name is almost certainly too long, so report that it
-        // doesn't exist.
-        send_error_response("enoent");
-        return;
-    }
+    char url[term_size + 1];
+    if (ei_decode_binary(req, req_index, url, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid url");
     url[binary_len] = '\0';
 
     UA_StatusCode retval = UA_Client_getEndpoints(client, url, &endpointArraySize, &endpointArray);

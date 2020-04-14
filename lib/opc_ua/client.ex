@@ -109,6 +109,38 @@ defmodule OpcUA.Client do
     GenServer.call(pid, {:disconnect_client, nil})
   end
 
+  @doc """
+    Finds Servers Connected to a Discovery Server.
+    The following must be filled:
+    * `:url` -> binary().
+  """
+  @spec find_servers_on_network(GenServer.server(), list()) :: :ok | {:error, term} | {:error, :einval}
+  def find_servers_on_network(pid, url: url) when is_binary(url) do
+    GenServer.call(pid, {:find_servers_on_network, url})
+  end
+
+  @doc """
+    Finds Servers Connected to a Discovery Server.
+    The following must be filled:
+    * `:url` -> binary().
+  """
+  @spec find_servers(GenServer.server(), list()) :: :ok | {:error, term} | {:error, :einval}
+  def find_servers(pid, url: url) when is_binary(url) do
+    GenServer.call(pid, {:find_servers, url})
+  end
+
+  @doc """
+    Get endpoints from a OPC UA Server.
+    The following must be filled:
+    * `:url` -> binary().
+  """
+  @spec get_endpoints(GenServer.server(), list()) :: :ok | {:error, term} | {:error, :einval}
+  def get_endpoints(pid, url: url) when is_binary(url) do
+    GenServer.call(pid, {:get_endpoints, url})
+  end
+
+
+
   # Handlers
   def init({_args, controlling_process}) do
     executable = :code.priv_dir(:opex62541) ++ '/opc_ua_client'
@@ -158,6 +190,8 @@ defmodule OpcUA.Client do
     {:reply, response, new_state}
   end
 
+  # Connect to a Server Handlers
+
   def handle_call({:connect_client_by_url, url}, {_from, _}, state) do
     {new_state, response} = call_port(state, :connect_client_by_url, url)
     {:reply, response, new_state}
@@ -175,6 +209,23 @@ defmodule OpcUA.Client do
 
   def handle_call({:disconnect_client, nil}, {_from, _}, state) do
     {new_state, response} = call_port(state, :disconnect_client, nil)
+    {:reply, response, new_state}
+  end
+
+  # Discovery Handlers.
+
+  def handle_call({:find_servers_on_network, url}, {_from, _}, state) do
+    {new_state, response} = call_port(state, :find_servers_on_network, url)
+    {:reply, response, new_state}
+  end
+
+  def handle_call({:find_servers, url}, {_from, _}, state) do
+    {new_state, response} = call_port(state, :find_servers, url)
+    {:reply, response, new_state}
+  end
+
+  def handle_call({:get_endpoints, url}, {_from, _}, state) do
+    {new_state, response} = call_port(state, :get_endpoints, url)
     {:reply, response, new_state}
   end
 
