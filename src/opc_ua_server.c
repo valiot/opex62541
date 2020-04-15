@@ -1502,16 +1502,15 @@ static void handle_write_node_value(const char *req, int *req_index)
     UA_ExpandedNodeId expanded_node_id_arg_1;
     UA_QualifiedName qualified_name;
 
+    char *arg1 = (char *)malloc(0);
+    char *arg2 = (char *)malloc(0);
+
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 3)
         errx(EXIT_FAILURE, ":handle_write_node_value requires a 3-tuple, term_size = %d", term_size);
     
     UA_NodeId node_id = assemble_node_id(req, req_index);
-    
-    UA_Variant previous_value;
-    UA_Server_readValue(server, node_id, &previous_value);
-    UA_Variant_clear(&previous_value);
 
     unsigned long data_type;
     if (ei_decode_ulong(req, req_index, &data_type) < 0) {
@@ -1659,16 +1658,15 @@ static void handle_write_node_value(const char *req, int *req_index)
             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid string (size)");
 
-            char *string_data;
-            string_data = (char *)malloc(term_size + 1);
+            arg1 = (char *)malloc(term_size + 1);
     
             long binary_len;
-            if (ei_decode_binary(req, req_index, string_data, &binary_len) < 0) 
+            if (ei_decode_binary(req, req_index, arg1, &binary_len) < 0) 
                 errx(EXIT_FAILURE, "Invalid string");
 
-            string_data[binary_len] = '\0';
+            arg1[binary_len] = '\0';
 
-            UA_String data = UA_STRING(string_data);
+            UA_String data = UA_STRING(arg1);
 
             UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_STRING]);
         }
@@ -1728,16 +1726,16 @@ static void handle_write_node_value(const char *req, int *req_index)
             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid byte_string (size)");
 
-            char *byte_string_data;
-                byte_string_data = (char *)malloc(term_size + 1);
+            
+            arg1 = (char *)malloc(term_size + 1);
     
             long binary_len;
-            if (ei_decode_binary(req, req_index, byte_string_data, &binary_len) < 0) 
+            if (ei_decode_binary(req, req_index, arg1, &binary_len) < 0) 
                 errx(EXIT_FAILURE, "Invalid byte_string");
 
-            byte_string_data[binary_len] = '\0';
+            arg1[binary_len] = '\0';
 
-            UA_ByteString data = UA_BYTESTRING(byte_string_data);
+            UA_ByteString data = UA_BYTESTRING(arg1);
 
             UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_BYTESTRING]);
         }
@@ -1748,15 +1746,15 @@ static void handle_write_node_value(const char *req, int *req_index)
             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid xml (size)");
 
-            char xml_data[term_size + 1];
+            arg1 = (char *)malloc(term_size + 1);
     
             long binary_len;
-            if (ei_decode_binary(req, req_index, xml_data, &binary_len) < 0) 
+            if (ei_decode_binary(req, req_index, arg1, &binary_len) < 0) 
                 errx(EXIT_FAILURE, "Invalid xml");
 
-            xml_data[binary_len] = '\0';
+            arg1[binary_len] = '\0';
 
-            UA_XmlElement data = UA_STRING(xml_data);
+            UA_XmlElement data = UA_STRING(arg1);
 
             UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_XMLELEMENT]);
         }
@@ -1805,28 +1803,26 @@ static void handle_write_node_value(const char *req, int *req_index)
             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid locale (size)");
 
-            char *locale_data;
-                locale_data = (char *)malloc(term_size + 1);
+            arg1 = (char *)malloc(term_size + 1);
     
             long binary_len;
-            if (ei_decode_binary(req, req_index, locale_data, &binary_len) < 0) 
+            if (ei_decode_binary(req, req_index, arg1, &binary_len) < 0) 
                 errx(EXIT_FAILURE, "Invalid locale");
 
-            locale_data[binary_len] = '\0';
+            arg1[binary_len] = '\0';
 
             // text
             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid text (size)");
 
-            char *text_data;
-                text_data = (char *)malloc(term_size + 1);
+            arg2 = (char *)malloc(term_size + 1);
     
-            if (ei_decode_binary(req, req_index, text_data, &binary_len) < 0) 
+            if (ei_decode_binary(req, req_index, arg2, &binary_len) < 0) 
                 errx(EXIT_FAILURE, "Invalid text");
 
-            text_data[binary_len] = '\0';
+            arg2[binary_len] = '\0';
 
-            UA_LocalizedText data = UA_LOCALIZEDTEXT(locale_data, text_data);
+            UA_LocalizedText data = UA_LOCALIZEDTEXT(arg1, arg2);
 
             UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_LOCALIZEDTEXT]);
         }
@@ -1860,16 +1856,15 @@ static void handle_write_node_value(const char *req, int *req_index)
              if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid time_string (size)");
 
-            char *time_string_data;
-                time_string_data = (char *)malloc(term_size + 1);
+            arg1 = (char *)malloc(term_size + 1);
     
             long binary_len;
-            if (ei_decode_binary(req, req_index, time_string_data, &binary_len) < 0) 
+            if (ei_decode_binary(req, req_index, arg1, &binary_len) < 0) 
                 errx(EXIT_FAILURE, "Invalid time_string");
 
-            time_string_data[binary_len] = '\0';
+            arg1[binary_len] = '\0';
 
-            UA_TimeString data = UA_STRING(time_string_data);
+            UA_TimeString data = UA_STRING(arg1);
             UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_TIMESTRING]);
         }
         break;
@@ -1936,6 +1931,8 @@ static void handle_write_node_value(const char *req, int *req_index)
     
     UA_StatusCode retval = UA_Server_writeValue(server, node_id, value);
 
+    free(arg1);
+    free(arg2);
     UA_NodeId_clear(&node_id);
     UA_NodeId_clear(&node_id_arg_1);
     UA_NodeId_clear(&node_id_arg_2);
