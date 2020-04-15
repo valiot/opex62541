@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include "open62541.h"
 
 //#define DEBUG
 
@@ -46,3 +47,22 @@ FILE *log_location;
 uint64_t current_time();
 
 #endif // UTIL_H
+
+//Client and Server common functions
+UA_NodeId assemble_node_id(const char *req, int *req_index);
+UA_ExpandedNodeId assemble_expanded_node_id(const char *req, int *req_index);
+UA_QualifiedName assemble_qualified_name(const char *req, int *req_index);
+
+// Elixir Message assemblers
+void encode_client_config(char *resp, int *resp_index, void *data);
+void encode_server_on_the_network_struct(char *resp, int *resp_index, void *data, int data_len);
+void encode_application_description_struct(char *resp, int *resp_index, void *data, int data_len);
+void encode_endpoint_description_struct(char *resp, int *resp_index, void *data, int data_len);
+void encode_server_config(char *resp, int *resp_index, void *data);
+void send_data_response(void *data, int data_type, int data_len);
+void send_error_response(const char *reason);
+void send_ok_response();
+void send_opex_response(uint32_t reason);
+
+//Client and Server common handlers
+void handle_test(void *data, int data_type, int data_len);

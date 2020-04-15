@@ -12,14 +12,14 @@ defmodule ServerLifecycleTest do
 
   test "Set/Get client config", state do
     desired_config = %{
-      "application_description" => %{
+      "application_description" => [%{
           "application_uri" => "urn:open62541.server.application",
           "discovery_url" => [],
           "name" => "open62541-based OPC UA Application",
           "product_uri" => "http://open62541.org",
           "server" => "urn:open62541.server.application",
           "type" => "server"
-        },
+        }],
       "endpoint_description" => [
         %{
           "endpoint_url" => "",

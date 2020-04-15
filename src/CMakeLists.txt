@@ -188,7 +188,7 @@ else(NOT MANUAL_BUILD)
     include_directories(${install_dir})
 
     foreach(opex62541_PROGRAM ${opex62541_PROGRAMS})
-        add_executable( ${opex62541_PROGRAM} ${CMAKE_SOURCE_DIR}/${opex62541_PROGRAM}.c ${CMAKE_SOURCE_DIR}/erlcmd.c ${CMAKE_SOURCE_DIR}/util.c)
+        add_executable( ${opex62541_PROGRAM} ${CMAKE_SOURCE_DIR}/${opex62541_PROGRAM}.c ${CMAKE_SOURCE_DIR}/erlcmd.c ${CMAKE_SOURCE_DIR}/common.c)
         add_dependencies(${opex62541_PROGRAM} open62541)
         target_link_libraries(${opex62541_PROGRAM} ${STATIC_LIBS})
         target_link_libraries(${opex62541_PROGRAM} ${CMAKE_THREAD_LIBS_INIT})
