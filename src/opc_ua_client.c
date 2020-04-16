@@ -20,7 +20,7 @@ UA_Client *client;
 /**
  *  This is function allows to configure the client. 
 */
-static void handle_set_client_config(const char *req, int *req_index)
+static void handle_set_client_config(void *entity, bool entity_type, const char *req, int *req_index)
 {
     int i_key;
     int map_size;
@@ -83,7 +83,7 @@ static void handle_set_client_config(const char *req, int *req_index)
 /* 
 *   Get the client configuration. 
 */
-static void handle_get_client_config(const char *req, int *req_index)
+static void handle_get_client_config(void *entity, bool entity_type, const char *req, int *req_index)
 {
     UA_ClientConfig *config = UA_Client_getConfig(client);
     send_data_response(config, 7, 0);
@@ -92,7 +92,7 @@ static void handle_get_client_config(const char *req, int *req_index)
 /*
  * Gets the current client connection state. 
 */
-static void handle_get_client_state(const char *req, int *req_index)
+static void handle_get_client_state(void *entity, bool entity_type, const char *req, int *req_index)
 {
     UA_ClientState state = UA_Client_getState(client);
 
@@ -131,7 +131,7 @@ static void handle_get_client_state(const char *req, int *req_index)
 /* 
 *   Resets a client. 
 */
-static void handle_reset_client(const char *req, int *req_index)
+static void handle_reset_client(void *entity, bool entity_type, const char *req, int *req_index)
 {
     UA_Client_reset(client);
     send_ok_response();
@@ -144,7 +144,7 @@ static void handle_reset_client(const char *req, int *req_index)
 /* Connect to the server by passing only the url.
  *
  * @return Indicates whether the operation succeeded or returns an error code */
-static void handle_connect_client_by_url(const char *req, int *req_index)
+static void handle_connect_client_by_url(void *entity, bool entity_type, const char *req, int *req_index)
 {
     int term_size;
     int term_type;
@@ -171,7 +171,7 @@ static void handle_connect_client_by_url(const char *req, int *req_index)
 /* Connect to the server by passing a url, username and password.
  *
  * @return Indicates whether the operation succeeded or returns an error code */
-static void handle_connect_client_by_username(const char *req, int *req_index)
+static void handle_connect_client_by_username(void *entity, bool entity_type, const char *req, int *req_index)
 {
     int term_size;
     int term_type;
@@ -220,7 +220,7 @@ static void handle_connect_client_by_username(const char *req, int *req_index)
 /* Connect to the server without creating a session.
  *
  * @return Indicates whether the operation succeeded or returns an error code */
-static void handle_connect_client_no_session(const char *req, int *req_index)
+static void handle_connect_client_no_session(void *entity, bool entity_type, const char *req, int *req_index)
 {
     int term_size;
     int term_type;
@@ -246,7 +246,7 @@ static void handle_connect_client_no_session(const char *req, int *req_index)
 /* Disconnect and close a connection to the selected server.
  *
  * @return Indicates whether the operation succeeded or returns an error code */
-static void handle_disconnect_client(const char *req, int *req_index)
+static void handle_disconnect_client(void *entity, bool entity_type, const char *req, int *req_index)
 {
     
     UA_StatusCode retval = UA_Client_disconnect(client);
@@ -266,7 +266,7 @@ static void handle_disconnect_client(const char *req, int *req_index)
  *
  * @param url to connect (for example "opc.tcp://localhost:4840")
  * @return Indicates whether the operation succeeded or returns an error code */
-static void handle_find_servers_on_network(const char *req, int *req_index)
+static void handle_find_servers_on_network(void *entity, bool entity_type, const char *req, int *req_index)
 {
     int term_size;
     int term_type;
@@ -297,7 +297,7 @@ static void handle_find_servers_on_network(const char *req, int *req_index)
  *
  * @param serverUrl url to connect (for example "opc.tcp://localhost:4840")
  * @return Indicates whether the operation succeeded or returns an error code */
-static void handle_find_servers(const char *req, int *req_index)
+static void handle_find_servers(void *entity, bool entity_type, const char *req, int *req_index)
 {
     int term_size;
     int term_type;
@@ -332,15 +332,14 @@ static void handle_find_servers(const char *req, int *req_index)
  *
  * @param url to connect (for example "opc.tcp://localhost:4840")
  * @return Indicates whether the operation succeeded or returns an error code */
-static void handle_get_endpoints(const char *req, int *req_index)
+static void handle_get_endpoints(void *entity, bool entity_type, const char *req, int *req_index)
 {
     int term_size;
     int term_type;
+    long binary_len = 0;
 
     UA_EndpointDescription *endpointArray = NULL;
-        size_t endpointArraySize = 0;
-
-    long binary_len = 0; 
+    size_t endpointArraySize = 0;
 
     if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
         errx(EXIT_FAILURE, "Invalid url (size)");
@@ -363,13 +362,67 @@ static void handle_get_endpoints(const char *req, int *req_index)
     UA_Array_delete(endpointArray, endpointArraySize, &UA_TYPES[UA_TYPES_ENDPOINTDESCRIPTION]);
 }
 
+/******************************/
+/* Node Addition and Deletion */
+/******************************/
+
+/* 
+ *  Add a new reference to the server. 
+ */
+void handle_add_reference(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    long binary_len;
+    unsigned long target_node_class;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 6)
+        errx(EXIT_FAILURE, ":handle_add_reference requires a 6-tuple, term_size = %d", term_size);
+    
+    UA_NodeId source_id = assemble_node_id(req, req_index);
+    UA_NodeId reference_type_id = assemble_node_id(req, req_index);
+    UA_ExpandedNodeId target_id = assemble_expanded_node_id(req, req_index);
+
+    int is_forward;
+    ei_decode_boolean(req, req_index, &is_forward);
+
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid target_server_uri (size)");
+
+    char target_server_uri_str[term_size + 1];
+    if (ei_decode_binary(req, req_index, target_server_uri_str, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid target_server_uri_str");
+    target_server_uri_str[binary_len] = '\0';
+
+    UA_String target_server_uri = UA_STRING(target_server_uri_str);
+
+    if (ei_decode_ulong(req, req_index, &target_node_class) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    UA_StatusCode retval = UA_Client_addReference(client, source_id, reference_type_id, (UA_Boolean)is_forward, target_server_uri, target_id, target_node_class);
+
+    UA_NodeId_clear(&source_id);
+    UA_NodeId_clear(&reference_type_id);
+    UA_ExpandedNodeId_clear(&target_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
 
 /*******************************/
 /* Elixir -> C Message Handler */
 /*******************************/
+
 struct request_handler {
     const char *name;
-    void (*handler)(const char *req, int *req_index);
+    void (*handler)(void *entity, bool entity_type, const char *req, int *req_index);
 };
 
 /*  Elixir request handler table
@@ -390,7 +443,18 @@ static struct request_handler request_handlers[] = {
     // discovery functions
     {"find_servers_on_network", handle_find_servers_on_network},
     {"find_servers", handle_find_servers}, 
-    {"get_endpoints", handle_get_endpoints}, 
+    {"get_endpoints", handle_get_endpoints},
+    // Node Addition and Deletion
+    {"add_variable_node", handle_add_variable_node},
+    {"add_variable_type_node", handle_add_variable_type_node},
+    {"add_object_node", handle_add_object_node},
+    {"add_object_type_node", handle_add_object_type_node},
+    {"add_view_node", handle_add_view_node},
+    {"add_reference_type_node", handle_add_reference_type_node},
+    {"add_data_type_node", handle_add_data_type_node},
+    {"add_reference", handle_add_reference},
+    {"delete_reference", handle_delete_reference},
+    {"delete_node", handle_delete_node},
     { NULL, NULL }
 };
 
@@ -421,7 +485,7 @@ static void handle_elixir_request(const char *req, void *cookie)
     //execute all handler
     for (struct request_handler *rh = request_handlers; rh->name != NULL; rh++) {
         if (strcmp(cmd, rh->name) == 0) {
-            rh->handler(req, &req_index);
+            rh->handler(client, 1, req, &req_index);
             return;
         }
     }

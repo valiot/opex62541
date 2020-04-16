@@ -65,4 +65,27 @@ void send_ok_response();
 void send_opex_response(uint32_t reason);
 
 //Client and Server common handlers
-void handle_test(void *data, int data_type, int data_len);
+void handle_test(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_add_variable_node(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_add_variable_type_node(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_add_object_node(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_add_object_type_node(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_add_view_node(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_add_reference_type_node(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_add_data_type_node(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_add_reference(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_delete_reference(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_delete_node(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_write_node_browse_name(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_write_node_display_name(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_write_node_description(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_write_node_write_mask(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_write_node_is_abstract(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_write_node_inverse_name(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_write_node_data_type(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_write_node_value_rank(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_write_node_access_level(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_write_node_minimum_sampling_interval(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_write_node_historizing(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_write_node_executable(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_write_node_value(void *entity, bool entity_type, const char *req, int *req_index);
