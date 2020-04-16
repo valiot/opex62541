@@ -430,6 +430,21 @@ struct request_handler {
  */
 static struct request_handler request_handlers[] = {
     {"test", handle_test},
+    // Reading and Writing Node Attributes ??
+    // TODO: Add UA_Server_writeArrayDimensions, 
+    {"write_node_value", handle_write_node_value},
+    {"write_node_browse_name", handle_write_node_browse_name},
+    {"write_node_display_name", handle_write_node_display_name},
+    {"write_node_description", handle_write_node_description},
+    {"write_node_write_mask", handle_write_node_write_mask},
+    {"write_node_is_abstract", handle_write_node_is_abstract},
+    {"write_node_inverse_name", handle_write_node_inverse_name},
+    {"write_node_data_type", handle_write_node_data_type},
+    {"write_node_value_rank", handle_write_node_value_rank},
+    {"write_node_access_level", handle_write_node_access_level},
+    {"write_node_minimum_sampling_interval", handle_write_node_minimum_sampling_interval},
+    {"write_node_historizing", handle_write_node_historizing},
+    {"write_node_executable", handle_write_node_executable},
     // lifecycle functions
     {"get_client_state", handle_get_client_state},     
     {"set_client_config", handle_set_client_config},     

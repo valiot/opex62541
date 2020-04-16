@@ -1001,6 +1001,7 @@ void handle_write_node_browse_name(void *entity, bool entity_type, const char *r
 {
     int term_size;
     int term_type;
+    UA_StatusCode retval;
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 2)
@@ -1009,7 +1010,10 @@ void handle_write_node_browse_name(void *entity, bool entity_type, const char *r
     UA_NodeId node_id = assemble_node_id(req, req_index);
     UA_QualifiedName browse_name = assemble_qualified_name(req, req_index);
     
-    UA_StatusCode retval = UA_Server_writeBrowseName((UA_Server *)entity, node_id, browse_name);
+    if(entity_type)
+        retval = UA_Client_writeBrowseNameAttribute((UA_Client *)entity, node_id, &browse_name);
+    else
+        retval = UA_Server_writeBrowseName((UA_Server *)entity, node_id, browse_name);
 
     UA_NodeId_clear(&node_id);
     UA_QualifiedName_clear(&browse_name);
@@ -1029,6 +1033,7 @@ void handle_write_node_display_name(void *entity, bool entity_type, const char *
 {
     int term_size;
     int term_type;
+    UA_StatusCode retval;
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 3)
@@ -1059,7 +1064,10 @@ void handle_write_node_display_name(void *entity, bool entity_type, const char *
 
     UA_LocalizedText display_name =  UA_LOCALIZEDTEXT(locale, name_str);
     
-    UA_StatusCode retval = UA_Server_writeDescription((UA_Server *)entity, node_id, display_name);
+    if(entity_type)
+        retval = UA_Client_writeDisplayNameAttribute((UA_Client *)entity, node_id, &display_name);
+    else
+        retval = UA_Server_writeDisplayName((UA_Server *)entity, node_id, display_name);
 
     UA_NodeId_clear(&node_id);
 
@@ -1078,6 +1086,7 @@ void handle_write_node_description(void *entity, bool entity_type, const char *r
 {
     int term_size;
     int term_type;
+    UA_StatusCode retval;
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 3)
@@ -1108,7 +1117,10 @@ void handle_write_node_description(void *entity, bool entity_type, const char *r
 
     UA_LocalizedText description =  UA_LOCALIZEDTEXT(locale, description_str);
     
-    UA_StatusCode retval = UA_Server_writeDescription((UA_Server *)entity, node_id, description);
+    if(entity_type)
+        retval = UA_Client_writeDescriptionAttribute((UA_Client *)entity, node_id, &description);
+    else
+        retval = UA_Server_writeDescription((UA_Server *)entity, node_id, description);
 
     UA_NodeId_clear(&node_id);
 
@@ -1127,6 +1139,7 @@ void handle_write_node_write_mask(void *entity, bool entity_type, const char *re
 {
     int term_size;
     int term_type;
+    UA_StatusCode retval;
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 2)
@@ -1140,8 +1153,13 @@ void handle_write_node_write_mask(void *entity, bool entity_type, const char *re
         send_error_response("einval");
         return;
     }
+
+    UA_UInt32 ua_write_mask = write_mask;
     
-    UA_StatusCode retval = UA_Server_writeWriteMask((UA_Server *)entity, node_id, (UA_UInt32) write_mask);
+    if(entity_type)
+        retval = UA_Client_writeWriteMaskAttribute((UA_Client *)entity, node_id, &ua_write_mask);
+    else
+        retval = UA_Server_writeWriteMask((UA_Server *)entity, node_id, ua_write_mask);
     
     UA_NodeId_clear(&node_id);
 
@@ -1160,6 +1178,7 @@ void handle_write_node_is_abstract(void *entity, bool entity_type, const char *r
 {
     int term_size;
     int term_type;
+    UA_StatusCode retval;
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 2)
@@ -1173,8 +1192,13 @@ void handle_write_node_is_abstract(void *entity, bool entity_type, const char *r
         send_error_response("einval");
         return;
     }
+
+    UA_Boolean is_abstract_bool = is_abstract;
     
-    UA_StatusCode retval = UA_Server_writeIsAbstract((UA_Server *)entity, node_id, (UA_Boolean)is_abstract);
+    if(entity_type)
+        retval = UA_Client_writeIsAbstractAttribute((UA_Client *)entity, node_id, &is_abstract_bool);
+    else
+        retval = UA_Server_writeIsAbstract((UA_Server *)entity, node_id, is_abstract_bool);
 
     UA_NodeId_clear(&node_id);
 
@@ -1193,6 +1217,7 @@ void handle_write_node_inverse_name(void *entity, bool entity_type, const char *
 {
     int term_size;
     int term_type;
+    UA_StatusCode retval;
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 3)
@@ -1223,7 +1248,10 @@ void handle_write_node_inverse_name(void *entity, bool entity_type, const char *
 
     UA_LocalizedText inverse_name =  UA_LOCALIZEDTEXT(locale, inverse_name_str);
     
-    UA_StatusCode retval = UA_Server_writeInverseName((UA_Server *)entity, node_id, inverse_name);
+    if(entity_type)
+        retval = UA_Client_writeInverseNameAttribute((UA_Client *)entity, node_id, &inverse_name);
+    else
+        retval = UA_Server_writeInverseName((UA_Server *)entity, node_id, inverse_name);
 
     UA_NodeId_clear(&node_id);
 
@@ -1242,6 +1270,7 @@ void handle_write_node_data_type(void *entity, bool entity_type, const char *req
 {
     int term_size;
     int term_type;
+    UA_StatusCode retval;
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 2)
@@ -1250,7 +1279,10 @@ void handle_write_node_data_type(void *entity, bool entity_type, const char *req
     UA_NodeId node_id = assemble_node_id(req, req_index);
     UA_NodeId data_type_node_id = assemble_node_id(req, req_index);
 
-    UA_StatusCode retval = UA_Server_writeDataType((UA_Server *)entity, node_id, data_type_node_id);
+    if(entity_type)
+        retval = UA_Client_writeDataTypeAttribute((UA_Client *)entity, node_id, &data_type_node_id);
+    else
+        retval = UA_Server_writeDataType((UA_Server *)entity, node_id, data_type_node_id);
 
     UA_NodeId_clear(&node_id);
     UA_NodeId_clear(&data_type_node_id);
@@ -1270,6 +1302,7 @@ void handle_write_node_value_rank(void *entity, bool entity_type, const char *re
 {
     int term_size;
     int term_type;
+    UA_StatusCode retval;
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 2)
@@ -1283,8 +1316,13 @@ void handle_write_node_value_rank(void *entity, bool entity_type, const char *re
         send_error_response("einval");
         return;
     }
+
+    UA_UInt32 ua_value_rank = value_rank;
     
-    UA_StatusCode retval = UA_Server_writeValueRank((UA_Server *)entity, node_id, (UA_UInt32) value_rank);
+    if(entity_type)
+        retval = UA_Client_writeValueRankAttribute((UA_Client *)entity, node_id, &ua_value_rank);
+    else
+        retval = UA_Server_writeValueRank((UA_Server *)entity, node_id, ua_value_rank);
 
     UA_NodeId_clear(&node_id);
 
@@ -1303,6 +1341,7 @@ void handle_write_node_access_level(void *entity, bool entity_type, const char *
 {
     int term_size;
     int term_type;
+    UA_StatusCode retval;
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 2)
@@ -1316,8 +1355,13 @@ void handle_write_node_access_level(void *entity, bool entity_type, const char *
         send_error_response("einval");
         return;
     }
+
+    UA_Byte ua_access_level = access_level;
     
-    UA_StatusCode retval = UA_Server_writeAccessLevel((UA_Server *)entity, node_id, (UA_Byte) access_level);
+    if(entity_type)
+        retval = UA_Client_writeAccessLevelAttribute((UA_Client *)entity, node_id, &ua_access_level);
+    else
+        retval = UA_Server_writeAccessLevel((UA_Server *)entity, node_id, ua_access_level);
 
     UA_NodeId_clear(&node_id);
 
@@ -1336,6 +1380,7 @@ void handle_write_node_minimum_sampling_interval(void *entity, bool entity_type,
 {
     int term_size;
     int term_type;
+    UA_StatusCode retval;
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 2)
@@ -1349,8 +1394,13 @@ void handle_write_node_minimum_sampling_interval(void *entity, bool entity_type,
         send_error_response("einval");
         return;
     }
+
+    UA_Double ua_sampling_interval = sampling_interval;
     
-    UA_StatusCode retval = UA_Server_writeAccessLevel((UA_Server *)entity, node_id, (UA_Double) sampling_interval);
+    if(entity_type)
+        retval = UA_Client_writeMinimumSamplingIntervalAttribute((UA_Client *)entity, node_id, &ua_sampling_interval);
+    else
+        retval = UA_Server_writeMinimumSamplingInterval((UA_Server *)entity, node_id, ua_sampling_interval);
 
     UA_NodeId_clear(&node_id);
 
@@ -1369,6 +1419,7 @@ void handle_write_node_historizing(void *entity, bool entity_type, const char *r
 {
     int term_size;
     int term_type;
+    UA_StatusCode retval;
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 2)
@@ -1383,7 +1434,12 @@ void handle_write_node_historizing(void *entity, bool entity_type, const char *r
         return;
     }
     
-    UA_StatusCode retval = UA_Server_writeHistorizing((UA_Server *)entity, node_id, (UA_Boolean)historizing);
+    UA_Boolean ua_historizing = historizing;
+
+    if(entity_type)
+        retval = UA_Client_writeHistorizingAttribute((UA_Client *)entity, node_id, &ua_historizing);
+    else
+        retval = UA_Server_writeHistorizing((UA_Server *)entity, node_id, ua_historizing);
 
     UA_NodeId_clear(&node_id);
 
@@ -1402,6 +1458,7 @@ void handle_write_node_executable(void *entity, bool entity_type, const char *re
 {
     int term_size;
     int term_type;
+    UA_StatusCode retval;
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 2)
@@ -1416,7 +1473,12 @@ void handle_write_node_executable(void *entity, bool entity_type, const char *re
         return;
     }
     
-    UA_StatusCode retval = UA_Server_writeHistorizing((UA_Server *)entity, node_id, (UA_Boolean)executable);
+    UA_Boolean ua_executable = executable;
+
+    if(entity_type)
+        retval = UA_Client_writeHistorizingAttribute((UA_Client *)entity, node_id, &ua_executable);
+    else
+        retval = UA_Server_writeHistorizing((UA_Server *)entity, node_id, ua_executable);
 
     UA_NodeId_clear(&node_id);
 
@@ -1440,6 +1502,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
     UA_NodeId node_id_arg_2;
     UA_ExpandedNodeId expanded_node_id_arg_1;
     UA_QualifiedName qualified_name;
+    UA_StatusCode retval;
 
     char *arg1 = (char *)malloc(0);
     char *arg2 = (char *)malloc(0);
@@ -1862,13 +1925,15 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
-
         default:
             errx(EXIT_FAILURE, ":handle_write_node_value invalid data_type = %ld", data_type);
         break;
     }
     
-    UA_StatusCode retval = UA_Server_writeValue((UA_Server *)entity, node_id, value);
+    if(entity_type)
+        retval = UA_Client_writeValueAttribute((UA_Client *)entity, node_id, &value);
+    else
+        retval = UA_Server_writeValue((UA_Server *)entity, node_id, value);
 
     free(arg1);
     free(arg2);
@@ -1877,7 +1942,6 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
     UA_NodeId_clear(&node_id_arg_2);
     if(data_type == UA_TYPES_EXPANDEDNODEID)
         UA_ExpandedNodeId_clear(&expanded_node_id_arg_1);
-    
     if(data_type == UA_TYPES_QUALIFIEDNAME)
         UA_QualifiedName_clear(&qualified_name);
 
