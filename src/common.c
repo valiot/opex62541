@@ -1050,7 +1050,7 @@ void handle_write_node_display_name(void *entity, bool entity_type, const char *
     if (ei_decode_binary(req, req_index, locale, &binary_len) < 0) 
         errx(EXIT_FAILURE, "Invalid locale");
 
-    locale[binary_len + 1] = '\0';
+    locale[binary_len] = '\0';
 
     // name_str
     if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
@@ -1060,7 +1060,7 @@ void handle_write_node_display_name(void *entity, bool entity_type, const char *
     if (ei_decode_binary(req, req_index, name_str, &binary_len) < 0) 
         errx(EXIT_FAILURE, "Invalid name_str");
 
-    name_str[binary_len + 1] = '\0';
+    name_str[binary_len] = '\0';
 
     UA_LocalizedText display_name =  UA_LOCALIZEDTEXT(locale, name_str);
     
@@ -1103,7 +1103,7 @@ void handle_write_node_description(void *entity, bool entity_type, const char *r
     if (ei_decode_binary(req, req_index, locale, &binary_len) < 0) 
         errx(EXIT_FAILURE, "Invalid locale");
 
-    locale[binary_len + 1] = '\0';
+    locale[binary_len] = '\0';
 
     // description_str
     if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
@@ -1113,7 +1113,7 @@ void handle_write_node_description(void *entity, bool entity_type, const char *r
     if (ei_decode_binary(req, req_index, description_str, &binary_len) < 0) 
         errx(EXIT_FAILURE, "Invalid description_str");
 
-    description_str[binary_len + 1] = '\0';
+    description_str[binary_len] = '\0';
 
     UA_LocalizedText description =  UA_LOCALIZEDTEXT(locale, description_str);
     
@@ -1234,7 +1234,7 @@ void handle_write_node_inverse_name(void *entity, bool entity_type, const char *
     if (ei_decode_binary(req, req_index, locale, &binary_len) < 0) 
         errx(EXIT_FAILURE, "Invalid locale");
 
-    locale[binary_len + 1] = '\0';
+    locale[binary_len] = '\0';
 
     // inverse_name_str
     if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
@@ -1244,7 +1244,7 @@ void handle_write_node_inverse_name(void *entity, bool entity_type, const char *
     if (ei_decode_binary(req, req_index, inverse_name_str, &binary_len) < 0) 
         errx(EXIT_FAILURE, "Invalid inverse_name_str");
 
-    inverse_name_str[binary_len + 1] = '\0';
+    inverse_name_str[binary_len] = '\0';
 
     UA_LocalizedText inverse_name =  UA_LOCALIZEDTEXT(locale, inverse_name_str);
     
