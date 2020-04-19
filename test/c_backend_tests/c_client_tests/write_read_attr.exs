@@ -123,7 +123,7 @@ defmodule CClientWriteAttrTest do
     %{port: port, ns_index: ns_index}
   end
 
-  test "Write Attibute Value", %{port: port, ns_index: ns_index} do
+  test "Write and Read Attribute Value", %{port: port, ns_index: ns_index} do
     msg = {:set_client_config, %{}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
@@ -177,7 +177,26 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
-    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 1, 20}}
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, true}
+
+    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 1, 21}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =
@@ -196,7 +215,26 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
-    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 2, 20}}
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, 21}
+
+    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 2, 22}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =
@@ -215,7 +253,26 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
-    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 3, 20}}
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, 22}
+
+    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 3, 23}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =
@@ -234,7 +291,26 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
-    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 4, 20}}
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, 23}
+
+    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 4, 24}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =
@@ -253,7 +329,26 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
-    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 5, 20}}
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, 24}
+
+    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 5, 25}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =
@@ -272,7 +367,26 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
-    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 6, 20}}
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, 25}
+
+    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 6, 26}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =
@@ -291,7 +405,26 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
-    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 7, 20}}
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, 26}
+
+    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 7, 27}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =
@@ -310,7 +443,26 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
-    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 8, 20}}
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, 27}
+
+    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 8, 28}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =
@@ -328,6 +480,25 @@ defmodule CClientWriteAttrTest do
       end
 
     assert c_response == :ok
+
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, 28}
 
     msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 9, 21.5}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
@@ -348,7 +519,27 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
-    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 10, 21.5}}
+
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, 21.5}
+
+    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 10, 22.5}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =
@@ -366,6 +557,25 @@ defmodule CClientWriteAttrTest do
       end
 
     assert c_response == :ok
+
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, 22.5}
 
     msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 11, "Hola"}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
@@ -386,6 +596,25 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, "Hola"}
+
     msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 12, 132304152032503440}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
@@ -404,6 +633,25 @@ defmodule CClientWriteAttrTest do
       end
 
     assert c_response == :ok
+
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, 132304152032503440}
 
     msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 13, {103,103,103, "holahola"}}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
@@ -424,6 +672,24 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, {103,103,103, "holahola"}}
 
     msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 14, "holahola"}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
@@ -443,6 +709,25 @@ defmodule CClientWriteAttrTest do
       end
 
     assert c_response == :ok
+
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, "holahola"}
 
     xml = "<note>\n<to>Tove</to>\n<from>Jani</from>\n<heading>Reminder</heading>\n<body>Don't forget me this weekend!</body>\n</note>\n"
 
@@ -465,6 +750,25 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, xml}
+
     msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 16, {1, ns_index, "R1_TS1_Temperature"}}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
@@ -483,6 +787,25 @@ defmodule CClientWriteAttrTest do
       end
 
     assert c_response == :ok
+
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, {2, "string", "R1_TS1_Temperature"}}
 
     msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 17, {1, ns_index, "R1_TS1_Temperature"}}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
@@ -503,6 +826,25 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, {2, "string", "R1_TS1_Temperature", "", 0}}
+
     msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 18, 0}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
@@ -521,6 +863,25 @@ defmodule CClientWriteAttrTest do
       end
 
     assert c_response == :ok
+
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, "Good"}
 
     msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 19, {ns_index, "TEMMPERATURE"}}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
@@ -541,6 +902,25 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, {ns_index, "TEMMPERATURE"}}
+
     msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 20, {"en-US", "A String"}}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
@@ -559,6 +939,25 @@ defmodule CClientWriteAttrTest do
       end
 
     assert c_response == :ok
+
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, {"en-US", "A String"}}
 
     msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 25, {{1, ns_index, "R1_TS1_Temperature"}, {1, ns_index, "R1_TS1_Temperature"}}}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
@@ -579,6 +978,25 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, {{2, "string", "R1_TS1_Temperature"}, {2, "string", "R1_TS1_Temperature"}}}
+
     msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 26, "10/02/20"}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
@@ -598,7 +1016,26 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
-    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 28, 21212321321}}
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, "10/02/20"}
+
+    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 28, 0x7fffffff}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =
@@ -616,6 +1053,25 @@ defmodule CClientWriteAttrTest do
       end
 
     assert c_response == :ok
+
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, 0x7fffffff}
 
     msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 29, {103.1, 103.0}}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
@@ -636,7 +1092,26 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
-    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 30, 21212321321}}
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, {103.0999984741211, 103.0}}
+
+    msg = {:write_node_value, {{1, ns_index, "R1_TS1_Temperature"}, 30, 0x7fffffff}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =
@@ -655,10 +1130,27 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
-    # Process.sleep(5000000)
+    msg = {:read_node_value, {1, ns_index, "R1_TS1_Temperature"}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, 0x7fffffff}
   end
 
-  test "Write Attibutes", %{port: port, ns_index: _ns_index} do
+  test "Write and Read Attibutes", %{port: port, ns_index: _ns_index} do
     msg = {:set_client_config, %{}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
@@ -694,6 +1186,25 @@ defmodule CClientWriteAttrTest do
       end
 
 
+    msg = {:read_node_id, {0, 1, 10001}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, {1, "integer", 10001}}
+
     msg = {:write_node_browse_name, {{0, 1, 10001}, {1, "Var_N"}}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
@@ -712,6 +1223,25 @@ defmodule CClientWriteAttrTest do
       end
 
     assert c_response == :ok
+
+    msg = {:read_node_browse_name, {0, 1, 10001}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, {1, "Var_N"}}
 
     msg = {:write_node_display_name, {{0, 1, 10001}, "en-US", "var"}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
@@ -732,6 +1262,25 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
+    msg = {:read_node_display_name, {0, 1, 10001}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, {"en-US", "var"}}
+
     msg = {:write_node_description, {{0, 1, 10001}, "en-US", "variable"}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
@@ -750,6 +1299,25 @@ defmodule CClientWriteAttrTest do
       end
 
     assert c_response == :ok
+
+    msg = {:read_node_description, {0, 1, 10001}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, {"en-US", "variable"}}
 
     msg = {:write_node_write_mask, {{0, 1, 10001}, 0x3BFFFF}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
@@ -770,6 +1338,25 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
+    msg = {:read_node_write_mask, {0, 1, 10001}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, 0x3BFFFF}
+
     msg = {:write_node_is_abstract, {{0, 1, 10000}, true}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
@@ -788,6 +1375,26 @@ defmodule CClientWriteAttrTest do
       end
 
     assert c_response == :ok
+
+    msg = {:read_node_is_abstract, {0, 1, 10000}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, true}
+
 
     msg = {:write_node_data_type, {{0, 1, 10001}, {0, 0, 63}}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
@@ -808,6 +1415,25 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
+    msg = {:read_node_data_type, {0, 1, 10001}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, {0, "integer", 63}}
+
     msg = {:write_node_value_rank, {{0, 1, 10001}, 3}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
@@ -826,6 +1452,25 @@ defmodule CClientWriteAttrTest do
       end
 
     assert c_response == :ok
+
+    msg = {:read_node_value_rank, {0, 1, 10001}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, 3}
 
     msg = {:write_node_access_level, {{0, 1, 10001}, 3}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
@@ -846,6 +1491,26 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
+    msg = {:read_node_access_level, {0, 1, 10001}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, 3}
+
+
     msg = {:write_node_minimum_sampling_interval, {{0, 1, 10001}, 100.0}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
@@ -864,6 +1529,25 @@ defmodule CClientWriteAttrTest do
       end
 
     assert c_response == :ok
+
+    msg = {:read_node_minimum_sampling_interval, {0, 1, 10001}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, 100.0}
 
     msg = {:write_node_historizing, {{0, 1, 10001}, true}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
@@ -884,7 +1568,26 @@ defmodule CClientWriteAttrTest do
 
     assert c_response == :ok
 
-    msg = {:write_node_executable, {{0, 1, 10001}, true}}
+    msg = {:read_node_historizing, {0, 1, 10001}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:ok, true}
+
+    msg = {:write_node_executable, {{0, 1, 10001}, false}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =
@@ -902,6 +1605,27 @@ defmodule CClientWriteAttrTest do
       end
 
     assert c_response == :ok
+
+    # Must be a MethodNode.
+
+    msg = {:read_node_executable, {0, 1, 10001}}
+    send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:error, "BadAttributeIdInvalid"}
   end
 end
 

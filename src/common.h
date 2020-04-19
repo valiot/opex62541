@@ -76,6 +76,7 @@ void handle_add_data_type_node(void *entity, bool entity_type, const char *req, 
 void handle_add_reference(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_delete_reference(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_delete_node(void *entity, bool entity_type, const char *req, int *req_index);
+
 void handle_write_node_browse_name(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_write_node_display_name(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_write_node_description(void *entity, bool entity_type, const char *req, int *req_index);
@@ -89,3 +90,17 @@ void handle_write_node_minimum_sampling_interval(void *entity, bool entity_type,
 void handle_write_node_historizing(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_write_node_executable(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_write_node_value(void *entity, bool entity_type, const char *req, int *req_index);
+
+void handle_read_node_id(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_read_node_browse_name(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_read_node_display_name(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_read_node_description(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_read_node_write_mask(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_read_node_is_abstract(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_read_node_data_type(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_read_node_value_rank(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_read_node_access_level(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_read_node_minimum_sampling_interval(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_read_node_historizing(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_read_node_executable(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_read_node_value(void *entity, bool entity_type, const char *req, int *req_index);
