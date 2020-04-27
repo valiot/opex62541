@@ -2547,6 +2547,8 @@ void handle_read_node_value(void *entity, bool entity_type, const char *req, int
         send_data_response(value->data, 22, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_ELEMENTOPERAND])
         send_data_response(value->data, 2, 0);
+    else 
+        send_error_response("eagain");
 
     UA_Variant_clear(value);
 }
