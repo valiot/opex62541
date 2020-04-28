@@ -1674,11 +1674,15 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
     UA_NodeId node_id_arg_2;
     UA_ExpandedNodeId expanded_node_id_arg_1;
     UA_QualifiedName qualified_name;
-    UA_StatusCode retval;
+    UA_StatusCode retval = 0;
 
     char *arg1 = (char *)malloc(0);
     char *arg2 = (char *)malloc(0);
 
+    UA_NodeId_init(&node_id_arg_1);
+    UA_NodeId_init(&node_id_arg_2);
+
+    UA_ExpandedNodeId_init(&expanded_node_id_arg_1);
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 3)
@@ -2106,12 +2110,17 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         retval = UA_Client_writeValueAttribute((UA_Client *)entity, node_id, &value);
     else
         retval = UA_Server_writeValue((UA_Server *)entity, node_id, value);
-
+    
     free(arg1);
     free(arg2);
     UA_NodeId_clear(&node_id);
+    
     UA_NodeId_clear(&node_id_arg_1);
     UA_NodeId_clear(&node_id_arg_2);
+    // if (data_type == 1)
+    // {
+    //     errx(EXIT_FAILURE, "aqui");
+    // }
     if(data_type == UA_TYPES_EXPANDEDNODEID)
         UA_ExpandedNodeId_clear(&expanded_node_id_arg_1);
     if(data_type == UA_TYPES_QUALIFIEDNAME)
@@ -2568,10 +2577,6 @@ void handle_read_node_value(void *entity, bool entity_type, const char *req, int
 
     // TODO: UA_TYPES_UADPNETWORKMESSAGECONTENTMASK
 
-    // TODO: UA_TYPES_UADPNETWORKMESSAGECONTENTMASK
-
-    else if(value->type == &UA_TYPES[UA_TYPES_SEMANTICCHANGESTRUCTUREDATATYPE])
-        send_data_response(value->data, 2, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_XVTYPE])
         send_data_response(value->data, 22, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_ELEMENTOPERAND])
@@ -2580,4 +2585,168 @@ void handle_read_node_value(void *entity, bool entity_type, const char *req, int
         send_error_response("eagain");
 
     UA_Variant_clear(value);
+}
+
+/* 
+ *  Read 'value' of a node in the server, this function may be faster than `read_node_value`, 
+ *  however `read_node_value` is safer.
+ */
+void handle_read_node_value_by_data_type(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_Variant *value = UA_Variant_new();
+    UA_StatusCode retval;
+    
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":handle_read_node_value_by_data_type requires a 2-tuple, term_size = %d", term_size);
+
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    unsigned long data_type;
+    if (ei_decode_ulong(req, req_index, &data_type) < 0) {
+        send_error_response("einval");
+        return;
+    }
+   
+    if(entity_type)
+        retval = UA_Client_readValueAttribute((UA_Client *)entity, node_id, value);
+    else
+        retval = UA_Server_readValue((UA_Server *)entity, node_id, value); 
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        UA_Variant_clear(value);
+        send_opex_response(retval);
+        return;
+    }
+
+    if(UA_Variant_isEmpty(value) && value->type == &UA_TYPES[data_type]) {
+        UA_Variant_clear(value);
+        send_error_response("nil");
+        return;
+    }
+
+    switch (data_type)
+    {
+        case UA_TYPES_BOOLEAN:
+            send_data_response(value->data, 0, 0);
+        break;
+
+        case UA_TYPES_SBYTE:
+            send_data_response(value->data, 1, 0);
+        break;
+
+        case UA_TYPES_BYTE:
+            send_data_response(value->data, 2, 0);
+        break;
+
+        case UA_TYPES_INT16:
+            send_data_response(value->data, 1, 0);
+        break;
+        
+        case UA_TYPES_UINT16:
+            send_data_response(value->data, 2, 0);
+        break;
+
+        case UA_TYPES_INT32:
+            send_data_response(value->data, 1, 0);
+        break;
+
+        case UA_TYPES_UINT32:
+            send_data_response(value->data, 2, 0);
+        break;
+
+        case UA_TYPES_INT64:
+            send_data_response(value->data, 15, 0);
+        break;
+
+        case UA_TYPES_UINT64:
+            send_data_response(value->data, 16, 0);
+        break;
+
+        case UA_TYPES_FLOAT:
+            send_data_response(value->data, 17, 0);
+        break;
+
+        case UA_TYPES_DOUBLE:
+            send_data_response(value->data, 4, 0);
+        break;
+
+        case UA_TYPES_STRING:
+            send_data_response((*(UA_String *)value->data).data, 5, (*(UA_String *)value->data).length);
+        break;
+
+        case UA_TYPES_DATETIME:
+            send_data_response(value->data, 15, 0);
+        break;
+
+        case UA_TYPES_GUID:
+            send_data_response(value->data, 18, 0);
+        break;
+
+        case UA_TYPES_BYTESTRING:
+            send_data_response((*(UA_ByteString *)value->data).data, 5, (*(UA_ByteString *)value->data).length);
+        break;
+
+        case UA_TYPES_XMLELEMENT:
+            send_data_response((*(UA_XmlElement *)value->data).data, 5, (*(UA_XmlElement *)value->data).length);
+        break;
+
+        case UA_TYPES_NODEID:
+            send_data_response(value->data, 12, 0);
+        break;
+
+        case UA_TYPES_EXPANDEDNODEID:
+            send_data_response(value->data, 19, 0);
+        break;
+
+        case UA_TYPES_STATUSCODE:
+            send_data_response(value->data, 20, 0);
+        break;
+
+        case UA_TYPES_QUALIFIEDNAME:
+            send_data_response(value->data, 13, 0);
+        break;
+
+        case UA_TYPES_LOCALIZEDTEXT:
+            send_data_response(value->data, 14, 0);
+        break;
+
+        // TODO: UA_TYPES_EXTENSIONOBJECT
+    
+        // TODO: UA_TYPES_DATAVALUE
+
+        // TODO: UA_TYPES_VARIANT
+
+        // TODO: UA_TYPES_DIAGNOSTICINFO
+
+        case UA_TYPES_SEMANTICCHANGESTRUCTUREDATATYPE:
+            send_data_response(value->data, 21, 0);
+        break;
+
+        case UA_TYPES_TIMESTRING:
+            send_data_response((*(UA_TimeString *)value->data).data, 5, (*(UA_TimeString *)value->data).length);
+        break;
+
+        // TODO: UA_TYPES_VIEWATTRIBUTES
+
+        // TODO: UA_TYPES_UADPNETWORKMESSAGECONTENTMASK
+
+        case UA_TYPES_XVTYPE:
+            send_data_response(value->data, 22, 0);
+        break;
+
+        case UA_TYPES_ELEMENTOPERAND:
+            send_data_response(value->data, 2, 0);
+        break;
+    
+        default:
+            send_error_response("eagain");
+        break;
+    }
+
+    //UA_Variant_clear(value);
 }

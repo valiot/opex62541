@@ -240,6 +240,14 @@ defmodule OpcUA.Common do
         GenServer.call(pid, {:read_node_value, node_id})
       end
 
+      @doc """
+      Reads 'Value' attribute (matching data type) of a node in the server.
+      """
+      @spec read_node_value_by_data_type(GenServer.server(), %NodeId{}, integer()) :: {:ok, term()} | {:error, binary()} | {:error, :einval}
+      def read_node_value_by_data_type(pid, node_id, data_type) when is_integer(data_type) do
+        GenServer.call(pid, {:read_node_value_by_data_type, node_id, data_type})
+      end
+
       # Write nodes Attributes handlers
 
       def handle_call({:write_node_browse_name, node_id, browse_name}, {_from, _}, state) do
@@ -400,6 +408,13 @@ defmodule OpcUA.Common do
       def handle_call({:read_node_value, node_id}, {_from, _}, state) do
         c_args = to_c(node_id)
         {new_state, value_response} = call_port(state, :read_node_value, c_args)
+        response = parse_value(value_response)
+        {:reply, response, new_state}
+      end
+
+      def handle_call({:read_node_value_by_data_type, node_id, data_type}, {_from, _}, state) do
+        c_args = {to_c(node_id), data_type}
+        {new_state, value_response} = call_port(state, :read_node_value_by_data_type, c_args)
         response = parse_value(value_response)
         {:reply, response, new_state}
       end

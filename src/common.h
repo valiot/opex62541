@@ -105,3 +105,4 @@ void handle_read_node_minimum_sampling_interval(void *entity, bool entity_type, 
 void handle_read_node_historizing(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_read_node_executable(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_read_node_value(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_read_node_value_by_data_type(void *entity, bool entity_type, const char *req, int *req_index);

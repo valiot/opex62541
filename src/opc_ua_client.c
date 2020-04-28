@@ -434,6 +434,7 @@ static struct request_handler request_handlers[] = {
     // TODO: Add UA_Server_writeArrayDimensions, inverse name (read) 
     {"write_node_value", handle_write_node_value},
     {"read_node_value", handle_read_node_value},
+    {"read_node_value_by_data_type", handle_read_node_value_by_data_type},
     {"write_node_browse_name", handle_write_node_browse_name},
     {"write_node_display_name", handle_write_node_display_name},
     {"write_node_description", handle_write_node_description},
