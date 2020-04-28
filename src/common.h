@@ -97,6 +97,7 @@ void handle_read_node_display_name(void *entity, bool entity_type, const char *r
 void handle_read_node_description(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_read_node_write_mask(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_read_node_is_abstract(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_read_node_inverse_name(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_read_node_data_type(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_read_node_value_rank(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_read_node_access_level(void *entity, bool entity_type, const char *req, int *req_index);

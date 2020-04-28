@@ -2290,6 +2290,35 @@ void handle_read_node_is_abstract(void *entity, bool entity_type, const char *re
 }
 
 /* 
+ *  Reads 'Inverse Name' Attribute from a node. 
+ */
+void handle_read_node_inverse_name(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_StatusCode retval;
+    UA_LocalizedText *node_inverse_name;
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    if(entity_type)
+        retval = UA_Client_readInverseNameAttribute((UA_Client *)entity, node_id, node_inverse_name);
+    else
+        retval = UA_Server_readInverseName((UA_Server *)entity, node_id, node_inverse_name);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        UA_LocalizedText_clear(node_inverse_name);
+        send_opex_response(retval);
+        return;
+    }
+
+    send_data_response(node_inverse_name, 14, 0);
+
+    UA_LocalizedText_clear(node_inverse_name);
+}
+
+/* 
  *  Reads 'data_type' Attribute from a node. 
  */
 void handle_read_node_data_type(void *entity, bool entity_type, const char *req, int *req_index)

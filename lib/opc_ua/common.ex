@@ -4,7 +4,7 @@ defmodule OpcUA.Common do
   """
 
   alias OpcUA.QualifiedName
-  alias OpcUA.NodeId
+  alias OpcUA.{ExpandedNodeId, NodeId, QualifiedName}
 
   defmacro __using__(_opts) do
 
@@ -399,7 +399,8 @@ defmodule OpcUA.Common do
 
       def handle_call({:read_node_value, node_id}, {_from, _}, state) do
         c_args = to_c(node_id)
-        {new_state, response} = call_port(state, :read_node_value, c_args)
+        {new_state, value_response} = call_port(state, :read_node_value, c_args)
+        response = parse_value(value_response)
         {:reply, response, new_state}
       end
 
@@ -463,6 +464,20 @@ defmodule OpcUA.Common do
 
       defp parse_data_type({:ok, {ns_index, type, name}}), do: {:ok, NodeId.new(ns_index: ns_index, identifier_type: type, identifier: name)}
       defp parse_data_type(response), do: response
+
+      defp parse_value({:ok, {ns_index, type, name, name_space_uri, server_index}}), do:
+        {:ok, ExpandedNodeId.new(node_id: NodeId.new(ns_index: ns_index, identifier_type: type, identifier: name), name_space_uri: name_space_uri, server_index: server_index)}
+      defp parse_value({:ok, {ns_index, type, name}}), do: {:ok, NodeId.new(ns_index: ns_index, identifier_type: type, identifier: name)}
+      defp parse_value({:ok, {{ns_index1, type1, name1}, {ns_index2, type2, name2}}}), do:
+        {
+          :ok,
+          {
+            NodeId.new(ns_index: ns_index1, identifier_type: type1, identifier: name1),
+            NodeId.new(ns_index: ns_index2, identifier_type: type2, identifier: name2)
+          }
+        }
+      defp parse_value({:ok, {ns_index, name}}) when is_integer(ns_index), do: {:ok, QualifiedName.new(ns_index: ns_index, name: name)}
+      defp parse_value(response), do: response
     end
   end
 end

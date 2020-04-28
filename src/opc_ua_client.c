@@ -452,6 +452,7 @@ static struct request_handler request_handlers[] = {
     {"read_node_description", handle_read_node_description},
     {"read_node_write_mask", handle_read_node_write_mask},
     {"read_node_is_abstract", handle_read_node_is_abstract},
+    {"read_node_inverse_name", handle_read_node_inverse_name},
     {"read_node_data_type", handle_read_node_data_type},
     {"read_node_value_rank", handle_read_node_value_rank},
     {"read_node_access_level", handle_read_node_access_level},

@@ -17,7 +17,7 @@ defmodule OpcUA.NodeId do
   @doc """
   Creates an structure for a node in the address space of an OPC UA Server.
   """
-  @spec new(GenServer.server()) :: %NodeId{}
+  @spec new(list()) :: %NodeId{}
   def new(ns_index: ns_index, identifier_type: id_type, identifier: identifier) when is_integer(ns_index) and id_type in @identifier_types do
     new_node_id(ns_index, id_type, identifier)
   end
@@ -36,4 +36,25 @@ defmodule OpcUA.NodeId do
     do: %NodeId{ns_index: ns_index, identifier_type: 3, identifier: identifier}
 
   defp new_node_id(_ns_index, _id_type, _identifier), do: raise("Identifier type does not match with identifier data_type")
+end
+
+defmodule OpcUA.ExpandedNodeId do
+  @moduledoc """
+  A NodeId that allows the namespace URI to be specified instead of an index.
+  """
+  alias OpcUA.{ExpandedNodeId, NodeId}
+  @enforce_keys [:node_id, :name_space_uri, :server_index]
+
+  defstruct node_id: nil,
+            name_space_uri: nil,
+            server_index: nil
+
+  @doc """
+  Creates an structure for an expanded node in the address space of an OPC UA Server.
+  """
+  @spec new(list()) :: %ExpandedNodeId{}
+  def new(node_id: %NodeId{} = node_id, name_space_uri: name_space_uri, server_index: server_index) when is_binary(name_space_uri) and is_integer(server_index) do
+    %ExpandedNodeId{node_id: node_id, name_space_uri: name_space_uri, server_index: server_index}
+  end
+  def new(_invalid_data), do: raise("Invalid Namespace index or identifier type")
 end

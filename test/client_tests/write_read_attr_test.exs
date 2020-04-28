@@ -2,7 +2,7 @@ defmodule CClientWriteAttrTest do
   use ExUnit.Case, async: false
   doctest Opex62541
 
-  alias OpcUA.{Client, NodeId, Server, QualifiedName}
+  alias OpcUA.{Client, ExpandedNodeId, NodeId, Server, QualifiedName}
 
   setup do
     {:ok, s_pid} = Server.start_link()
@@ -141,8 +141,9 @@ defmodule CClientWriteAttrTest do
 
     # this attributes is only for reference type node
     assert {:error, "BadNodeClassInvalid"} == Client.write_node_inverse_name(c_pid, object_type_nid, "en-US", "varis")
-    # c_response = Client.read_node_inverse_name(c_pid, data_type_nid)
-    # assert c_response == {:ok, %NodeId{identifier: 63, identifier_type: 0, ns_index: 0}}
+    reference_nid = NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 51)
+    c_response = Client.read_node_inverse_name(c_pid, reference_nid)
+    assert c_response == {:ok, {"", "ToTransition"}}
 
     assert :ok == Client.write_node_value_rank(c_pid, node_id, 3)
     c_response = Client.read_node_value_rank(c_pid, node_id)
@@ -178,55 +179,103 @@ defmodule CClientWriteAttrTest do
     assert c_response == {:ok, 21}
 
     assert :ok == Client.write_node_value(c_pid, node_id, 2, 22)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, 22}
 
     assert :ok == Client.write_node_value(c_pid, node_id, 3, 23)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, 23}
 
     assert :ok == Client.write_node_value(c_pid, node_id, 4, 24)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, 24}
 
     assert :ok == Client.write_node_value(c_pid, node_id, 5, 25)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, 25}
 
     assert :ok == Client.write_node_value(c_pid, node_id, 6, 26)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, 26}
 
     assert :ok == Client.write_node_value(c_pid, node_id, 7, 27)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, 27}
 
     assert :ok == Client.write_node_value(c_pid, node_id, 8, 28)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, 28}
 
-    assert :ok == Client.write_node_value(c_pid, node_id, 9, 103.103)
+    assert :ok == Client.write_node_value(c_pid, node_id, 9, 103.0)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, 103.0}
 
     assert :ok == Client.write_node_value(c_pid, node_id, 10, 103.103)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, 103.103}
 
     assert :ok == Client.write_node_value(c_pid, node_id, 11, "alde103")
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, "alde103"}
 
     assert :ok == Client.write_node_value(c_pid, node_id, 12, 132304152032503440)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, 132304152032503440}
 
     assert :ok == Client.write_node_value(c_pid, node_id, 13, {103,103,103, "holahola"})
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, {103,103,103, "holahola"}}
 
     assert :ok == Client.write_node_value(c_pid, node_id, 14, "holahola")
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, "holahola"}
 
     xml = "<note>\n<to>Tove</to>\n<from>Jani</from>\n<heading>Reminder</heading>\n<body>Don't forget me this weekend!</body>\n</note>\n"
     assert :ok == Client.write_node_value(c_pid, node_id, 15, xml)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, xml}
 
     node_id_arg = NodeId.new(ns_index: ns_index, identifier_type: "string", identifier: "R1_TS1_Temperature")
     assert :ok == Client.write_node_value(c_pid, node_id, 16, node_id_arg)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, node_id_arg}
 
     assert :ok == Client.write_node_value(c_pid, node_id, 17, node_id_arg)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, ExpandedNodeId.new(node_id: node_id_arg, name_space_uri: "", server_index: 0)}
 
     assert :ok == Client.write_node_value(c_pid, node_id, 18, 0)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, "Good"}
 
     qualified_name = QualifiedName.new(ns_index: 1, name: "TEMP")
     assert :ok == Client.write_node_value(c_pid, node_id, 19, qualified_name)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, qualified_name}
 
     assert :ok == Client.write_node_value(c_pid, node_id, 20, {"en-US", "A String"})
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, {"en-US", "A String"}}
 
     assert :ok == Client.write_node_value(c_pid, node_id, 25, {node_id_arg, node_id_arg})
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, {node_id_arg, node_id_arg}}
 
     assert :ok == Client.write_node_value(c_pid, node_id, 26, "10/02/20")
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, "10/02/20"}
 
     assert :ok == Client.write_node_value(c_pid, node_id, 28, 0x7fffffff)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, 0x7fffffff}
 
     assert :ok == Client.write_node_value(c_pid, node_id, 29, {103.1, 103.0})
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, {103.0999984741211, 103.0}}
 
     assert :ok == Client.write_node_value(c_pid, node_id, 30, 0x7fffffff)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, 0x7fffffff}
   end
 end
 
