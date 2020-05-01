@@ -643,13 +643,115 @@ void encode_xv_type(char *resp, int *resp_index, void *data)
     ei_encode_double(resp, resp_index, (double) value);    
     ei_encode_double(resp, resp_index, ((UA_XVType *)data)->x);
 }
+
+void encode_data_response(char *resp, int *resp_index, void *data, int data_type, int data_len)
+{
+    switch(data_type)
+    {
+        case 0: //UA_Boolean
+            ei_encode_boolean(resp, resp_index, *(UA_Boolean *)data);
+        break;
+
+        case 1: //signed (long)
+            ei_encode_long(resp, resp_index,*(int32_t *)data);
+        break;
+
+        case 2: //unsigned (long)
+            ei_encode_ulong(resp, resp_index,*(uint32_t *)data);
+        break;
+
+        case 3: //strings
+            ei_encode_string(resp, resp_index, data);
+        break;
+
+        case 4: //doubles
+            ei_encode_double(resp, resp_index, *(double *)data);
+        break;
+
+        case 5: //arrays (byte type)
+            ei_encode_binary(resp, resp_index, data, data_len);
+        break;
+
+        case 6: //atom
+            ei_encode_atom(resp, resp_index, data);
+        break;
+
+        case 7: //UA_ClientConfig
+            encode_client_config(resp, resp_index, data);
+        break;
+
+        case 8: //UA_ServerOnNetwork
+            encode_server_on_the_network_struct(resp, resp_index, data, data_len);
+        break;
+
+        case 9: //UA_ApplicationDescription
+            encode_application_description_struct(resp, resp_index, data, data_len);
+        break;
+
+        case 10: //UA_EndpointDescription
+            encode_endpoint_description_struct(resp, resp_index, data, data_len);
+        break;
+
+        case 11: //UA_ServerConfig
+            encode_server_config(resp, resp_index, data);
+        break;
+
+        case 12: //UA_NodeId
+            encode_node_id(resp, resp_index, data);
+        break;
+
+        case 13: //UA_QualifiedName
+            encode_qualified_name(resp, resp_index, data);
+        break;
+
+        case 14: //UA_LocalizedText
+            encode_localized_text(resp, resp_index, data);
+        break;
+
+        case 15: //UA_INT64
+            ei_encode_longlong(resp, resp_index,*(int64_t *)data);
+        break;
+
+        case 16: //UA_UINT64
+            ei_encode_ulonglong(resp, resp_index,*(uint64_t *)data);
+        break;
+
+        case 17: //UA_Float
+            encode_ua_float(resp, resp_index, data);
+        break;
+
+        case 18: //UA_guid
+            encode_ua_guid(resp, resp_index, data);
+        break;
+
+        case 19: //UA_ExpandedNodeId
+            encode_expanded_node_id(resp, resp_index, data);
+        break;
+
+        case 20: //UA_StatusCode
+            encode_status_code(resp, resp_index, data);
+        break;
+
+        case 21: //UA_StatusCode
+            encode_semantic_change_structure_data_type(resp, resp_index, data);
+        break;
+
+        case 22: //UA_XVType
+            encode_xv_type(resp, resp_index, data);
+        break;
+
+        default:
+            errx(EXIT_FAILURE, "data_type error");
+        break;
+    }
+}
+
 /**
  * @brief Send data back to Elixir in form of {:ok, data}
  */
 void send_data_response(void *data, int data_type, int data_len)
 {
     char resp[1024];
-    char version[5];
     char r_len = 1;
     long i_struct;
     int resp_index = sizeof(uint16_t); // Space for payload size
@@ -658,104 +760,7 @@ void send_data_response(void *data, int data_type, int data_len)
     ei_encode_tuple_header(resp, &resp_index, 2);
     ei_encode_atom(resp, &resp_index, "ok");
 
-    switch(data_type)
-    {
-        case 0: //UA_Boolean
-            ei_encode_boolean(resp, &resp_index, *(UA_Boolean *)data);
-        break;
-
-        case 1: //signed (long)
-            ei_encode_long(resp, &resp_index,*(int32_t *)data);
-        break;
-
-        case 2: //unsigned (long)
-            ei_encode_ulong(resp, &resp_index,*(uint32_t *)data);
-        break;
-
-        case 3: //strings
-            ei_encode_string(resp, &resp_index, data);
-        break;
-
-        case 4: //doubles
-            ei_encode_double(resp, &resp_index, *(double *)data);
-        break;
-
-        case 5: //arrays (byte type)
-            ei_encode_binary(resp, &resp_index, data, data_len);
-        break;
-
-        case 6: //atom
-            ei_encode_atom(resp, &resp_index, data);
-        break;
-
-        case 7: //UA_ClientConfig
-            encode_client_config(resp, &resp_index, data);
-        break;
-
-        case 8: //UA_ServerOnNetwork
-            encode_server_on_the_network_struct(resp, &resp_index, data, data_len);
-        break;
-
-        case 9: //UA_ApplicationDescription
-            encode_application_description_struct(resp, &resp_index, data, data_len);
-        break;
-
-        case 10: //UA_EndpointDescription
-            encode_endpoint_description_struct(resp, &resp_index, data, data_len);
-        break;
-
-        case 11: //UA_ServerConfig
-            encode_server_config(resp, &resp_index, data);
-        break;
-
-        case 12: //UA_NodeId
-            encode_node_id(resp, &resp_index, data);
-        break;
-
-        case 13: //UA_QualifiedName
-            encode_qualified_name(resp, &resp_index, data);
-        break;
-
-        case 14: //UA_LocalizedText
-            encode_localized_text(resp, &resp_index, data);
-        break;
-
-        case 15: //UA_INT64
-            ei_encode_longlong(resp, &resp_index,*(int64_t *)data);
-        break;
-
-        case 16: //UA_UINT64
-            ei_encode_ulonglong(resp, &resp_index,*(uint64_t *)data);
-        break;
-
-        case 17: //UA_Float
-            encode_ua_float(resp, &resp_index, data);
-        break;
-
-        case 18: //UA_guid
-            encode_ua_guid(resp, &resp_index, data);
-        break;
-
-        case 19: //UA_ExpandedNodeId
-            encode_expanded_node_id(resp, &resp_index, data);
-        break;
-
-        case 20: //UA_StatusCode
-            encode_status_code(resp, &resp_index, data);
-        break;
-
-        case 21: //UA_StatusCode
-            encode_semantic_change_structure_data_type(resp, &resp_index, data);
-        break;
-
-        case 22: //UA_XVType
-            encode_xv_type(resp, &resp_index, data);
-        break;
-
-        default:
-            errx(EXIT_FAILURE, "data_type error");
-        break;
-    }
+    encode_data_response(resp, &resp_index, data, data_type, data_len);
 
     erlcmd_send(resp, resp_index);
 }
@@ -813,6 +818,16 @@ void handle_test(void *entity, bool entity_type, const char *req, int *req_index
     send_ok_response();     
 }
 
+/**
+ * @brief Send data back to Elixir in form of {:ok, data}
+ */
+void send_write_data_response(UA_Server *server,
+               const UA_NodeId *sessionId, void *sessionContext,
+               const UA_NodeId *nodeId, void *nodeContext,
+               const UA_NumericRange *range, const UA_DataValue *data) {
+    send_ok_response();
+}
+
 /******************************/
 /* Node Addition and Deletion */
 /******************************/
@@ -825,6 +840,7 @@ void handle_add_variable_node(void *entity, bool entity_type, const char *req, i
     int term_size;
     int term_type;
     UA_StatusCode retval;
+
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 5)
@@ -841,7 +857,13 @@ void handle_add_variable_node(void *entity, bool entity_type, const char *req, i
     if(entity_type)
         retval = UA_Client_addVariableNode((UA_Client *)entity, requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, type_definition, vAttr, NULL);
     else
+    {
+        UA_ValueCallback callback;
+        callback.onRead = NULL;
+        callback.onWrite = send_write_data_response;
         retval = UA_Server_addVariableNode((UA_Server *)entity, requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, type_definition, vAttr, NULL, NULL);
+        UA_Server_setVariableNode_valueCallback((UA_Server *)entity, requested_new_node_id, callback);
+    }
 
     UA_NodeId_clear(&requested_new_node_id);
     UA_NodeId_clear(&parent_node_id);
@@ -2748,5 +2770,5 @@ void handle_read_node_value_by_data_type(void *entity, bool entity_type, const c
         break;
     }
 
-    //UA_Variant_clear(value);
+    UA_Variant_clear(value);
 }

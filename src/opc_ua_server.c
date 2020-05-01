@@ -10,9 +10,7 @@
 #include "erlcmd.h"
 #include "common.h"
 
-static const char response_id = 'r';
-
-int server_pid;
+//int server_pid;
 
 pthread_t server_tid;
 pthread_attr_t server_attr;

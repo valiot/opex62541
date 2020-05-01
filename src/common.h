@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "open62541.h"
+#include <erl_interface.h>
 
 //#define DEBUG
 
@@ -47,6 +48,10 @@ FILE *log_location;
 uint64_t current_time();
 
 #endif // UTIL_H
+
+static erlang_pid *caller_pid;
+static erlang_ref *caller_ref;
+static char *caller_funtion;
 
 //Client and Server common functions
 UA_NodeId assemble_node_id(const char *req, int *req_index);
