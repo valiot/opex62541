@@ -6,10 +6,11 @@ defmodule OpcUA.Common do
   alias OpcUA.QualifiedName
   alias OpcUA.{ExpandedNodeId, NodeId, QualifiedName}
 
-  defmacro __using__(_opts) do
+  defmacro __using__(opts) do
+    quote location: :keep, bind_quoted: [opts: opts] do
 
-    quote do
-      use GenServer
+      use GenServer, opts
+
       require Logger
 
       @c_timeout 5000
@@ -249,7 +250,6 @@ defmodule OpcUA.Common do
       end
 
       # Write nodes Attributes handlers
-
       def handle_call({:write_node_browse_name, node_id, browse_name}, {_from, _}, state) do
         c_args = {to_c(node_id), to_c(browse_name)}
         {new_state, response} = call_port(state, :write_node_browse_name, c_args)

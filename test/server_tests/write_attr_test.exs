@@ -175,13 +175,13 @@ defmodule WriteAttrTest do
     resp = Server.write_node_value(state.pid, node_id, 26, "10/02/20")
     assert resp == :ok
 
-    resp = Server.write_node_value(state.pid, node_id, 28, 21212321321)
+    resp = Server.write_node_value(state.pid, node_id, 28, 321321)
     assert resp == :ok
 
     resp = Server.write_node_value(state.pid, node_id, 29, {103.1, 103.0})
     assert resp == :ok
 
-    resp = Server.write_node_value(state.pid, node_id, 30, 21212321321)
+    resp = Server.write_node_value(state.pid, node_id, 30, 21321)
     assert resp == :ok
   end
 end

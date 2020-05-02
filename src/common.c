@@ -349,8 +349,6 @@ UA_QualifiedName assemble_qualified_name(const char *req, int *req_index)
     return UA_QUALIFIEDNAME(ns_index, node_qualified_name_str);
 }
 
-
-
 void encode_client_config(char *resp, int *resp_index, void *data)
 {
     ei_encode_map_header(resp, resp_index, 3);
@@ -653,11 +651,11 @@ void encode_data_response(char *resp, int *resp_index, void *data, int data_type
         break;
 
         case 1: //signed (long)
-            ei_encode_long(resp, resp_index,*(int32_t *)data);
+            ei_encode_long(resp, resp_index, *(int32_t *)data);
         break;
 
         case 2: //unsigned (long)
-            ei_encode_ulong(resp, resp_index,*(uint32_t *)data);
+            ei_encode_ulong(resp, resp_index, *(uint32_t *)data);
         break;
 
         case 3: //strings
@@ -740,10 +738,54 @@ void encode_data_response(char *resp, int *resp_index, void *data, int data_type
             encode_xv_type(resp, resp_index, data);
         break;
 
+        case 23: //UA_SByte
+            ei_encode_long(resp, resp_index, *(UA_SByte *)data);
+        break;
+
+        case 24: //UA_Byte
+            ei_encode_ulong(resp, resp_index, *(UA_Byte *)data);
+        break;
+
+        case 25: //UA_Int16
+            ei_encode_long(resp, resp_index, *(UA_Int16 *)data);
+        break;
+
+        case 26: //UA_UInt16
+            ei_encode_ulong(resp, resp_index, *(UA_UInt16 *)data);
+        break;
+
+        case 27: //UA_UInt32
+            ei_encode_ulong(resp, resp_index, *(UA_UInt32 *)data);
+        break;
+
         default:
             errx(EXIT_FAILURE, "data_type error");
         break;
     }
+}
+
+/**
+ * @brief Send write data back to Elixir in form of {:ok, data}
+ */
+void send_write_data_response(const UA_NodeId *nodeId, void *data, int data_type, int data_len)
+{
+    char resp[1024];
+    char r_len = 1;
+    long i_struct;
+    int resp_index = sizeof(uint16_t); // Space for payload size
+    resp[resp_index++] = response_id;
+    ei_encode_version(resp, &resp_index);
+    ei_encode_tuple_header(resp, &resp_index, 3);
+    ei_encode_atom(resp, &resp_index, "write");
+
+    encode_node_id(resp, &resp_index, (UA_NodeId *) nodeId);
+
+    if(data_len != -1) 
+        encode_data_response(resp, &resp_index, data, data_type, data_len);
+    else
+        ei_encode_atom(resp, &resp_index, "error");
+
+    erlcmd_send(resp, resp_index);
 }
 
 /**
@@ -821,11 +863,134 @@ void handle_test(void *entity, bool entity_type, const char *req, int *req_index
 /**
  * @brief Send data back to Elixir in form of {:ok, data}
  */
-void send_write_data_response(UA_Server *server,
+void send_write_response(UA_Server *server,
                const UA_NodeId *sessionId, void *sessionContext,
                const UA_NodeId *nodeId, void *nodeContext,
                const UA_NumericRange *range, const UA_DataValue *data) {
-    send_ok_response();
+
+    switch(data->value.type->typeIndex)
+    {
+        case UA_TYPES_BOOLEAN:
+            send_write_data_response(nodeId, data->value.data, 0, 0);
+        break;
+
+        case UA_TYPES_SBYTE:
+            send_write_data_response(nodeId, data->value.data, 23, 0);
+        break;
+
+        case UA_TYPES_BYTE:
+            send_write_data_response(nodeId, data->value.data, 23, 0);
+        break;
+
+        case UA_TYPES_INT16:
+            send_write_data_response(nodeId, data->value.data, 25, 0);
+        break;
+        
+        case UA_TYPES_UINT16:
+            send_write_data_response(nodeId, data->value.data, 26, 0);
+        break;
+
+        case UA_TYPES_INT32:
+            send_write_data_response(nodeId, data->value.data, 1, 0);
+        break;
+
+        case UA_TYPES_UINT32:
+            send_write_data_response(nodeId, data->value.data, 2, 0);
+        break;
+
+        case UA_TYPES_INT64:
+            send_write_data_response(nodeId, data->value.data, 15, 0);
+        break;
+
+        case UA_TYPES_UINT64:
+            send_write_data_response(nodeId, data->value.data, 16, 0);
+        break;
+
+        case UA_TYPES_FLOAT:
+            send_write_data_response(nodeId, data->value.data, 17, 0);
+        break;
+
+        case UA_TYPES_DOUBLE:
+            send_write_data_response(nodeId, data->value.data, 4, 0);
+        break;
+
+        case UA_TYPES_STRING:
+            send_write_data_response(nodeId, (*(UA_String *)data->value.data).data, 5, (*(UA_String *)data->value.data).length);
+        break;
+
+        case UA_TYPES_DATETIME:
+            send_write_data_response(nodeId, data->value.data, 15, 0);
+        break;
+
+        case UA_TYPES_GUID:
+            send_write_data_response(nodeId, data->value.data, 18, 0);
+        break;
+
+        case UA_TYPES_BYTESTRING:
+            send_write_data_response(nodeId, (*(UA_ByteString *)data->value.data).data, 5, (*(UA_ByteString *)data->value.data).length);
+        break;
+
+        case UA_TYPES_XMLELEMENT:
+            send_write_data_response(nodeId, (*(UA_XmlElement *)data->value.data).data, 5, (*(UA_XmlElement *)data->value.data).length);
+        break;
+
+        case UA_TYPES_NODEID:
+            send_write_data_response(nodeId, data->value.data, 12, 0);
+        break;
+
+        case UA_TYPES_EXPANDEDNODEID:
+            send_write_data_response(nodeId, data->value.data, 19, 0);
+        break;
+
+        case UA_TYPES_STATUSCODE:
+            send_write_data_response(nodeId, data->value.data, 20, 0);
+        break;
+
+        case UA_TYPES_QUALIFIEDNAME:
+            send_write_data_response(nodeId, data->value.data, 13, 0);
+        break;
+
+        case UA_TYPES_LOCALIZEDTEXT:
+            send_write_data_response(nodeId, data->value.data, 14, 0);
+        break;
+
+        // TODO: UA_TYPES_EXTENSIONOBJECT
+    
+        // TODO: UA_TYPES_DATAVALUE
+
+        // TODO: UA_TYPES_VARIANT
+
+        // TODO: UA_TYPES_DIAGNOSTICINFO
+
+        case UA_TYPES_SEMANTICCHANGESTRUCTUREDATATYPE:
+            send_write_data_response(nodeId, data->value.data, 21, 0);
+        break;
+
+        case UA_TYPES_TIMESTRING:
+            send_write_data_response(nodeId, (*(UA_TimeString *)data->value.data).data, 5, (*(UA_TimeString *)data->value.data).length);
+        break;
+
+        // TODO: UA_TYPES_VIEWATTRIBUTES
+
+        case UA_TYPES_UADPNETWORKMESSAGECONTENTMASK:
+            errx(EXIT_FAILURE, "checar");
+            send_write_data_response(nodeId, data->value.data, 2, 0);
+        break;
+
+        case UA_TYPES_XVTYPE:
+            //errx(EXIT_FAILURE, "checar2");
+            send_write_data_response(nodeId, data->value.data, 22, 0);
+        break;
+
+        case UA_TYPES_ELEMENTOPERAND:
+            send_write_data_response(nodeId, data->value.data, 27, 0);
+        break;
+
+        default:
+            errx(EXIT_FAILURE, "error");
+            send_write_data_response(nodeId, data->value.data, 2, -1);
+        break;
+    }
 }
 
 /******************************/
@@ -860,7 +1025,7 @@ void handle_add_variable_node(void *entity, bool entity_type, const char *req, i
     {
         UA_ValueCallback callback;
         callback.onRead = NULL;
-        callback.onWrite = send_write_data_response;
+        callback.onWrite = send_write_response;
         retval = UA_Server_addVariableNode((UA_Server *)entity, requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, type_definition, vAttr, NULL, NULL);
         UA_Server_setVariableNode_valueCallback((UA_Server *)entity, requested_new_node_id, callback);
     }
@@ -2598,7 +2763,8 @@ void handle_read_node_value(void *entity, bool entity_type, const char *req, int
     // TODO: UA_TYPES_VIEWATTRIBUTES
 
     // TODO: UA_TYPES_UADPNETWORKMESSAGECONTENTMASK
-
+    else if(value->type == &UA_TYPES[UA_TYPES_UADPNETWORKMESSAGECONTENTMASK])
+        send_data_response(value->data, 2, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_XVTYPE])
         send_data_response(value->data, 22, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_ELEMENTOPERAND])
@@ -2755,7 +2921,9 @@ void handle_read_node_value_by_data_type(void *entity, bool entity_type, const c
 
         // TODO: UA_TYPES_VIEWATTRIBUTES
 
-        // TODO: UA_TYPES_UADPNETWORKMESSAGECONTENTMASK
+        case UA_TYPES_UADPNETWORKMESSAGECONTENTMASK:
+            send_data_response(value->data, 2, 0);
+        break;
 
         case UA_TYPES_XVTYPE:
             send_data_response(value->data, 22, 0);
