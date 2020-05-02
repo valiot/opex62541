@@ -1,6 +1,8 @@
 defmodule OpcUA.Server do
   use OpcUA.Common
 
+  alias OpcUA.{NodeId}
+
   @doc """
   Starts up a OPC UA Server GenServer.
   """
@@ -400,12 +402,6 @@ defmodule OpcUA.Server do
     {:reply, {:error, :einval}, state}
   end
 
-  def handle_info({_port, {:data, <<?r, response::binary>>}}, state) do
-    data = :erlang.binary_to_term(response)
-    Logger.warn("(#{__MODULE__}) data: #{inspect data}.")
-    {:noreply, state}
-  end
-
   def handle_info({_port, {:exit_status, code}}, state) do
     Logger.warn("(#{__MODULE__}) Error code: #{inspect code}.")
     Process.sleep(@c_timeout) #retrying delay
@@ -421,5 +417,13 @@ defmodule OpcUA.Server do
   def handle_info(msg, state) do
     Logger.warn("(#{__MODULE__}) Unhandled message: #{inspect msg}.")
     {:noreply, state}
+  end
+
+  defp handle_c_response({:write, {ns_index, type, name}, c_value}, %{controlling_process: c_pid} = state) do
+    variable_node = NodeId.new(ns_index: ns_index, identifier_type: type, identifier: name)
+    value = parse_c_value(c_value)
+    send(c_pid, {variable_node, value})
+    Logger.debug("(#{__MODULE__}) Sending: #{inspect({variable_node, value})}")
+    state
   end
 end

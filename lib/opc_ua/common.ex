@@ -421,6 +421,18 @@ defmodule OpcUA.Common do
 
       # Catch all handlers
 
+      def handle_info({_port, {:data, <<?r, c_response::binary>>}}, state) do
+        state =
+          c_response
+          |> :erlang.binary_to_term()
+          |> handle_c_response(state)
+        {:noreply, state}
+      end
+
+      defp handle_c_response(1, state) do
+        nil
+      end
+
       defp call_port(state, command, arguments, timeout \\ @c_timeout) do
         msg = {command, arguments}
         send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
@@ -493,6 +505,17 @@ defmodule OpcUA.Common do
         }
       defp parse_value({:ok, {ns_index, name}}) when is_integer(ns_index), do: {:ok, QualifiedName.new(ns_index: ns_index, name: name)}
       defp parse_value(response), do: response
+
+      defp parse_c_value({ns_index, type, name, name_space_uri, server_index}), do:
+        ExpandedNodeId.new(node_id: NodeId.new(ns_index: ns_index, identifier_type: type, identifier: name), name_space_uri: name_space_uri, server_index: server_index)
+      defp parse_c_value({ns_index, type, name}), do: NodeId.new(ns_index: ns_index, identifier_type: type, identifier: name)
+      defp parse_c_value({{ns_index1, type1, name1}, {ns_index2, type2, name2}}), do:
+        {
+          NodeId.new(ns_index: ns_index1, identifier_type: type1, identifier: name1),
+          NodeId.new(ns_index: ns_index2, identifier_type: type2, identifier: name2)
+        }
+      defp parse_c_value({ns_index, name}) when is_integer(ns_index), do: QualifiedName.new(ns_index: ns_index, name: name)
+      defp parse_c_value(response), do: response
     end
   end
 end

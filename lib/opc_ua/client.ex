@@ -227,12 +227,6 @@ defmodule OpcUA.Client do
     {:reply, {:error, :einval}, state}
   end
 
-  def handle_info({_port, {:data, <<?r, response::binary>>}}, state) do
-    data = :erlang.binary_to_term(response)
-    Logger.warn("(#{__MODULE__}) data: #{inspect(data)}.")
-    {:noreply, state}
-  end
-
   def handle_info({_port, {:exit_status, code}}, state) do
     Logger.warn("(#{__MODULE__}) Error code: #{inspect(code)}.")
     # retrying delay

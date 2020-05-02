@@ -173,109 +173,162 @@ defmodule CClientWriteAttrTest do
     assert :ok == Client.write_node_value(c_pid, node_id, 0, true)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, true}
+    # Server sending to elixir app callback
+    assert_receive({node_id, true}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 1, 21)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, 21}
+    # Server sending to elixir app callback
+    assert_receive({node_id, 21}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 2, 22)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, 22}
+    # Server sending to elixir app callback
+    assert_receive({node_id, 22}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 3, 23)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, 23}
+    # Server sending to elixir app callback
+    assert_receive({node_id, 23}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 4, 24)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, 24}
+    # Server sending to elixir app callback
+    assert_receive({node_id, 24}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 5, 25)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, 25}
+    # Server sending to elixir app callback
+    assert_receive({node_id, 25}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 6, 26)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, 26}
+    # Server sending to elixir app callback
+    assert_receive({node_id, 26}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 7, 27)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, 27}
+    # Server sending to elixir app callback
+    assert_receive({node_id, 27}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 8, 28)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, 28}
+    # Server sending to elixir app callback
+    assert_receive({node_id, 28}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 9, 103.0)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, 103.0}
+    # Server sending to elixir app callback
+    assert_receive({node_id, 103.0}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 10, 103.103)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, 103.103}
+    # Server sending to elixir app callback
+    assert_receive({node_id, 103.103}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 11, "alde103")
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, "alde103"}
+    # Server sending to elixir app callback
+    assert_receive({node_id, "alde103"}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 12, 132304152032503440)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, 132304152032503440}
+    # Server sending to elixir app callback
+    assert_receive({node_id, 132304152032503440}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 13, {103,103,103, "holahola"})
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, {103,103,103, "holahola"}}
+    # Server sending to elixir app callback
+    assert_receive({node_id, {103,103,103, "holahola"}}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 14, "holahola")
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, "holahola"}
+    # Server sending to elixir app callback
+    assert_receive({node_id, "holahola"}, 1000)
 
     xml = "<note>\n<to>Tove</to>\n<from>Jani</from>\n<heading>Reminder</heading>\n<body>Don't forget me this weekend!</body>\n</note>\n"
     assert :ok == Client.write_node_value(c_pid, node_id, 15, xml)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, xml}
+    # Server sending to elixir app callback
+    assert_receive({node_id, xml}, 1000)
 
     node_id_arg = NodeId.new(ns_index: ns_index, identifier_type: "string", identifier: "R1_TS1_Temperature")
     assert :ok == Client.write_node_value(c_pid, node_id, 16, node_id_arg)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, node_id_arg}
+    # Server sending to elixir app callback
+    assert_receive({node_id, node_id_arg}, 1000)
 
+    desired_expanded_node_id = ExpandedNodeId.new(node_id: node_id_arg, name_space_uri: "", server_index: 0)
     assert :ok == Client.write_node_value(c_pid, node_id, 17, node_id_arg)
     c_response = Client.read_node_value(c_pid, node_id)
-    assert c_response == {:ok, ExpandedNodeId.new(node_id: node_id_arg, name_space_uri: "", server_index: 0)}
+    assert c_response == {:ok, desired_expanded_node_id}
+    # Server sending to elixir app callback
+    assert_receive({node_id, desired_expanded_node_id}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 18, 0)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, "Good"}
+    # Server sending to elixir app callback
+    assert_receive({node_id, "Good"}, 1000)
 
     qualified_name = QualifiedName.new(ns_index: 1, name: "TEMP")
     assert :ok == Client.write_node_value(c_pid, node_id, 19, qualified_name)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, qualified_name}
+    # Server sending to elixir app callback
+    assert_receive({node_id, qualified_name}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 20, {"en-US", "A String"})
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, {"en-US", "A String"}}
+    # Server sending to elixir app callback
+    assert_receive({node_id, {"en-US", "A String"}}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 25, {node_id_arg, node_id_arg})
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, {node_id_arg, node_id_arg}}
+    # Server sending to elixir app callback
+    assert_receive({node_id, {node_id_arg, node_id_arg}}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 26, "10/02/20")
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, "10/02/20"}
+    # Server sending to elixir app callback
+    assert_receive({node_id, "10/02/20"}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 28, 0x7fffffff)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, 0x7fffffff}
+    # Server sending to elixir app callback
+    assert_receive({node_id, 0x7fffffff}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 29, {103.1, 103.0})
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, {103.0999984741211, 103.0}}
+    # Server sending to elixir app callback
+    assert_receive({node_id, {103.0999984741211, 103.0}}, 1000)
 
     assert :ok == Client.write_node_value(c_pid, node_id, 30, 0x7fffffff)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, 0x7fffffff}
+    # Server sending to elixir app callback
+    assert_receive({node_id, 0x7fffffff}, 1000)
   end
 
   test "Write and Read Value Attributes by Data type", %{c_pid: c_pid, ns_index: ns_index} do
