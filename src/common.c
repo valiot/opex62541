@@ -19,6 +19,7 @@
 #include "common.h"
 #include "open62541.h"
 #include "erlcmd.h"
+#include <erl_interface.h>
 #include <string.h>
 #ifdef __APPLE__
 #include <mach/clock.h>
@@ -206,10 +207,6 @@ UA_NodeId assemble_node_id(const char *req, int *req_index)
     return node_id;
 }
 
-/*****************************/
-/* Elixir Message assemblers */
-/*****************************/
-
 UA_ExpandedNodeId assemble_expanded_node_id(const char *req, int *req_index)
 {
     enum node_type{Numeric, String, GUID, ByteString}; 
@@ -348,6 +345,18 @@ UA_QualifiedName assemble_qualified_name(const char *req, int *req_index)
 
     return UA_QUALIFIEDNAME(ns_index, node_qualified_name_str);
 }
+
+/***************************/
+/* Elixir Message encoders */
+/***************************/
+void encode_caller_metadata(char *req, int *req_index)
+{   
+    ei_encode_atom(req, req_index, caller_function);
+    ei_encode_tuple_header(req, req_index, 2);
+    ei_encode_pid(req, req_index, caller_pid);
+    ei_encode_ref(req, req_index, caller_ref);
+}
+
 
 void encode_client_config(char *resp, int *resp_index, void *data)
 {
@@ -764,6 +773,42 @@ void encode_data_response(char *resp, int *resp_index, void *data, int data_type
     }
 }
 
+/***************************/
+/* Elixir Message decoders */
+/***************************/
+
+void decode_caller_metadata(const char *req, int *req_index, const char* cmd)
+{   
+    int term_type;
+    int term_size;
+    int tuple_arity;
+
+    if(ei_decode_tuple_header(req, req_index, &tuple_arity) < 0 || tuple_arity != 2)
+            errx(EXIT_FAILURE, "caller metadata requires a 2-tuple, term_size = %d", tuple_arity);
+
+    caller_function = malloc(strlen(cmd));
+    strcpy(caller_function, cmd);
+    
+    caller_pid = malloc(sizeof(erlang_pid));
+    if (ei_decode_pid(req, req_index, caller_pid) < 0)
+        errx(EXIT_FAILURE, "Expecting pid");
+
+    caller_ref = malloc(sizeof(erlang_ref));
+    if (ei_decode_ref(req, req_index, caller_ref) < 0)
+        errx(EXIT_FAILURE, "Expecting ref");
+
+}
+
+void free_caller_metadata()
+{  
+    free(caller_function);
+    free(caller_pid); 
+    free(caller_ref);
+}
+
+/***************************/
+/* Elixir Message senders */
+/***************************/
 /**
  * @brief Send write data back to Elixir in form of {:ok, data}
  */
@@ -799,9 +844,10 @@ void send_data_response(void *data, int data_type, int data_len)
     int resp_index = sizeof(uint16_t); // Space for payload size
     resp[resp_index++] = response_id;
     ei_encode_version(resp, &resp_index);
+    ei_encode_tuple_header(resp, &resp_index, 3);
+    encode_caller_metadata(resp, &resp_index);
     ei_encode_tuple_header(resp, &resp_index, 2);
     ei_encode_atom(resp, &resp_index, "ok");
-
     encode_data_response(resp, &resp_index, data, data_type, data_len);
 
     erlcmd_send(resp, resp_index);
@@ -818,6 +864,8 @@ void send_error_response(const char *reason)
     int resp_index = sizeof(uint16_t); // Space for payload size
     resp[resp_index++] = response_id;
     ei_encode_version(resp, &resp_index);
+    ei_encode_tuple_header(resp, &resp_index, 3);
+    encode_caller_metadata(resp, &resp_index);
     ei_encode_tuple_header(resp, &resp_index, 2);
     ei_encode_atom(resp, &resp_index, "error");
     ei_encode_atom(resp, &resp_index, reason);
@@ -833,6 +881,8 @@ void send_ok_response()
     int resp_index = sizeof(uint16_t); // Space for payload size
     resp[resp_index++] = response_id;
     ei_encode_version(resp, &resp_index);
+    ei_encode_tuple_header(resp, &resp_index, 3);
+    encode_caller_metadata(resp, &resp_index);
     ei_encode_atom(resp, &resp_index, "ok");
     erlcmd_send(resp, resp_index);
 }
@@ -845,6 +895,8 @@ void send_opex_response(uint32_t reason)
     int resp_index = sizeof(uint16_t); // Space for payload size
     resp[resp_index++] = response_id;
     ei_encode_version(resp, &resp_index);
+    ei_encode_tuple_header(resp, &resp_index, 3);
+    encode_caller_metadata(resp, &resp_index);
     ei_encode_tuple_header(resp, &resp_index, 2);
     ei_encode_atom(resp, &resp_index, "error");
     ei_encode_binary(resp, &resp_index, status_code, strlen(status_code));

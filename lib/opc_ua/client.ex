@@ -149,76 +149,76 @@ defmodule OpcUA.Client do
     {:ok, state}
   end
 
-  # Lifecycle Handlers
+  # # Lifecycle Handlers
 
-  def handle_call({:get_client_state, nil}, {_from, _}, state) do
-    {new_state, response} = call_port(state, :get_client_state, nil)
-    str_response = charlist_to_string(response)
-    {:reply, str_response, new_state}
-  end
+  # def handle_call({:get_client_state, nil}, {_from, _}, state) do
+  #   {new_state, response} = call_port(state, :get_client_state, nil)
+  #   str_response = charlist_to_string(response)
+  #   {:reply, str_response, new_state}
+  # end
 
-  def handle_call({:set_client_config, args}, {_from, _}, state) do
-    c_args =
-      Enum.reduce(args, %{}, fn {key, value}, acc ->
-        if is_nil(value) or key not in @config_keys do
-          acc
-        else
-          Map.put(acc, key, value)
-        end
-      end)
+  # def handle_call({:set_client_config, args}, {_from, _}, state) do
+  #   c_args =
+  #     Enum.reduce(args, %{}, fn {key, value}, acc ->
+  #       if is_nil(value) or key not in @config_keys do
+  #         acc
+  #       else
+  #         Map.put(acc, key, value)
+  #       end
+  #     end)
 
-    {new_state, response} = call_port(state, :set_client_config, c_args)
-    {:reply, response, new_state}
-  end
+  #   {new_state, response} = call_port(state, :set_client_config, c_args)
+  #   {:reply, response, new_state}
+  # end
 
-  def handle_call({:get_client_config, nil}, {_from, _}, state) do
-    {new_state, response} = call_port(state, :get_client_config, nil)
-    {:reply, response, new_state}
-  end
+  # def handle_call({:get_client_config, nil}, {_from, _}, state) do
+  #   {new_state, response} = call_port(state, :get_client_config, nil)
+  #   {:reply, response, new_state}
+  # end
 
-  def handle_call({:reset_client, nil}, {_from, _}, state) do
-    {new_state, response} = call_port(state, :reset_client, nil)
-    {:reply, response, new_state}
-  end
+  # def handle_call({:reset_client, nil}, {_from, _}, state) do
+  #   {new_state, response} = call_port(state, :reset_client, nil)
+  #   {:reply, response, new_state}
+  # end
 
-  # Connect to a Server Handlers
+  # # Connect to a Server Handlers
 
-  def handle_call({:connect_client_by_url, url}, {_from, _}, state) do
-    {new_state, response} = call_port(state, :connect_client_by_url, url)
-    {:reply, response, new_state}
-  end
+  # def handle_call({:connect_client_by_url, url}, {_from, _}, state) do
+  #   {new_state, response} = call_port(state, :connect_client_by_url, url)
+  #   {:reply, response, new_state}
+  # end
 
-  def handle_call({:connect_client_by_username, url, username, password}, {_from, _}, state) do
-    {new_state, response} = call_port(state, :connect_client_by_username, {url, username, password})
-    {:reply, response, new_state}
-  end
+  # def handle_call({:connect_client_by_username, url, username, password}, {_from, _}, state) do
+  #   {new_state, response} = call_port(state, :connect_client_by_username, {url, username, password})
+  #   {:reply, response, new_state}
+  # end
 
-  def handle_call({:connect_client_no_session, url}, {_from, _}, state) do
-    {new_state, response} = call_port(state, :connect_client_no_session, url)
-    {:reply, response, new_state}
-  end
+  # def handle_call({:connect_client_no_session, url}, {_from, _}, state) do
+  #   {new_state, response} = call_port(state, :connect_client_no_session, url)
+  #   {:reply, response, new_state}
+  # end
 
-  def handle_call({:disconnect_client, nil}, {_from, _}, state) do
-    {new_state, response} = call_port(state, :disconnect_client, nil)
-    {:reply, response, new_state}
-  end
+  # def handle_call({:disconnect_client, nil}, {_from, _}, state) do
+  #   {new_state, response} = call_port(state, :disconnect_client, nil)
+  #   {:reply, response, new_state}
+  # end
 
-  # Discovery Handlers.
+  # # Discovery Handlers.
 
-  def handle_call({:find_servers_on_network, url}, {_from, _}, state) do
-    {new_state, response} = call_port(state, :find_servers_on_network, url)
-    {:reply, response, new_state}
-  end
+  # def handle_call({:find_servers_on_network, url}, {_from, _}, state) do
+  #   {new_state, response} = call_port(state, :find_servers_on_network, url)
+  #   {:reply, response, new_state}
+  # end
 
-  def handle_call({:find_servers, url}, {_from, _}, state) do
-    {new_state, response} = call_port(state, :find_servers, url)
-    {:reply, response, new_state}
-  end
+  # def handle_call({:find_servers, url}, {_from, _}, state) do
+  #   {new_state, response} = call_port(state, :find_servers, url)
+  #   {:reply, response, new_state}
+  # end
 
-  def handle_call({:get_endpoints, url}, {_from, _}, state) do
-    {new_state, response} = call_port(state, :get_endpoints, url)
-    {:reply, response, new_state}
-  end
+  # def handle_call({:get_endpoints, url}, {_from, _}, state) do
+  #   {new_state, response} = call_port(state, :get_endpoints, url)
+  #   {:reply, response, new_state}
+  # end
 
   # Catch all
 

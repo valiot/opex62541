@@ -51,7 +51,7 @@ uint64_t current_time();
 
 static erlang_pid *caller_pid;
 static erlang_ref *caller_ref;
-static char *caller_funtion;
+static char *caller_function;
 
 //Client and Server common functions
 UA_NodeId assemble_node_id(const char *req, int *req_index);
@@ -68,6 +68,10 @@ void send_data_response(void *data, int data_type, int data_len);
 void send_error_response(const char *reason);
 void send_ok_response();
 void send_opex_response(uint32_t reason);
+
+//Elixir message decoders
+void decode_caller_metadata(const char *req, int *req_index, const char* cmd);
+void free_caller_metadata();
 
 //Client and Server common handlers
 void handle_test(void *entity, bool entity_type, const char *req, int *req_index);

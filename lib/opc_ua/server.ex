@@ -221,6 +221,10 @@ defmodule OpcUA.Server do
     GenServer.call(pid, {:delete_node, args})
   end
 
+  @doc false
+  def test(pid) do
+    GenServer.call(pid, {:test, nil})
+  end
 
   # Handlers
   def init({_args, controlling_process}) do
@@ -241,49 +245,49 @@ defmodule OpcUA.Server do
 
   # Handlers Lifecyle & Configuration Functions.
 
-  def handle_call({:get_server_config, nil}, {_from, _}, state) do
-    {new_state, response} = call_port(state, :get_server_config, nil)
-    {:reply, response, new_state}
+  def handle_call({:get_server_config, nil}, caller_info, state) do
+    call_port(state, :get_server_config, caller_info, nil)
+    {:noreply, state}
   end
 
-  def handle_call({:set_default_server_config, nil}, {_from, _}, state) do
-    {new_state, response} = call_port(state, :set_default_server_config, nil)
-    {:reply, response, new_state}
+  def handle_call({:set_default_server_config, nil}, caller_info, state) do
+    call_port(state, :set_default_server_config, caller_info, nil)
+    {:noreply, state}
   end
 
-  def handle_call({:set_hostname, hostname}, {_from, _}, state) do
-    {new_state, response} = call_port(state, :set_hostname, hostname)
-    {:reply, response, new_state}
+  def handle_call({:set_hostname, hostname}, caller_info, state) do
+    call_port(state, :set_hostname, caller_info, hostname)
+    {:noreply, state}
   end
 
-  def handle_call({:set_port, port}, {_from, _}, state) do
-    {new_state, response} = call_port(state, :set_port, port)
-    {:reply, response, new_state}
+  def handle_call({:set_port, port}, caller_info, state) do
+    call_port(state, :set_port, caller_info, port)
+    {:noreply, state}
   end
 
-  def handle_call({:start_server, nil}, {_from, _}, state) do
-    {new_state, response} = call_port(state, :start_server, nil)
-    {:reply, response, new_state}
+  def handle_call({:set_users, users}, caller_info, state) do
+    call_port(state, :set_users, caller_info, users)
+    {:noreply, state}
   end
 
-  def handle_call({:set_users, users}, {_from, _}, state) do
-    {new_state, response} = call_port(state, :set_users, users)
-    {:reply, response, new_state}
+  def handle_call({:start_server, nil}, caller_info, state) do
+    call_port(state, :start_server, caller_info, nil)
+    {:noreply, state}
   end
 
-  def handle_call({:stop_server, nil}, {_from, _}, state) do
-    {new_state, response} = call_port(state, :stop_server, nil)
-    {:reply, response, new_state}
+  def handle_call({:stop_server, nil}, caller_info, state) do
+    call_port(state, :stop_server, caller_info, nil)
+    {:noreply, state}
   end
 
   # Handlers Add & Delete Functions.
 
-  def handle_call({:add_namespace, namespace}, {_from, _}, state) do
-    {new_state, response} = call_port(state, :add_namespace, namespace)
-    {:reply, response, new_state}
+  def handle_call({:add_namespace, namespace}, caller_info, state) do
+    call_port(state, :add_namespace, caller_info, namespace)
+    {:noreply, state}
   end
 
-  def handle_call({:add_variable_node, args}, {_from, _}, state) do
+  def handle_call({:add_variable_node, args}, caller_info, state) do
     requested_new_node_id = Keyword.fetch!(args, :requested_new_node_id) |> to_c()
     parent_node_id = Keyword.fetch!(args, :parent_node_id) |> to_c()
     reference_type_node_id = Keyword.fetch!(args, :reference_type_node_id) |> to_c()
@@ -291,11 +295,11 @@ defmodule OpcUA.Server do
     type_definition = Keyword.fetch!(args, :type_definition) |> to_c()
 
     c_args = {requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, type_definition}
-    {new_state, response} = call_port(state, :add_variable_node, c_args)
-    {:reply, response, new_state}
+    call_port(state, :add_variable_node, caller_info, c_args)
+    {:noreply, state}
   end
 
-  def handle_call({:add_variable_type_node, args}, {_from, _}, state) do
+  def handle_call({:add_variable_type_node, args}, caller_info, state) do
     requested_new_node_id = Keyword.fetch!(args, :requested_new_node_id) |> to_c()
     parent_node_id = Keyword.fetch!(args, :parent_node_id) |> to_c()
     reference_type_node_id = Keyword.fetch!(args, :reference_type_node_id) |> to_c()
@@ -303,11 +307,11 @@ defmodule OpcUA.Server do
     type_definition = Keyword.fetch!(args, :type_definition) |> to_c()
 
     c_args = {requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, type_definition}
-    {new_state, response} = call_port(state, :add_variable_type_node, c_args)
-    {:reply, response, new_state}
+    call_port(state, :add_variable_type_node, caller_info, c_args)
+    {:noreply, state}
   end
 
-  def handle_call({:add_object_node, args}, {_from, _}, state) do
+  def handle_call({:add_object_node, args}, caller_info, state) do
     requested_new_node_id = Keyword.fetch!(args, :requested_new_node_id) |> to_c()
     parent_node_id = Keyword.fetch!(args, :parent_node_id) |> to_c()
     reference_type_node_id = Keyword.fetch!(args, :reference_type_node_id) |> to_c()
@@ -315,66 +319,66 @@ defmodule OpcUA.Server do
     type_definition = Keyword.fetch!(args, :type_definition) |> to_c()
 
     c_args = {requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, type_definition}
-    {new_state, response} = call_port(state, :add_object_node, c_args)
-    {:reply, response, new_state}
+    call_port(state, :add_object_node, caller_info, c_args)
+    {:noreply, state}
   end
 
-  def handle_call({:add_object_type_node, args}, {_from, _}, state) do
+  def handle_call({:add_object_type_node, args}, caller_info, state) do
     requested_new_node_id = Keyword.fetch!(args, :requested_new_node_id) |> to_c()
     parent_node_id = Keyword.fetch!(args, :parent_node_id) |> to_c()
     reference_type_node_id = Keyword.fetch!(args, :reference_type_node_id) |> to_c()
     browse_name = Keyword.fetch!(args, :browse_name) |> to_c()
 
     c_args = {requested_new_node_id, parent_node_id, reference_type_node_id, browse_name}
-    {new_state, response} = call_port(state, :add_object_type_node, c_args)
-    {:reply, response, new_state}
+    call_port(state, :add_object_type_node, caller_info, c_args)
+    {:noreply, state}
   end
 
-  def handle_call({:add_view_node, args}, {_from, _}, state) do
+  def handle_call({:add_view_node, args}, caller_info, state) do
     requested_new_node_id = Keyword.fetch!(args, :requested_new_node_id) |> to_c()
     parent_node_id = Keyword.fetch!(args, :parent_node_id) |> to_c()
     reference_type_node_id = Keyword.fetch!(args, :reference_type_node_id) |> to_c()
     browse_name = Keyword.fetch!(args, :browse_name) |> to_c()
 
     c_args = {requested_new_node_id, parent_node_id, reference_type_node_id, browse_name}
-    {new_state, response} = call_port(state, :add_view_node, c_args)
-    {:reply, response, new_state}
+    call_port(state, :add_view_node, caller_info, c_args)
+    {:noreply, state}
   end
 
-  def handle_call({:add_reference_type_node, args}, {_from, _}, state) do
+  def handle_call({:add_reference_type_node, args}, caller_info, state) do
     requested_new_node_id = Keyword.fetch!(args, :requested_new_node_id) |> to_c()
     parent_node_id = Keyword.fetch!(args, :parent_node_id) |> to_c()
     reference_type_node_id = Keyword.fetch!(args, :reference_type_node_id) |> to_c()
     browse_name = Keyword.fetch!(args, :browse_name) |> to_c()
 
     c_args = {requested_new_node_id, parent_node_id, reference_type_node_id, browse_name}
-    {new_state, response} = call_port(state, :add_reference_type_node, c_args)
-    {:reply, response, new_state}
+    call_port(state, :add_reference_type_node, caller_info, c_args)
+    {:noreply, state}
   end
 
-  def handle_call({:add_data_type_node, args}, {_from, _}, state) do
+  def handle_call({:add_data_type_node, args}, caller_info, state) do
     requested_new_node_id = Keyword.fetch!(args, :requested_new_node_id) |> to_c()
     parent_node_id = Keyword.fetch!(args, :parent_node_id) |> to_c()
     reference_type_node_id = Keyword.fetch!(args, :reference_type_node_id) |> to_c()
     browse_name = Keyword.fetch!(args, :browse_name) |> to_c()
 
     c_args = {requested_new_node_id, parent_node_id, reference_type_node_id, browse_name}
-    {new_state, response} = call_port(state, :add_data_type_node, c_args)
-    {:reply, response, new_state}
+    call_port(state, :add_data_type_node, caller_info, c_args)
+    {:noreply, state}
   end
 
-  def handle_call({:add_reference, args}, {_from, _}, state) do
+  def handle_call({:add_reference, args}, caller_info, state) do
     source_id = Keyword.fetch!(args, :source_id) |> to_c()
     reference_type_id = Keyword.fetch!(args, :reference_type_id) |> to_c()
     target_id = Keyword.fetch!(args, :target_id) |> to_c()
     is_forward = Keyword.fetch!(args, :is_forward)
 
     c_args = {source_id, reference_type_id, target_id, is_forward}
-    {new_state, response} = call_port(state, :add_reference, c_args)
-    {:reply, response, new_state}
+    call_port(state, :add_reference, caller_info, c_args)
+    {:noreply, state}
   end
 
-  def handle_call({:delete_reference, args}, {_from, _}, state) do
+  def handle_call({:delete_reference, args}, caller_info, state) do
     source_id = Keyword.fetch!(args, :source_id) |> to_c()
     reference_type_id = Keyword.fetch!(args, :reference_type_id) |> to_c()
     target_id = Keyword.fetch!(args, :target_id) |> to_c()
@@ -382,22 +386,27 @@ defmodule OpcUA.Server do
     delete_bidirectional = Keyword.fetch!(args, :delete_bidirectional)
 
     c_args = {source_id, reference_type_id, target_id, is_forward, delete_bidirectional}
-    {new_state, response} = call_port(state, :delete_reference, c_args)
-    {:reply, response, new_state}
+    call_port(state, :delete_reference, caller_info, c_args)
+    {:noreply, state}
   end
 
-  def handle_call({:delete_node, args}, {_from, _}, state) do
+  def handle_call({:delete_node, args}, caller_info, state) do
     node_id = Keyword.fetch!(args, :node_id) |> to_c()
     delete_reference = Keyword.fetch!(args, :delete_reference)
 
     c_args = {node_id, delete_reference}
-    {new_state, response} = call_port(state, :delete_node, c_args)
-    {:reply, response, new_state}
+    call_port(state, :delete_node, caller_info, c_args)
+    {:noreply, state}
   end
 
   # Catch all
 
-  def handle_call(invalid_call, {_from, _}, state) do
+  def handle_call({:test, nil}, caller_info, state) do
+    call_port(state, :test, caller_info, nil)
+    {:noreply, state}
+  end
+
+  def handle_call(invalid_call, _caller_info, state) do
     Logger.error("#{__MODULE__} Invalid call: #{inspect invalid_call}")
     {:reply, {:error, :einval}, state}
   end
@@ -424,6 +433,105 @@ defmodule OpcUA.Server do
     value = parse_c_value(c_value)
     send(c_pid, {variable_node, value})
     Logger.debug("(#{__MODULE__}) Sending: #{inspect({variable_node, value})}")
+    state
+  end
+
+  defp handle_c_response({:test, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  # C Handlers Lifecyle & Configuration Functions.
+
+  defp handle_c_response({:get_server_config, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:set_default_server_config, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:set_hostname, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:set_port, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:set_users, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:start_server, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:stop_server, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  # C Handlers Add & Delete Functions.
+
+  defp handle_c_response({:add_namespace, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:add_variable_node, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:add_variable_type_node, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:add_object_node, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:add_object_type_node, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:add_view_node, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:add_reference_type_node, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:add_data_type_node, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:add_reference, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:delete_reference, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:delete_node, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
     state
   end
 end

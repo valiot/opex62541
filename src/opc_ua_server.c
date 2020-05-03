@@ -322,15 +322,15 @@ static void handle_elixir_request(const char *req, void *cookie)
     (void) cookie;
 
     // Commands are of the form {Command, Arguments}:
-    // { atom(), term() }
+    // {atom(), {pid(), ref()}, term()}
     int req_index = sizeof(uint16_t);
     if (ei_decode_version(req, &req_index, NULL) < 0)
         errx(EXIT_FAILURE, "Message version issue?");
 
     int arity;
     if (ei_decode_tuple_header(req, &req_index, &arity) < 0 ||
-            arity != 2)
-        errx(EXIT_FAILURE, "expecting {cmd, args} tuple");
+            arity != 3)
+        errx(EXIT_FAILURE, "expecting {cmd, {pid, ref}, args} tuple");
 
     char cmd[MAXATOMLEN];
     if (ei_decode_atom(req, &req_index, cmd) < 0)
@@ -339,7 +339,9 @@ static void handle_elixir_request(const char *req, void *cookie)
     //execute all handler
     for (struct request_handler *rh = request_handlers; rh->name != NULL; rh++) {
         if (strcmp(cmd, rh->name) == 0) {
+            decode_caller_metadata(req, &req_index, cmd);
             rh->handler(server, 0, req, &req_index);
+            free_caller_metadata();
             return;
         }
     }
