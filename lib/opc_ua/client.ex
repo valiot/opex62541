@@ -128,10 +128,6 @@ defmodule OpcUA.Client do
     GenServer.call(pid, {:get_endpoints, url})
   end
 
-  # Read & Write nodes functions
-
-
-
   # Handlers
   def init({_args, controlling_process}) do
     executable = :code.priv_dir(:opex62541) ++ '/opc_ua_client'
@@ -149,80 +145,80 @@ defmodule OpcUA.Client do
     {:ok, state}
   end
 
-  # # Lifecycle Handlers
+  # Lifecycle Handlers
 
-  # def handle_call({:get_client_state, nil}, {_from, _}, state) do
-  #   {new_state, response} = call_port(state, :get_client_state, nil)
-  #   str_response = charlist_to_string(response)
-  #   {:reply, str_response, new_state}
-  # end
+  def handle_call({:get_client_state, nil}, caller_info, state) do
+    call_port(state, :get_client_state, caller_info, nil)
+    {:noreply, state}
+  end
 
-  # def handle_call({:set_client_config, args}, {_from, _}, state) do
-  #   c_args =
-  #     Enum.reduce(args, %{}, fn {key, value}, acc ->
-  #       if is_nil(value) or key not in @config_keys do
-  #         acc
-  #       else
-  #         Map.put(acc, key, value)
-  #       end
-  #     end)
+  def handle_call({:set_client_config, args}, caller_info, state) do
+    c_args =
+      Enum.reduce(args, %{}, fn {key, value}, acc ->
+        if is_nil(value) or key not in @config_keys do
+          acc
+        else
+          Map.put(acc, key, value)
+        end
+      end)
 
-  #   {new_state, response} = call_port(state, :set_client_config, c_args)
-  #   {:reply, response, new_state}
-  # end
+    call_port(state, :set_client_config, caller_info, c_args)
+    {:noreply, state}
+  end
 
-  # def handle_call({:get_client_config, nil}, {_from, _}, state) do
-  #   {new_state, response} = call_port(state, :get_client_config, nil)
-  #   {:reply, response, new_state}
-  # end
+  def handle_call({:get_client_config, nil}, caller_info, state) do
+    call_port(state, :get_client_config, caller_info, nil)
+    {:noreply, state}
+  end
 
-  # def handle_call({:reset_client, nil}, {_from, _}, state) do
-  #   {new_state, response} = call_port(state, :reset_client, nil)
-  #   {:reply, response, new_state}
-  # end
+  def handle_call({:reset_client, nil}, caller_info, state) do
+    call_port(state, :reset_client, caller_info, nil)
+    {:noreply, state}
+  end
 
-  # # Connect to a Server Handlers
+  # Connect to a Server Handlers
 
-  # def handle_call({:connect_client_by_url, url}, {_from, _}, state) do
-  #   {new_state, response} = call_port(state, :connect_client_by_url, url)
-  #   {:reply, response, new_state}
-  # end
+  def handle_call({:connect_client_by_url, url}, caller_info, state) do
+    call_port(state, :connect_client_by_url, caller_info, url)
+    {:noreply, state}
+  end
 
-  # def handle_call({:connect_client_by_username, url, username, password}, {_from, _}, state) do
-  #   {new_state, response} = call_port(state, :connect_client_by_username, {url, username, password})
-  #   {:reply, response, new_state}
-  # end
+  def handle_call({:connect_client_by_username, url, username, password}, caller_info, state) do
+    c_args = {url, username, password}
+    call_port(state, :connect_client_by_username, caller_info, c_args)
+    {:noreply, state}
+  end
 
-  # def handle_call({:connect_client_no_session, url}, {_from, _}, state) do
-  #   {new_state, response} = call_port(state, :connect_client_no_session, url)
-  #   {:reply, response, new_state}
-  # end
+  def handle_call({:connect_client_no_session, url}, caller_info, state) do
+    call_port(state, :connect_client_no_session, caller_info, url)
+    {:noreply, state}
+  end
 
-  # def handle_call({:disconnect_client, nil}, {_from, _}, state) do
-  #   {new_state, response} = call_port(state, :disconnect_client, nil)
-  #   {:reply, response, new_state}
-  # end
+  def handle_call({:disconnect_client, nil}, caller_info, state) do
+    call_port(state, :disconnect_client, caller_info, nil)
+    {:noreply, state}
+  end
 
-  # # Discovery Handlers.
+  # Discovery Handlers.
 
-  # def handle_call({:find_servers_on_network, url}, {_from, _}, state) do
-  #   {new_state, response} = call_port(state, :find_servers_on_network, url)
-  #   {:reply, response, new_state}
-  # end
+  def handle_call({:find_servers_on_network, url}, caller_info, state) do
+    call_port(state, :find_servers_on_network, caller_info, url)
+    {:noreply, state}
+  end
 
-  # def handle_call({:find_servers, url}, {_from, _}, state) do
-  #   {new_state, response} = call_port(state, :find_servers, url)
-  #   {:reply, response, new_state}
-  # end
+  def handle_call({:find_servers, url}, caller_info, state) do
+    call_port(state, :find_servers, caller_info, url)
+    {:noreply, state}
+  end
 
-  # def handle_call({:get_endpoints, url}, {_from, _}, state) do
-  #   {new_state, response} = call_port(state, :get_endpoints, url)
-  #   {:reply, response, new_state}
-  # end
+  def handle_call({:get_endpoints, url}, caller_info, state) do
+    call_port(state, :get_endpoints, caller_info, url)
+    {:noreply, state}
+  end
 
   # Catch all
 
-  def handle_call(invalid_call, {_from, _}, state) do
+  def handle_call(invalid_call, _caller_info, state) do
     Logger.error("#{__MODULE__} Invalid call: #{inspect(invalid_call)}")
     {:reply, {:error, :einval}, state}
   end
@@ -244,6 +240,68 @@ defmodule OpcUA.Client do
   def handle_info(msg, state) do
     Logger.warn("(#{__MODULE__}) Unhandled message: #{inspect(msg)}.")
     {:noreply, state}
+  end
+
+  # Lifecycle C Handlers
+
+  defp handle_c_response({:get_client_state, caller_metadata, client_state}, state) do
+    str_client_state = charlist_to_string(client_state)
+    GenServer.reply(caller_metadata, str_client_state)
+    state
+  end
+
+  defp handle_c_response({:set_client_config, caller_metadata, c_response}, state) do
+    GenServer.reply(caller_metadata, c_response)
+    state
+  end
+
+  defp handle_c_response({:get_client_config, caller_metadata, c_response}, state) do
+    GenServer.reply(caller_metadata, c_response)
+    state
+  end
+
+  defp handle_c_response({:reset_client, caller_metadata, c_response}, state) do
+    GenServer.reply(caller_metadata, c_response)
+    state
+  end
+
+  # Connect to a Server C Handlers
+
+  defp handle_c_response({:connect_client_by_url, caller_metadata, c_response}, state) do
+    GenServer.reply(caller_metadata, c_response)
+    state
+  end
+
+  defp handle_c_response({:connect_client_by_username, caller_metadata, c_response}, state) do
+    GenServer.reply(caller_metadata, c_response)
+    state
+  end
+
+  defp handle_c_response({:connect_client_no_session, caller_metadata, c_response}, state) do
+    GenServer.reply(caller_metadata, c_response)
+    state
+  end
+
+  defp handle_c_response({:disconnect_client, caller_metadata, c_response}, state) do
+    GenServer.reply(caller_metadata, c_response)
+    state
+  end
+
+    # Discovery functions C Handlers
+
+  defp handle_c_response({:find_servers_on_network, caller_metadata, c_response}, state) do
+    GenServer.reply(caller_metadata, c_response)
+    state
+  end
+
+  defp handle_c_response({:find_servers, caller_metadata, c_response}, state) do
+    GenServer.reply(caller_metadata, c_response)
+    state
+  end
+
+  defp handle_c_response({:get_endpoints, caller_metadata, c_response}, state) do
+    GenServer.reply(caller_metadata, c_response)
+    state
   end
 
   defp charlist_to_string({:ok, charlist}), do: {:ok, to_string(charlist)}

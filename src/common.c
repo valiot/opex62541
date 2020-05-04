@@ -931,7 +931,7 @@ void send_write_response(UA_Server *server,
         break;
 
         case UA_TYPES_BYTE:
-            send_write_data_response(nodeId, data->value.data, 23, 0);
+            send_write_data_response(nodeId, data->value.data, 24, 0);
         break;
 
         case UA_TYPES_INT16:
@@ -2642,7 +2642,7 @@ void handle_read_node_access_level(void *entity, bool entity_type, const char *r
         return;
     }
 
-    send_data_response(node_access_level, 1, 0);
+    send_data_response(node_access_level, 24, 0);
 
     UA_Byte_clear(node_access_level);
 }
