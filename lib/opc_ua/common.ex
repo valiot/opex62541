@@ -20,11 +20,9 @@ defmodule OpcUA.Common do
 
         # port: C port process
         # controlling_process: parent process
-        # queued_messages: queued messages during port request.
 
         defstruct port: nil,
-                  controlling_process: nil,
-                  queued_messages: []
+                  controlling_process: nil
       end
 
       # Write nodes Attributes functions
@@ -250,173 +248,169 @@ defmodule OpcUA.Common do
       end
 
       # Write nodes Attributes handlers
-      def handle_call({:write_node_browse_name, node_id, browse_name}, {_from, _}, state) do
+      def handle_call({:write_node_browse_name, node_id, browse_name}, caller_info, state) do
         c_args = {to_c(node_id), to_c(browse_name)}
-        {new_state, response} = call_port(state, :write_node_browse_name, c_args)
-        {:reply, response, new_state}
+        call_port(state, :write_node_browse_name, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:write_node_display_name, node_id, locale, name}, {_from, _}, state) when is_binary(locale) and is_binary(name) do
+      def handle_call({:write_node_display_name, node_id, locale, name}, caller_info, state) when is_binary(locale) and is_binary(name) do
         c_args = {to_c(node_id), locale, name}
-        {new_state, response} = call_port(state, :write_node_display_name, c_args)
-        {:reply, response, new_state}
+        call_port(state, :write_node_display_name, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:write_node_description, node_id, locale, description}, {_from, _}, state) when is_binary(locale) and is_binary(description) do
+      def handle_call({:write_node_description, node_id, locale, description}, caller_info, state) when is_binary(locale) and is_binary(description) do
         c_args = {to_c(node_id), locale, description}
-        {new_state, response} = call_port(state, :write_node_description, c_args)
-        {:reply, response, new_state}
+        call_port(state, :write_node_description, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:write_node_write_mask, node_id, write_mask}, {_from, _}, state) when is_integer(write_mask) do
+      def handle_call({:write_node_write_mask, node_id, write_mask}, caller_info, state) when is_integer(write_mask) do
         c_args = {to_c(node_id), write_mask}
-        {new_state, response} = call_port(state, :write_node_write_mask, c_args)
-        {:reply, response, new_state}
+        call_port(state, :write_node_write_mask, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:write_node_is_abstract, node_id, is_abstract?}, {_from, _}, state) when is_boolean(is_abstract?) do
+      def handle_call({:write_node_is_abstract, node_id, is_abstract?}, caller_info, state) when is_boolean(is_abstract?) do
         c_args = {to_c(node_id), is_abstract?}
-        {new_state, response} = call_port(state, :write_node_is_abstract, c_args)
-        {:reply, response, new_state}
+        call_port(state, :write_node_is_abstract, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:write_node_inverse_name, node_id, locale, inverse_name}, {_from, _}, state) when is_binary(locale) and is_binary(inverse_name) do
+      def handle_call({:write_node_inverse_name, node_id, locale, inverse_name}, caller_info, state) when is_binary(locale) and is_binary(inverse_name) do
         c_args = {to_c(node_id), locale, inverse_name}
-        {new_state, response} = call_port(state, :write_node_inverse_name, c_args)
-        {:reply, response, new_state}
+        call_port(state, :write_node_inverse_name, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:write_node_data_type, node_id, data_type_node_id}, {_from, _}, state) do
+      def handle_call({:write_node_data_type, node_id, data_type_node_id}, caller_info, state) do
         c_args = {to_c(node_id), to_c(data_type_node_id)}
-        {new_state, response} = call_port(state, :write_node_data_type, c_args)
-        {:reply, response, new_state}
+        call_port(state, :write_node_data_type, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:write_node_value_rank, node_id, value_rank}, {_from, _}, state) when is_integer(value_rank) do
+      def handle_call({:write_node_value_rank, node_id, value_rank}, caller_info, state) when is_integer(value_rank) do
         c_args = {to_c(node_id), value_rank}
-        {new_state, response} = call_port(state, :write_node_value_rank, c_args)
-        {:reply, response, new_state}
+        call_port(state, :write_node_value_rank, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:write_node_access_level, node_id, access_level}, {_from, _}, state) when is_integer(access_level) do
+      def handle_call({:write_node_access_level, node_id, access_level}, caller_info, state) when is_integer(access_level) do
         c_args = {to_c(node_id), access_level}
-        {new_state, response} = call_port(state, :write_node_access_level, c_args)
-        {:reply, response, new_state}
+        Logger.debug("debug: #{inspect c_args}")
+        call_port(state, :write_node_access_level, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:write_node_minimum_sampling_interval, node_id, minimum_sampling_interval}, {_from, _}, state) when is_float(minimum_sampling_interval) do
+      def handle_call({:write_node_minimum_sampling_interval, node_id, minimum_sampling_interval}, caller_info, state) when is_float(minimum_sampling_interval) do
         c_args = {to_c(node_id), minimum_sampling_interval}
-        {new_state, response} = call_port(state, :write_node_minimum_sampling_interval, c_args)
-        {:reply, response, new_state}
+        call_port(state, :write_node_minimum_sampling_interval, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:write_node_historizing, node_id, historizing?}, {_from, _}, state) when is_boolean(historizing?) do
+      def handle_call({:write_node_historizing, node_id, historizing?}, caller_info, state) when is_boolean(historizing?) do
         c_args = {to_c(node_id), historizing?}
-        {new_state, response} = call_port(state, :write_node_historizing, c_args)
-        {:reply, response, new_state}
+        call_port(state, :write_node_historizing, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:write_node_executable, node_id, executable?}, {_from, _}, state) when is_boolean(executable?) do
+      def handle_call({:write_node_executable, node_id, executable?}, caller_info, state) when is_boolean(executable?) do
         c_args = {to_c(node_id), executable?}
-        {new_state, response} = call_port(state, :write_node_executable, c_args)
-        {:reply, response, new_state}
+        call_port(state, :write_node_executable, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:write_node_value, node_id, data_type, raw_value}, {_from, _}, state) do
-        value = value_to_c(data_type, raw_value)
-        c_args = {to_c(node_id), data_type, value}
-        {new_state, response} = call_port(state, :write_node_value, c_args)
-        {:reply, response, new_state}
+      def handle_call({:write_node_value, node_id, data_type, raw_value}, caller_info, state) do
+        c_args = {to_c(node_id), data_type, value_to_c(data_type, raw_value)}
+        call_port(state, :write_node_value, caller_info, c_args)
+        {:noreply, state}
       end
 
       # Read nodes Attributes handlers
 
-      def handle_call({:read_node_browse_name, node_id}, {_from, _}, state) do
+      def handle_call({:read_node_browse_name, node_id}, caller_info, state) do
         c_args = to_c(node_id)
-        {new_state, browse_name_response} = call_port(state, :read_node_browse_name, c_args)
-        response = parse_browse_name(browse_name_response)
-        {:reply, response, new_state}
+        call_port(state, :read_node_browse_name, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:read_node_display_name, node_id}, {_from, _}, state) do
+      def handle_call({:read_node_display_name, node_id}, caller_info, state) do
         c_args = to_c(node_id)
-        {new_state, response} = call_port(state, :read_node_display_name, c_args)
-        {:reply, response, new_state}
+        call_port(state, :read_node_display_name, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:read_node_description, node_id}, {_from, _}, state) do
+      def handle_call({:read_node_description, node_id}, caller_info, state) do
         c_args = to_c(node_id)
-        {new_state, response} = call_port(state, :read_node_description, c_args)
-        {:reply, response, new_state}
+        call_port(state, :read_node_description, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:read_node_is_abstract, node_id}, {_from, _}, state) do
+      def handle_call({:read_node_is_abstract, node_id}, caller_info, state) do
         c_args = to_c(node_id)
-        {new_state, response} = call_port(state, :read_node_is_abstract, c_args)
-        {:reply, response, new_state}
+        call_port(state, :read_node_is_abstract, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:read_node_write_mask, node_id}, {_from, _}, state) do
+      def handle_call({:read_node_write_mask, node_id}, caller_info, state) do
         c_args = to_c(node_id)
-        {new_state, response} = call_port(state, :read_node_write_mask, c_args)
-        {:reply, response, new_state}
+        call_port(state, :read_node_write_mask, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:read_node_data_type, node_id}, {_from, _}, state) do
+      def handle_call({:read_node_data_type, node_id}, caller_info, state) do
         c_args = to_c(node_id)
-        {new_state, data_type_response} = call_port(state, :read_node_data_type, c_args)
-        response = parse_data_type(data_type_response)
-        {:reply, response, new_state}
+        call_port(state, :read_node_data_type, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:read_node_inverse_name, node_id}, {_from, _}, state) do
+      def handle_call({:read_node_inverse_name, node_id}, caller_info, state) do
         c_args = to_c(node_id)
-        {new_state, response} = call_port(state, :read_node_inverse_name, c_args)
-        {:reply, response, new_state}
+        call_port(state, :read_node_inverse_name, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:read_node_value_rank, node_id}, {_from, _}, state) do
+      def handle_call({:read_node_value_rank, node_id}, caller_info, state) do
         c_args = to_c(node_id)
-        {new_state, response} = call_port(state, :read_node_value_rank, c_args)
-        {:reply, response, new_state}
+        call_port(state, :read_node_value_rank, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:read_node_access_level, node_id}, {_from, _}, state) do
+      def handle_call({:read_node_access_level, node_id}, caller_info, state) do
         c_args = to_c(node_id)
-        {new_state, response} = call_port(state, :read_node_access_level, c_args)
-        {:reply, response, new_state}
+        call_port(state, :read_node_access_level, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:read_node_minimum_sampling_interval, node_id}, {_from, _}, state) do
+      def handle_call({:read_node_minimum_sampling_interval, node_id}, caller_info, state) do
         c_args = to_c(node_id)
-        {new_state, response} = call_port(state, :read_node_minimum_sampling_interval, c_args)
-        {:reply, response, new_state}
+        call_port(state, :read_node_minimum_sampling_interval, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:read_node_historizing, node_id}, {_from, _}, state) do
+      def handle_call({:read_node_historizing, node_id}, caller_info, state) do
         c_args = to_c(node_id)
-        {new_state, response} = call_port(state, :read_node_historizing, c_args)
-        {:reply, response, new_state}
+        call_port(state, :read_node_historizing, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:read_node_executable, node_id}, {_from, _}, state) do
+      def handle_call({:read_node_executable, node_id}, caller_info, state) do
         c_args = to_c(node_id)
-        {new_state, response} = call_port(state, :read_node_executable, c_args)
-        {:reply, response, new_state}
+        call_port(state, :read_node_executable, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:read_node_value, node_id}, {_from, _}, state) do
+      def handle_call({:read_node_value, node_id}, caller_info, state) do
         c_args = to_c(node_id)
-        {new_state, value_response} = call_port(state, :read_node_value, c_args)
-        response = parse_value(value_response)
-        {:reply, response, new_state}
+        call_port(state, :read_node_value, caller_info, c_args)
+        {:noreply, state}
       end
 
-      def handle_call({:read_node_value_by_data_type, node_id, data_type}, {_from, _}, state) do
+      def handle_call({:read_node_value_by_data_type, node_id, data_type}, caller_info, state) do
         c_args = {to_c(node_id), data_type}
-        {new_state, value_response} = call_port(state, :read_node_value_by_data_type, c_args)
-        response = parse_value(value_response)
-        {:reply, response, new_state}
+        call_port(state, :read_node_value_by_data_type, caller_info, c_args)
+        {:noreply, state}
       end
 
       # Catch all handlers
@@ -429,46 +423,152 @@ defmodule OpcUA.Common do
         {:noreply, state}
       end
 
-      defp handle_c_response(1, state) do
-        nil
+      # Write nodes Attributes C handlers
+
+      defp handle_c_response({:write_node_browse_name, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
       end
 
-      defp call_port(state, command, arguments, timeout \\ @c_timeout) do
-        msg = {command, arguments}
+      defp handle_c_response({:write_node_display_name, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:write_node_description, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:write_node_write_mask, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:write_node_is_abstract, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:write_node_inverse_name, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:write_node_data_type, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:write_node_value_rank, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:write_node_access_level, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:write_node_minimum_sampling_interval, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:write_node_historizing, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:write_node_executable, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:write_node_value, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      # Read nodes Attributes C handlers
+
+      defp handle_c_response({:read_node_browse_name, caller_metadata, browse_name_response}, state) do
+        response = parse_browse_name(browse_name_response)
+        GenServer.reply(caller_metadata, response)
+        state
+      end
+
+      defp handle_c_response({:read_node_display_name, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:read_node_description, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:read_node_write_mask, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:read_node_is_abstract, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:read_node_inverse_name, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:read_node_data_type, caller_metadata, data_type_response}, state) do
+        response = parse_data_type(data_type_response)
+        GenServer.reply(caller_metadata, response)
+        state
+      end
+
+      defp handle_c_response({:read_node_value_rank, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:read_node_access_level, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:read_node_minimum_sampling_interval, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:read_node_historizing, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:read_node_executable, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:read_node_value, caller_metadata, value_response}, state) do
+        response = parse_value(value_response)
+        GenServer.reply(caller_metadata, response)
+        state
+      end
+
+      defp handle_c_response({:read_node_value_by_data_type, caller_metadata, value_response}, state) do
+        response = parse_value(value_response)
+        GenServer.reply(caller_metadata, response)
+        state
+      end
+
+      defp call_port(state, command, caller, arguments) do
+        msg = {command, caller, arguments}
         send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
-        # Block until the response comes back since the C side
-        # doesn't want to handle any queuing of requests. REVISIT
-        receive do
-          {_, {:data, <<?r, response::binary>>}} ->
-            :erlang.binary_to_term(response) |> add_to_buffer_or_response(state)
-        after
-          timeout ->
-            # Not sure how this can be recovered
-            exit(:port_timed_out)
-        end
-      end
-
-      # TODO: add dump
-      defp add_to_buffer_or_response({:ok, _} = response, state), do: dump_msgs(response, state)
-      defp add_to_buffer_or_response({:error, _} = response, state), do: dump_msgs(response, state)
-      defp add_to_buffer_or_response(:ok, state), do: dump_msgs(:ok, state)
-      defp add_to_buffer_or_response(async_response,  %{queued_messages: msgs} = state) do
-        new_msgs = msgs ++ [async_response]
-        new_state = %{state | queued_messages: new_msgs}
-
-        receive do
-          {_, {:data, <<?r, response::binary>>}} ->
-            :erlang.binary_to_term(response) |> add_to_buffer_or_response(new_state)
-        after
-          @c_timeout ->
-            # Not sure how this can be recovered
-            exit(:port_timed_out)
-        end
-      end
-
-      defp dump_msgs(response, %{queued_messages: msgs} = state) do
-        Enum.each(msgs, fn(msg) -> send(self(), msg) end)
-        {%{state | queued_messages: []}, response}
       end
 
       defp to_c(%NodeId{ns_index: ns_index, identifier_type: id_type, identifier: identifier}),
@@ -516,6 +616,7 @@ defmodule OpcUA.Common do
         }
       defp parse_c_value({ns_index, name}) when is_integer(ns_index), do: QualifiedName.new(ns_index: ns_index, name: name)
       defp parse_c_value(response), do: response
+
     end
   end
 end
