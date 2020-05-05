@@ -2,6 +2,117 @@ defmodule OpcUA.Server do
   use OpcUA.Common
 
   alias OpcUA.{NodeId}
+  @moduledoc """
+  `OpcUA.Server` is implemented as a `__using__` macro so that you can put it in any module you want
+  to handle the writes to the OPC Server events. Because it is small GenServer, it [accepts the same options for supervision](https://hexdocs.pm/elixir/GenServer.html#module-how-to-supervise)
+  to configure the child spec and passes them along to `GenServer`:
+  ```elixir
+  defmodule MyModule do
+    use OpcUA.Server, restart: :transient, shutdown: 10_000
+  end
+  ```
+  The following example shows a OPC UA Server module that has an object node with a single variable
+  and it logs whenever an updates to its value:
+
+  ```elixir
+  defmodule MyServer do
+    use OpcUA.Server
+    alias OpcUA.{NodeId, Server, QualifiedName}
+
+    require Logger
+
+    def start_link() do
+      GenServer.start(__MODULE__, self(), [])
+    end
+
+    # Use the `init` function to configure your server.
+    def init() do
+      {:ok, s_pid} = Server.start_link()
+      :ok = Server.set_default_config(s_pid)
+
+      {:ok, _ns_index} = Server.add_namespace(s_pid, "Room")
+
+      # Object Node
+      requested_new_node_id =
+        NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10002)
+
+      parent_node_id = NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 85)
+      reference_type_node_id = NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 35)
+      browse_name = QualifiedName.new(ns_index: 1, name: "Test1")
+      type_definition = NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 58)
+
+      :ok = Server.add_object_node(s_pid,
+        requested_new_node_id: requested_new_node_id,
+        parent_node_id: parent_node_id,
+        reference_type_node_id: reference_type_node_id,
+        browse_name: browse_name,
+        type_definition: type_definition
+      )
+
+      # Variable Node
+      requested_new_node_id =
+        NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10001)
+
+      parent_node_id = NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10002)
+      reference_type_node_id = NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 47)
+      browse_name = QualifiedName.new(ns_index: 1, name: "Var")
+      type_definition = NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 63)
+
+      :ok = Server.add_variable_node(s_pid,
+        requested_new_node_id: requested_new_node_id,
+        parent_node_id: parent_node_id,
+        reference_type_node_id: reference_type_node_id,
+        browse_name: browse_name,
+        type_definition: type_definition
+      )
+
+      :ok = Server.write_node_write_mask(s_pid, requested_new_node_id, 0x3FFFFF)
+      :ok = Server.write_node_access_level(s_pid, requested_new_node_id, 3)
+
+      :ok = Server.start(s_pid)
+
+      {:ok, %{s_pid: s_pid}}
+    end
+
+    def handle_write(write_event, %{parent_pid: parent_pid} = state) do
+      Logger.debug("Update: \#{inspect(write_event)}")
+      state
+    end
+  end
+  ```
+
+  """
+
+   @doc """
+  Required callback that handles node values updates from a Client or Server.
+
+  It's first argument will a tuple, in which its first element is the `node_id` of the updated node
+  and the second element is the updated value.
+
+  the second argument it's the Process state (Parent process).
+  """
+  @callback handle_write(key :: any, map) :: map
+
+
+  defmacro __using__(opts) do
+    quote location: :keep, bind_quoted: [opts: opts] do
+      use GenServer, Keyword.drop(opts, [])
+      @behaviour OpcUA.Server
+
+      alias __MODULE__
+
+      def handle_info({%NodeId{} = node_id, value}, state) do
+        state = apply(__MODULE__, :handle_write, [{node_id, value}, state])
+        {:noreply, state}
+      end
+
+      def handle_write(write_event, _state) do
+        raise "No handle_write/2 clause in #{__MODULE__} provided for #{inspect(write_event)}"
+      end
+
+      defoverridable handle_write: 2
+    end
+  end
 
   @doc """
   Starts up a OPC UA Server GenServer.
@@ -432,7 +543,6 @@ defmodule OpcUA.Server do
     variable_node = NodeId.new(ns_index: ns_index, identifier_type: type, identifier: name)
     value = parse_c_value(c_value)
     send(c_pid, {variable_node, value})
-    Logger.debug("(#{__MODULE__}) Sending: #{inspect({variable_node, value})}")
     state
   end
 

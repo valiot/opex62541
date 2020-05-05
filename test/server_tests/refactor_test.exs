@@ -2,14 +2,14 @@ defmodule ServerRefactorTest do
   use ExUnit.Case
   doctest Opex62541
 
-  alias OpcUA.{NodeId, Server, QualifiedName}
+  alias OpcUA.Server
 
   setup do
-    {:ok, pid} = OpcUA.Server.start_link()
+    {:ok, pid} = Server.start_link()
     %{pid: pid}
   end
 
   test "test", state do
-    :ok = OpcUA.Server.test(state.pid)
+    :ok = Server.test(state.pid)
   end
 end

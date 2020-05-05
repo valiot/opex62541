@@ -28,6 +28,15 @@ export OPEN62541_BUILD_ARGS='-DCMAKE_BUILD_TYPE=Release -DUA_NAMESPACE_ZERO=MINI
 
 Default values for `OPEN62541_BUILD_ARGS` are `-DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUA_NAMESPACE_ZERO=FULL`.
 
+## TODO
+
+  * **Encryption**
+  * **Client's Search Node function**
+  * **Methods**
+  * **Subscription**
+  * **Server configuration through env, map or something**
+  * **Better handling c code for the Client and Server common code**
+
   <!-- * **Note** Currently only the **Client implementation as synchronous** of Snap7 is available. Future implementations can be found in our [TODO](#todo) section.
 
   * Opex62541 is developed for open62541 "1.0.0" and Elixir 1.9.0. It is tested on:
@@ -276,10 +285,3 @@ git clone --recursive git@github.com:valiot/snap7.git
 ## License
 
   See [LICENSE](./LICENSE).
-  
-## TODO
-  * **Better handling c code**
-  * **Server implementation**
-  * **Partner implementation**
-  * **Asynchronous Client implementation**
- -->
