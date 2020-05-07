@@ -10,14 +10,14 @@
 #include "erlcmd.h"
 #include "common.h"
 
-//int server_pid;
+#define DISCOVERY_SERVER_ENDPOINT "opc.tcp://localhost:4840"
 
 pthread_t server_tid;
 pthread_attr_t server_attr;
 UA_Boolean running = true;
 
 UA_Server *server;
-
+UA_Client *discoveryClient;
 
 static UA_Boolean
 allowAddNode(UA_Server *server, UA_AccessControl *ac,
@@ -107,7 +107,7 @@ static void handle_set_port(void *entity, bool entity_type, const char *req, int
         return;
     }    
 
-    UA_StatusCode retval = UA_ServerConfig_setMinimal(UA_Server_getConfig(server), (UA_Int16) port_number, 0);
+    UA_StatusCode retval = UA_ServerConfig_setMinimal(UA_Server_getConfig(server), (UA_Int16) port_number, NULL);
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -179,17 +179,6 @@ static void handle_start_server(void *entity, bool entity_type, const char *req,
 {
     running = true;
     pthread_create(&server_tid, NULL, server_runner, NULL);
-    // server_pid = fork();
-    // if(server_pid == 0)
-    // {
-    //     //child process
-    //     UA_StatusCode retval = UA_Server_run(server, &running);
-    //     if(retval != UA_STATUSCODE_GOOD) {
-    //         errx(EXIT_FAILURE, "Unexpected Server error %s", UA_StatusCode_name(retval));
-    //     }
-    //     return;
-    // }
-
     send_ok_response();
 }
 
@@ -269,7 +258,6 @@ void handle_add_reference(void *entity, bool entity_type, const char *req, int *
  *  NOTE: before calling this function, this server should have the default configuration.
  *  LDS Servers only supports the Discovery Services. Cannot be used in combination with any other capability.
  */
-
 void handle_set_lds_config(void *entity, bool entity_type, const char *req, int *req_index)
 {
     int term_size;
@@ -327,6 +315,114 @@ void handle_set_lds_config(void *entity, bool entity_type, const char *req, int 
     send_ok_response();
 }
 
+/* 
+ *  Registers a server in a discovery server.
+ *  NOTE: before calling this function, this server should have the default 
+ *  configuration and a port = 0.
+ */
+void handle_discovery_register(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    long binary_len;
+    UA_StatusCode retval;
+
+    UA_ServerConfig *config = UA_Server_getConfig(server);
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 4)
+        errx(EXIT_FAILURE, ":handle_discovery_register requires a 4-tuple, term_size = %d", term_size);
+
+    // application_uri
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+            errx(EXIT_FAILURE, "Invalid application_uri (type)");
+
+    UA_String application_uri;
+    application_uri.data = (char *)malloc(term_size + 1);
+    application_uri.length = term_size;
+    if (ei_decode_binary(req, req_index, application_uri.data, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid application_uri");
+    application_uri.data[binary_len] = '\0';
+
+    UA_String_clear(&config->applicationDescription.applicationUri);
+    config->applicationDescription.applicationUri = application_uri;
+
+    // server_name
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+            errx(EXIT_FAILURE, "Invalid server_name (type)");
+
+    UA_String server_name;
+    server_name.data = (char *)malloc(term_size + 1);
+    server_name.length = term_size;
+    if (ei_decode_binary(req, req_index, server_name.data, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid server_name");
+    server_name.data[binary_len] = '\0';
+
+    config->discovery.mdns.mdnsServerName = server_name;
+
+    // endpoint
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+            errx(EXIT_FAILURE, "Invalid endpoint (type)");
+
+    char *endpoint = (char *)malloc(term_size + 1);
+    if (ei_decode_binary(req, req_index, endpoint, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid endpoint");
+    endpoint[binary_len] = '\0';
+
+    // timeout
+    long timeout;
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_ATOM_EXT)
+    {
+        if (ei_decode_ulong(req, req_index, &timeout) < 0) {
+            send_error_response("einval");
+            return;
+        }
+    }
+    else
+    {
+        char nil[4];
+        if (ei_decode_atom(req, req_index, nil) < 0)
+            errx(EXIT_FAILURE, "expecting command atom");
+        timeout = 10 * 60 * 1000;
+    }
+
+    if(discoveryClient != NULL)
+        UA_Client_delete(discoveryClient);
+
+    discoveryClient = UA_Client_new();
+    UA_ClientConfig_setDefault(UA_Client_getConfig(discoveryClient));
+
+    // Delay first register for 500ms
+    retval = UA_Server_addPeriodicServerRegisterCallback(server, discoveryClient, endpoint, timeout, 500, NULL);
+    
+    if(retval != UA_STATUSCODE_GOOD) {
+        UA_Client_disconnect(discoveryClient);
+        UA_Client_delete(discoveryClient);
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
+/* 
+ *  Unregister the server from the discovery server.
+ */
+void handle_discovery_unregister(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    UA_StatusCode retval = UA_Server_unregister_discovery(server, discoveryClient);
+
+    UA_Client_disconnect(discoveryClient);
+    UA_Client_delete(discoveryClient);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
 /*******************************/
 /* Elixir -> C Message Handler */
 /*******************************/
@@ -378,6 +474,8 @@ static struct request_handler request_handlers[] = {
     {"delete_node", handle_delete_node},
     // Discovery
     {"set_lds_config", handle_set_lds_config},
+    {"discovery_register", handle_discovery_register},
+    {"discovery_unregister", handle_discovery_unregister},
     { NULL, NULL }
 };
 
