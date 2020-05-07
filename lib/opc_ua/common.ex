@@ -298,7 +298,6 @@ defmodule OpcUA.Common do
 
       def handle_call({:write_node_access_level, node_id, access_level}, caller_info, state) when is_integer(access_level) do
         c_args = {to_c(node_id), access_level}
-        Logger.debug("debug: #{inspect c_args}")
         call_port(state, :write_node_access_level, caller_info, c_args)
         {:noreply, state}
       end

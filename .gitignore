@@ -24,3 +24,5 @@ opex62541-*.tar
 
 # Ignore VS Elixir backend.
 /.elixir_ls
+
+/.vscode/

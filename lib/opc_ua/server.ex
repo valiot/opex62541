@@ -74,7 +74,7 @@ defmodule OpcUA.Server do
       {:ok, %{s_pid: s_pid}}
     end
 
-    def handle_write(write_event, %{parent_pid: parent_pid} = state) do
+    def handle_write(write_event, state) do
       Logger.debug("Update: \#{inspect(write_event)}")
       state
     end
@@ -332,6 +332,24 @@ defmodule OpcUA.Server do
     GenServer.call(pid, {:delete_node, args})
   end
 
+  # Discovery functions
+
+  @doc """
+  Sets the configuration for the a Server representing a local discovery server as a central instance.
+  Any other server can register with this server using "discovery_register" function
+  NOTE: before calling this function, this server should have the default configuration.
+  LDS Servers only supports the Discovery Services. Cannot be used in combination with any other capability.
+
+  The following must be filled:
+    * `:application_uri` -> %NodeID{}.
+    * `:timeout` -> boolean().
+  """
+  @spec set_lds_config(GenServer.server(), binary(), integer()) :: :ok | {:error, binary()} | {:error, :einval}
+  def set_lds_config(pid, application_uri, timeout \\ nil) when is_binary(application_uri) and (is_integer(timeout) or is_nil(timeout)) do
+    GenServer.call(pid, {:set_lds_config, application_uri, timeout})
+  end
+
+
   @doc false
   def test(pid) do
     GenServer.call(pid, {:test, nil})
@@ -510,6 +528,13 @@ defmodule OpcUA.Server do
     {:noreply, state}
   end
 
+  # Discovery Functions.
+  def handle_call({:set_lds_config, application_uri, timeout}, caller_info, state) do
+    c_args = {application_uri, timeout}
+    call_port(state, :set_lds_config, caller_info, c_args)
+    {:noreply, state}
+  end
+
   # Catch all
 
   def handle_call({:test, nil}, caller_info, state) do
@@ -641,6 +666,12 @@ defmodule OpcUA.Server do
   end
 
   defp handle_c_response({:delete_node, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  # C Handlers Add & Delete Functions.
+  defp handle_c_response({:set_lds_config, caller_metadata, data}, state) do
     GenServer.reply(caller_metadata, data)
     state
   end

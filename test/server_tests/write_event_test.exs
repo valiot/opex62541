@@ -1,6 +1,5 @@
 defmodule ServerWriteEventTest do
   use ExUnit.Case
-  doctest Opex62541
 
   alias OpcUA.{NodeId, Client}
 

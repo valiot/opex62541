@@ -110,13 +110,13 @@ if(NOT MANUAL_BUILD)
         set(BASE_FLAGS "${BASE_RELEASE_FLAGS}")
     endif()
 
-    set(BASE_C_FLAGS "${BASE_FLAGS} -std=c99")
+    set(BASE_C_FLAGS "${BASE_FLAGS} -std=c99 -lpthread -g")
     set(BASE_CXX_FLAGS "${BASE_FLAGS}")
 
     set (opex62541_PROGRAMS opc_ua_server opc_ua_client client_example)
 
     foreach(opex62541_PROGRAM ${opex62541_PROGRAMS})
-        add_executable( ${opex62541_PROGRAM} "${CMAKE_SOURCE_DIR}/${opex62541_PROGRAM}.c" "${CMAKE_SOURCE_DIR}/erlcmd.c" "${CMAKE_SOURCE_DIR}/util.c" )
+        add_executable( ${opex62541_PROGRAM} "${CMAKE_SOURCE_DIR}/${opex62541_PROGRAM}.c" "${CMAKE_SOURCE_DIR}/erlcmd.c" "${CMAKE_SOURCE_DIR}/common.c" )
         target_link_libraries(${opex62541_PROGRAM} ${STATIC_LIBS})
         target_link_libraries(${opex62541_PROGRAM} ${install_dir}/libopen62541.so)
     endforeach(opex62541_PROGRAM)    

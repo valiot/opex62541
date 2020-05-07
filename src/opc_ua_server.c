@@ -22,12 +22,12 @@ UA_Server *server;
 static UA_Boolean
 allowAddNode(UA_Server *server, UA_AccessControl *ac,
              const UA_NodeId *sessionId, void *sessionContext,
-             const UA_AddNodesItem *item)  {return UA_TRUE;}
+             const UA_AddNodesItem *item)  {return UA_FALSE;}
 
 static UA_Boolean
 allowAddReference(UA_Server *server, UA_AccessControl *ac,
                   const UA_NodeId *sessionId, void *sessionContext,
-                  const UA_AddReferencesItem *item) {return UA_TRUE;}
+                  const UA_AddReferencesItem *item) {return UA_FALSE;}
 
 static UA_Boolean
 allowDeleteNode(UA_Server *server, UA_AccessControl *ac,
@@ -37,7 +37,7 @@ allowDeleteNode(UA_Server *server, UA_AccessControl *ac,
 static UA_Boolean
 allowDeleteReference(UA_Server *server, UA_AccessControl *ac,
                      const UA_NodeId *sessionId, void *sessionContext,
-                     const UA_DeleteReferencesItem *item) {return UA_TRUE;}
+                     const UA_DeleteReferencesItem *item) {return UA_FALSE;}
 
 void* server_runner(void* arg)
 {
@@ -259,6 +259,74 @@ void handle_add_reference(void *entity, bool entity_type, const char *req, int *
     send_ok_response();
 }
 
+/*************/
+/* Discovery */
+/*************/
+
+/* 
+ *  Sets the configuration for the a Server representing a local discovery server as a central instance.
+ *  Any other server can register with this server using "discovery_register" function
+ *  NOTE: before calling this function, this server should have the default configuration.
+ *  LDS Servers only supports the Discovery Services. Cannot be used in combination with any other capability.
+ */
+
+void handle_set_lds_config(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":handle_set_lds_config requires a 2-tuple, term_size = %d", term_size);
+
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+            errx(EXIT_FAILURE, "Invalid application_uri (type)");
+
+    UA_String application_uri;
+    application_uri.data = (char *)malloc(term_size + 1);
+    application_uri.length = term_size;
+    long binary_len;
+    if (ei_decode_binary(req, req_index, application_uri.data, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid application_uri");
+    application_uri.data[binary_len] = '\0';
+
+    UA_ServerConfig *config = UA_Server_getConfig(server);
+
+    // This is an LDS server only. Set the application type to DISCOVERYSERVER.
+    config->applicationDescription.applicationType = UA_APPLICATIONTYPE_DISCOVERYSERVER;
+    UA_String_clear(&config->applicationDescription.applicationUri);
+    config->applicationDescription.applicationUri = application_uri;
+
+    // corrupted size vs. prev_size
+    config->discovery.mdns.serverCapabilitiesSize = 1;
+    UA_String *caps = (UA_String *) UA_Array_new(1, &UA_TYPES[UA_TYPES_STRING]);
+    caps[0] = UA_String_fromChars("LDS");
+    config->discovery.mdns.serverCapabilities = caps;
+
+    // Enable the mDNS announce and response functionality
+    config->discovery.mdnsEnable = true;
+    config->discovery.mdns.mdnsServerName = UA_String_fromChars("LDS");
+
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_ATOM_EXT)
+    {
+        long timeout;
+        if (ei_decode_ulong(req, req_index, &timeout) < 0) {
+            send_error_response("einval");
+            return;
+        }
+        config->discovery.cleanupTimeout = timeout;
+    }
+    else
+    {
+        char nil[4];
+        if (ei_decode_atom(req, req_index, nil) < 0)
+        errx(EXIT_FAILURE, "expecting command atom");
+        config->discovery.cleanupTimeout = 60*60;
+    }
+
+    send_ok_response();
+}
+
 /*******************************/
 /* Elixir -> C Message Handler */
 /*******************************/
@@ -308,6 +376,8 @@ static struct request_handler request_handlers[] = {
     {"add_reference", handle_add_reference},
     {"delete_reference", handle_delete_reference},
     {"delete_node", handle_delete_node},
+    // Discovery
+    {"set_lds_config", handle_set_lds_config},
     { NULL, NULL }
 };
 
