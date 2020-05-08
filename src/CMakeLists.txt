@@ -37,7 +37,12 @@ endif("$ENV{OPEN62541_DOWNLOAD_VERSION}" STREQUAL "")
 
 if(NOT MANUAL_BUILD)
     message(STATUS "DOWNLOAD_BUILD")
-    set(BASE_URL "https://github.com/open62541/open62541/releases/download")
+
+    if("$ENV{OPEN62541_BASE_URL}" STREQUAL "")
+        set(BASE_URL "https://github.com/valiot/opex62541/releases/download")
+    else("$ENV{OPEN62541_BASE_URL}" STREQUAL "")
+        set(BASE_URL $ENV{OPEN62541_BASE_URL})    
+    endif("$ENV{OPEN62541_BASE_URL}" STREQUAL "")
     
     # define ARCH
     if($ENV{MIX_TARGET} STREQUAL "host")
@@ -81,6 +86,10 @@ if(NOT MANUAL_BUILD)
 
     set(install_dir ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${EXTRACTED_FILE}/lib)
 
+    set(include_dir ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${EXTRACTED_FILE}/include)
+
+    include_directories(${include_dir})
+
     include_directories($ENV{ERL_EI_INCLUDE_DIR})
 
     include_directories($ENV{CMAKE_SOURCE_DIR})
@@ -110,14 +119,15 @@ if(NOT MANUAL_BUILD)
         set(BASE_FLAGS "${BASE_RELEASE_FLAGS}")
     endif()
 
-    set(BASE_C_FLAGS "${BASE_FLAGS} -std=c99 -lpthread -g")
+    set(BASE_C_FLAGS "${BASE_FLAGS} -std=c99 -lpthread")
     set(BASE_CXX_FLAGS "${BASE_FLAGS}")
 
-    set (opex62541_PROGRAMS opc_ua_server opc_ua_client client_example)
+    set (opex62541_PROGRAMS opc_ua_server opc_ua_client client_example server_example)
 
     foreach(opex62541_PROGRAM ${opex62541_PROGRAMS})
         add_executable( ${opex62541_PROGRAM} "${CMAKE_SOURCE_DIR}/${opex62541_PROGRAM}.c" "${CMAKE_SOURCE_DIR}/erlcmd.c" "${CMAKE_SOURCE_DIR}/common.c" )
         target_link_libraries(${opex62541_PROGRAM} ${STATIC_LIBS})
+        target_link_libraries(${opex62541_PROGRAM} ${CMAKE_THREAD_LIBS_INIT})
         target_link_libraries(${opex62541_PROGRAM} ${install_dir}/libopen62541.so)
     endforeach(opex62541_PROGRAM)    
 
@@ -197,4 +207,4 @@ else(NOT MANUAL_BUILD)
 
 endif(NOT MANUAL_BUILD)
 
-message(STATUS "Debugs ${OPEN62541_BUILD_ARGS}, $ENV{ERL_EI_INCLUDE_DIR}, $ENV{ERL_EI_LIBDIR}, ${SOURCES}, $ENV{MIX_CONSOLIDATION_PATH}, ${CMAKE_SOURCE_DIR}, ${PROJECT_SOURCE_DIR}, ${N_CORES}")
+message(STATUS "Debugs ${DOWNLOAD_URL} ${DOWNLOAD_PATH}")
