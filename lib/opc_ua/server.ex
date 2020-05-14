@@ -389,7 +389,14 @@ defmodule OpcUA.Server do
 
   # Handlers
   def init({_args, controlling_process}) do
-    executable = :code.priv_dir(:opex62541) ++ '/opc_ua_server'
+
+    lib_dir =
+      :opex62541
+      |> :code.priv_dir()
+      |> to_string()
+      |> set_ld_library_path()
+
+    executable = lib_dir <> "/opc_ua_server"
 
     port =
       Port.open({:spawn_executable, executable}, [

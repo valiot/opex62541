@@ -1,6 +1,5 @@
 defmodule ServerRefactorTest do
-  use ExUnit.Case
-  doctest Opex62541
+  use ExUnit.Case, async: false
 
   alias OpcUA.Server
 
@@ -11,5 +10,15 @@ defmodule ServerRefactorTest do
 
   test "test", state do
     :ok = Server.test(state.pid)
+  end
+
+  test "Set LD_LIBRARY_PATH" do
+    System.put_env("LD_LIBRARY_PATH", "")
+    assert "/priv" == Server.set_ld_library_path("/priv")
+    assert System.get_env("LD_LIBRARY_PATH") == ":/priv"
+    assert "/priv" == Server.set_ld_library_path("/priv")
+    assert System.get_env("LD_LIBRARY_PATH") == ":/priv"
+    assert "/privd" == Server.set_ld_library_path("/privd")
+    assert System.get_env("LD_LIBRARY_PATH") == ":/priv/:/privd"
   end
 end

@@ -616,6 +616,23 @@ defmodule OpcUA.Common do
       defp parse_c_value({ns_index, name}) when is_integer(ns_index), do: QualifiedName.new(ns_index: ns_index, name: name)
       defp parse_c_value(response), do: response
 
+      @doc false
+      def set_ld_library_path(priv_dir) do
+        System.get_env("LD_LIBRARY_PATH", "")
+        |> String.contains?(priv_dir)
+        |> write_ld_library_path(priv_dir)
+      end
+
+      defp write_ld_library_path(false, priv_dir) do
+        ld_dirs =
+          System.get_env("LD_LIBRARY_PATH", "")
+          |> Path.join(":")
+          |> Path.join(priv_dir)
+        System.put_env("LD_LIBRARY_PATH", ld_dirs)
+        priv_dir
+      end
+
+      defp write_ld_library_path(true, priv_dir), do: priv_dir
     end
   end
 end
