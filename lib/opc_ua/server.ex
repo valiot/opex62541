@@ -96,10 +96,35 @@ defmodule OpcUA.Server do
 
   defmacro __using__(opts) do
     quote location: :keep, bind_quoted: [opts: opts] do
-      use GenServer, Keyword.drop(opts, [])
+      use GenServer, Keyword.drop(opts, [:configuration])
       @behaviour OpcUA.Server
 
       alias __MODULE__
+
+      def start_link(user_initial_params \\ []) do
+        GenServer.start_link(__MODULE__, user_initial_params, unquote(opts))
+      end
+
+      @impl true
+      def init(user_initial_params) do
+        send self(), :init
+        {:ok, user_initial_params}
+      end
+
+      @impl true
+      def handle_info(:init, user_initial_params) do
+        # Server Terraform
+        {:ok, s_pid} = OpcUA.Server.start_link()
+        configuration = apply(__MODULE__, :configuration, [])
+        address_space = apply(__MODULE__, :address_space, [])
+
+        set_server_config(s_pid, configuration)
+        set_server_config(s_pid, configuration)
+        # User initialization.
+        user_state = apply(__MODULE__, :init, [user_initial_params, s_pid])
+
+        {:noreply, user_state}
+      end
 
       def handle_info({%NodeId{} = node_id, value}, state) do
         state = apply(__MODULE__, :handle_write, [{node_id, value}, state])
@@ -110,10 +135,21 @@ defmodule OpcUA.Server do
         raise "No handle_write/2 clause in #{__MODULE__} provided for #{inspect(write_event)}"
       end
 
-      defoverridable handle_write: 2
+      def address_space(), do: []
+      def server_configuration(), do: []
+
+      defp set_server_config(s_pid, configuration) do
+        {discovery_params, config_params} = Keyword.pop(configuration, :discovery, [])
+        GenServer.call(s_pid, {:set_default_server_config, nil})
+        Enum.each(config_params, fn(config_param) -> GenServer.call(s_pid, {:config, config_param}) end)
+        Enum.each(discovery_params, fn(config_param) -> GenServer.call(s_pid, {:discovery, discovery_params}) end)
+      end
+
+      defoverridable  server_configuration: 0,
+                      address_space: 0,
+                      handle_write: 2
     end
   end
-
   @doc """
   Starts up a OPC UA Server GenServer.
   """
@@ -137,7 +173,7 @@ defmodule OpcUA.Server do
   """
   @spec get_config(GenServer.server()) :: {:ok, map()} | {:error, binary()} | {:error, :einval}
   def get_config(pid) do
-    GenServer.call(pid, {:get_server_config, nil})
+    GenServer.call(pid, {:config, {:get_server_config, nil}})
   end
 
   @doc """
@@ -145,7 +181,7 @@ defmodule OpcUA.Server do
   """
   @spec set_default_config(GenServer.server()) :: :ok | {:error, binary()} | {:error, :einval}
   def set_default_config(pid) do
-    GenServer.call(pid, {:set_default_server_config, nil})
+    GenServer.call(pid, {:config, {:set_default_server_config, nil}})
   end
 
   @doc """
@@ -153,7 +189,7 @@ defmodule OpcUA.Server do
   """
   @spec set_hostname(GenServer.server(), binary()) :: :ok | {:error, binary()} | {:error, :einval}
   def set_hostname(pid, hostname) when is_binary(hostname) do
-    GenServer.call(pid, {:set_hostname, hostname})
+    GenServer.call(pid, {:config, {:hostname, hostname}})
   end
 
   @doc """
@@ -161,7 +197,7 @@ defmodule OpcUA.Server do
   """
   @spec set_port(GenServer.server(), integer()) :: :ok | {:error, binary()} | {:error, :einval}
   def set_port(pid, port) when is_integer(port) do
-    GenServer.call(pid, {:set_port, port})
+    GenServer.call(pid, {:config, {:port, port}})
   end
 
   @doc """
@@ -170,7 +206,7 @@ defmodule OpcUA.Server do
   """
   @spec set_users(GenServer.server(), list()) :: :ok | {:error, binary()} | {:error, :einval}
   def set_users(pid, users) when is_list(users) do
-    GenServer.call(pid, {:set_users, users})
+    GenServer.call(pid, {:config, {:users, users}})
   end
 
   @doc """
@@ -187,6 +223,49 @@ defmodule OpcUA.Server do
   @spec stop_server(GenServer.server()) :: :ok | {:error, binary()} | {:error, :einval}
   def stop_server(pid) do
     GenServer.call(pid, {:stop_server, nil})
+  end
+
+  # Discovery functions
+
+  @doc """
+  Sets the configuration for the a Server representing a local discovery server as a central instance.
+  Any other server can register with this server using "discovery_register" function
+  NOTE: before calling this function, this server should have the default configuration.
+  LDS Servers only supports the Discovery Services. Cannot be used in combination with any other capability.
+
+  The following args must be filled:
+    * `:application_uri` -> binary().
+    * `:timeout` -> boolean().
+  """
+  @spec set_lds_config(GenServer.server(), binary(), integer()) ::
+          :ok | {:error, binary()} | {:error, :einval}
+  def set_lds_config(pid, application_uri, timeout \\ nil)
+      when is_binary(application_uri) and (is_integer(timeout) or is_nil(timeout)) do
+    GenServer.call(pid, {:config, {:discovery, {application_uri, timeout}}})
+  end
+
+  @doc """
+  Registers a server in a discovery server.
+  NOTE: The Server sends the request once started. Use port = 0 to dynamically port allocation.
+
+  The following must be filled:
+    * `:application_uri` -> binary().
+    * `:server_name` -> binary().
+    * `:endpoint` -> binary().
+    * `:timeout` -> boolean().
+  """
+  @spec discovery_register(GenServer.server(), list()) :: :ok | {:error, binary()} | {:error, :einval}
+  def discovery_register(pid, args) when is_list(args) do
+    GenServer.call(pid, {:discovery_register, args})
+  end
+
+  @doc """
+  Unregister the server from the discovery server.
+  NOTE: Server must be started.
+  """
+  @spec discovery_unregister(GenServer.server()) :: :ok | {:error, binary()} | {:error, :einval}
+  def discovery_unregister(pid) do
+    GenServer.call(pid, {:discovery_unregister, nil})
   end
 
   # Add & Delete nodes functions
@@ -339,48 +418,6 @@ defmodule OpcUA.Server do
     GenServer.call(pid, {:delete_node, args})
   end
 
-  # Discovery functions
-
-  @doc """
-  Sets the configuration for the a Server representing a local discovery server as a central instance.
-  Any other server can register with this server using "discovery_register" function
-  NOTE: before calling this function, this server should have the default configuration.
-  LDS Servers only supports the Discovery Services. Cannot be used in combination with any other capability.
-
-  The following args must be filled:
-    * `:application_uri` -> binary().
-    * `:timeout` -> boolean().
-  """
-  @spec set_lds_config(GenServer.server(), binary(), integer()) ::
-          :ok | {:error, binary()} | {:error, :einval}
-  def set_lds_config(pid, application_uri, timeout \\ nil)
-      when is_binary(application_uri) and (is_integer(timeout) or is_nil(timeout)) do
-    GenServer.call(pid, {:set_lds_config, application_uri, timeout})
-  end
-
-  @doc """
-  Registers a server in a discovery server.
-  NOTE: The Server sends the request once started. Use port = 0 to dynamically port allocation.
-
-  The following must be filled:
-    * `:application_uri` -> binary().
-    * `:server_name` -> binary().
-    * `:endpoint` -> binary().
-    * `:timeout` -> boolean().
-  """
-  @spec discovery_register(GenServer.server(), list()) :: :ok | {:error, binary()} | {:error, :einval}
-  def discovery_register(pid, args) when is_list(args) do
-    GenServer.call(pid, {:discovery_register, args})
-  end
-
-  @doc """
-  Unregister the server from the discovery server.
-  NOTE: Server must be started.
-  """
-  @spec discovery_unregister(GenServer.server()) :: :ok | {:error, binary()} | {:error, :einval}
-  def discovery_unregister(pid) do
-    GenServer.call(pid, {:discovery_unregister, nil})
-  end
 
   @doc false
   def test(pid) do
@@ -413,27 +450,27 @@ defmodule OpcUA.Server do
 
   # Handlers Lifecyle & Configuration Functions.
 
-  def handle_call({:get_server_config, nil}, caller_info, state) do
+  def handle_call({:config, {:get_server_config, nil}}, caller_info, state) do
     call_port(state, :get_server_config, caller_info, nil)
     {:noreply, state}
   end
 
-  def handle_call({:set_default_server_config, nil}, caller_info, state) do
+  def handle_call({:config, {:set_default_server_config, nil}}, caller_info, state) do
     call_port(state, :set_default_server_config, caller_info, nil)
     {:noreply, state}
   end
 
-  def handle_call({:set_hostname, hostname}, caller_info, state) do
+  def handle_call({:config, {:hostname, hostname}}, caller_info, state) do
     call_port(state, :set_hostname, caller_info, hostname)
     {:noreply, state}
   end
 
-  def handle_call({:set_port, port}, caller_info, state) do
+  def handle_call({:config, {:port, port}}, caller_info, state) do
     call_port(state, :set_port, caller_info, port)
     {:noreply, state}
   end
 
-  def handle_call({:set_users, users}, caller_info, state) do
+  def handle_call({:config, {:users, users}}, caller_info, state) do
     call_port(state, :set_users, caller_info, users)
     {:noreply, state}
   end
@@ -445,6 +482,30 @@ defmodule OpcUA.Server do
 
   def handle_call({:stop_server, nil}, caller_info, state) do
     call_port(state, :stop_server, caller_info, nil)
+    {:noreply, state}
+  end
+
+  # Discovery Functions.
+
+  def handle_call({:config, {:discovery, {application_uri, timeout}}}, caller_info, state) do
+    c_args = {application_uri, timeout}
+    call_port(state, :set_lds_config, caller_info, c_args)
+    {:noreply, state}
+  end
+
+  def handle_call({:discovery_register, args}, caller_info, state) do
+    application_uri = Keyword.fetch!(args, :application_uri)
+    server_name = Keyword.fetch!(args, :server_name)
+    endpoint = Keyword.fetch!(args, :endpoint)
+    timeout = Keyword.get(args, :timeout, nil)
+
+    c_args = {application_uri, server_name, endpoint, timeout}
+    call_port(state, :discovery_register, caller_info, c_args)
+    {:noreply, state}
+  end
+
+  def handle_call({:discovery_unregister, nil}, caller_info, state) do
+    call_port(state, :discovery_unregister, caller_info, nil)
     {:noreply, state}
   end
 
@@ -573,30 +634,6 @@ defmodule OpcUA.Server do
 
     c_args = {node_id, delete_reference}
     call_port(state, :delete_node, caller_info, c_args)
-    {:noreply, state}
-  end
-
-  # Discovery Functions.
-
-  def handle_call({:set_lds_config, application_uri, timeout}, caller_info, state) do
-    c_args = {application_uri, timeout}
-    call_port(state, :set_lds_config, caller_info, c_args)
-    {:noreply, state}
-  end
-
-  def handle_call({:discovery_register, args}, caller_info, state) do
-    application_uri = Keyword.fetch!(args, :application_uri)
-    server_name = Keyword.fetch!(args, :server_name)
-    endpoint = Keyword.fetch!(args, :endpoint)
-    timeout = Keyword.get(args, :timeout, nil)
-
-    c_args = {application_uri, server_name, endpoint, timeout}
-    call_port(state, :discovery_register, caller_info, c_args)
-    {:noreply, state}
-  end
-
-  def handle_call({:discovery_unregister, nil}, caller_info, state) do
-    call_port(state, :discovery_unregister, caller_info, nil)
     {:noreply, state}
   end
 

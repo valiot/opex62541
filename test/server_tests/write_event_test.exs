@@ -7,9 +7,9 @@ defmodule ServerWriteEventTest do
     use OpcUA.Server
     alias OpcUA.{NodeId, Server, QualifiedName}
 
-    def start_link() do
-      GenServer.start(__MODULE__, self(), [])
-    end
+    # def start_link() do
+    #   GenServer.start(__MODULE__, self(), [])
+    # end
 
     # Use the `init` function to configure your server.
     def init(parent_pid) do
