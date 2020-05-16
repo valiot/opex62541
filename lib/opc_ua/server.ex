@@ -113,14 +113,24 @@ defmodule OpcUA.Server do
 
       @impl true
       def handle_info(:init, user_initial_params) do
+
         # Server Terraform
+
         {:ok, s_pid} = OpcUA.Server.start_link()
         configuration = apply(__MODULE__, :configuration, [])
         address_space = apply(__MODULE__, :address_space, [])
 
-        set_server_config(s_pid, configuration)
-        set_server_config(s_pid, configuration)
+        OpcUA.Server.set_default_config(s_pid)
+
+        # configutation = [config; list(), discovery: {term(), term()}]
+        set_server_config(s_pid, configuration, :config)
+        set_server_config(s_pid, configuration, :discovery)
+
+        # address_space = [namespace: "", namespace: "", varaible: %VariableNode{}, ...]
+        set_server_address_space(s_pid, address_space)
+
         # User initialization.
+
         user_state = apply(__MODULE__, :init, [user_initial_params, s_pid])
 
         {:noreply, user_state}
@@ -136,20 +146,67 @@ defmodule OpcUA.Server do
       end
 
       def address_space(), do: []
-      def server_configuration(), do: []
+      def configuration(), do: []
 
-      defp set_server_config(s_pid, configuration) do
-        {discovery_params, config_params} = Keyword.pop(configuration, :discovery, [])
-        GenServer.call(s_pid, {:set_default_server_config, nil})
-        Enum.each(config_params, fn(config_param) -> GenServer.call(s_pid, {:config, config_param}) end)
-        Enum.each(discovery_params, fn(config_param) -> GenServer.call(s_pid, {:discovery, discovery_params}) end)
+      defp set_server_config(s_pid, configuration, type) do
+        config_params = Keyword.get(configuration, type, [])
+        Enum.each(config_params, fn(config_param) -> GenServer.call(s_pid, {type, config_param}) end)
       end
 
-      defoverridable  server_configuration: 0,
+      defp set_server_address_space(s_pid, address_space) do
+        for {node_type, node_params} <- address_space, reduce: %{} do
+          acc -> add_node(s_pid, node_type, node_params, acc)
+        end
+      end
+
+      defp add_node(s_pid, :namespace, node_param, namespaces) do
+        ns_index = GenServer.call(s_pid, {:add, {:namespace, node_param}})
+        Map.put(namespaces, node_param, ns_index)
+      end
+
+      defp add_node(s_pid, node_type, node, namespaces) do
+        # separate the node params (creation arguments & node attributes)
+        {node_args, node_attrs} =
+          node
+          |> Map.from_struct()
+          |> Map.pop(:args)
+
+        # Create node
+        #node_args = replace_namespace(node_args, namespaces)
+        GenServer.call(s_pid, {:add, {node_type, node_args}})
+
+        # add nodes attribures
+        node_id = Keyword.fetch!(node_args, :requested_new_node_id)
+        #node_attrs = replace_namespace(node_attrs, namespaces)
+        add_node_attrs(s_pid, node_id, node_attrs)
+
+        namespaces
+      end
+
+      defp add_node_attrs(s_pid, node_id, node_attrs) do
+        for {attr, attr_value} <- node_attrs do
+          GenServer.call(s_pid, {:write, {attr, node_id, attr_value}})
+        end
+      end
+
+      # TODO: complete the function.
+      # defp replace_namespace(params, namespaces) do
+      #   for {param, param_value} <- params, reduce: %{} do
+      #     acc ->
+      #       param_value =
+      #         if is_struct(params_value) do
+
+      #         end
+      #       Map.put
+      #   end
+      # end
+
+      defoverridable  configuration: 0,
                       address_space: 0,
                       handle_write: 2
     end
   end
+
   @doc """
   Starts up a OPC UA Server GenServer.
   """
@@ -241,7 +298,7 @@ defmodule OpcUA.Server do
           :ok | {:error, binary()} | {:error, :einval}
   def set_lds_config(pid, application_uri, timeout \\ nil)
       when is_binary(application_uri) and (is_integer(timeout) or is_nil(timeout)) do
-    GenServer.call(pid, {:config, {:discovery, {application_uri, timeout}}})
+    GenServer.call(pid, {:discovery, {application_uri, timeout}})
   end
 
   @doc """
@@ -256,7 +313,7 @@ defmodule OpcUA.Server do
   """
   @spec discovery_register(GenServer.server(), list()) :: :ok | {:error, binary()} | {:error, :einval}
   def discovery_register(pid, args) when is_list(args) do
-    GenServer.call(pid, {:discovery_register, args})
+    GenServer.call(pid, {:discovery, {:discovery_register, args}})
   end
 
   @doc """
@@ -265,7 +322,7 @@ defmodule OpcUA.Server do
   """
   @spec discovery_unregister(GenServer.server()) :: :ok | {:error, binary()} | {:error, :einval}
   def discovery_unregister(pid) do
-    GenServer.call(pid, {:discovery_unregister, nil})
+    GenServer.call(pid, {:discovery, {:discovery_unregister, nil}})
   end
 
   # Add & Delete nodes functions
@@ -276,7 +333,7 @@ defmodule OpcUA.Server do
   @spec add_namespace(GenServer.server(), binary()) ::
           {:ok, integer()} | {:error, binary()} | {:error, :einval}
   def add_namespace(pid, namespace) when is_binary(namespace) do
-    GenServer.call(pid, {:add_namespace, namespace})
+    GenServer.call(pid, {:add, {:namespace, namespace}})
   end
 
   @doc """
@@ -291,7 +348,7 @@ defmodule OpcUA.Server do
   @spec add_variable_node(GenServer.server(), list()) ::
           :ok | {:error, binary()} | {:error, :einval}
   def add_variable_node(pid, args) when is_list(args) do
-    GenServer.call(pid, {:add_variable_node, args})
+    GenServer.call(pid, {:add, {:variable_node, args}})
   end
 
   @doc """
@@ -306,7 +363,7 @@ defmodule OpcUA.Server do
   @spec add_variable_type_node(GenServer.server(), list()) ::
           :ok | {:error, binary()} | {:error, :einval}
   def add_variable_type_node(pid, args) when is_list(args) do
-    GenServer.call(pid, {:add_variable_type_node, args})
+    GenServer.call(pid, {:add, {:variable_type_node, args}})
   end
 
   @doc """
@@ -321,7 +378,7 @@ defmodule OpcUA.Server do
   @spec add_object_node(GenServer.server(), list()) ::
           :ok | {:error, binary()} | {:error, :einval}
   def add_object_node(pid, args) when is_list(args) do
-    GenServer.call(pid, {:add_object_node, args})
+    GenServer.call(pid, {:add, {:object_node, args}})
   end
 
   @doc """
@@ -335,7 +392,7 @@ defmodule OpcUA.Server do
   @spec add_object_type_node(GenServer.server(), list()) ::
           :ok | {:error, binary()} | {:error, :einval}
   def add_object_type_node(pid, args) when is_list(args) do
-    GenServer.call(pid, {:add_object_type_node, args})
+    GenServer.call(pid, {:add, {:object_type_node, args}})
   end
 
   @doc """
@@ -348,7 +405,7 @@ defmodule OpcUA.Server do
   """
   @spec add_view_node(GenServer.server(), list()) :: :ok | {:error, binary()} | {:error, :einval}
   def add_view_node(pid, args) when is_list(args) do
-    GenServer.call(pid, {:add_view_node, args})
+    GenServer.call(pid, {:add, {:view_node, args}})
   end
 
   @doc """
@@ -362,7 +419,7 @@ defmodule OpcUA.Server do
   @spec add_reference_type_node(GenServer.server(), list()) ::
           :ok | {:error, binary()} | {:error, :einval}
   def add_reference_type_node(pid, args) when is_list(args) do
-    GenServer.call(pid, {:add_reference_type_node, args})
+    GenServer.call(pid, {:add, {:reference_type_node, args}})
   end
 
   @doc """
@@ -376,7 +433,7 @@ defmodule OpcUA.Server do
   @spec add_data_type_node(GenServer.server(), list()) ::
           :ok | {:error, binary()} | {:error, :einval}
   def add_data_type_node(pid, args) when is_list(args) do
-    GenServer.call(pid, {:add_data_type_node, args})
+    GenServer.call(pid, {:add, {:data_type_node, args}})
   end
 
   @doc """
@@ -389,7 +446,7 @@ defmodule OpcUA.Server do
   """
   @spec add_reference(GenServer.server(), list()) :: :ok | {:error, binary()} | {:error, :einval}
   def add_reference(pid, args) when is_list(args) do
-    GenServer.call(pid, {:add_reference, args})
+    GenServer.call(pid, {:add, {:reference, args}})
   end
 
   @doc """
@@ -487,13 +544,7 @@ defmodule OpcUA.Server do
 
   # Discovery Functions.
 
-  def handle_call({:config, {:discovery, {application_uri, timeout}}}, caller_info, state) do
-    c_args = {application_uri, timeout}
-    call_port(state, :set_lds_config, caller_info, c_args)
-    {:noreply, state}
-  end
-
-  def handle_call({:discovery_register, args}, caller_info, state) do
+  def handle_call({:discovery, {:discovery_register, args}}, caller_info, state) do
     application_uri = Keyword.fetch!(args, :application_uri)
     server_name = Keyword.fetch!(args, :server_name)
     endpoint = Keyword.fetch!(args, :endpoint)
@@ -504,19 +555,25 @@ defmodule OpcUA.Server do
     {:noreply, state}
   end
 
-  def handle_call({:discovery_unregister, nil}, caller_info, state) do
+  def handle_call({:discovery, {:discovery_unregister, nil}}, caller_info, state) do
     call_port(state, :discovery_unregister, caller_info, nil)
+    {:noreply, state}
+  end
+
+  def handle_call({:discovery, {application_uri, timeout}}, caller_info, state) do
+    c_args = {application_uri, timeout}
+    call_port(state, :set_lds_config, caller_info, c_args)
     {:noreply, state}
   end
 
   # Handlers Add & Delete Functions.
 
-  def handle_call({:add_namespace, namespace}, caller_info, state) do
+  def handle_call({:add, {:namespace, namespace}}, caller_info, state) do
     call_port(state, :add_namespace, caller_info, namespace)
     {:noreply, state}
   end
 
-  def handle_call({:add_variable_node, args}, caller_info, state) do
+  def handle_call({:add, {:variable_node, args}}, caller_info, state) do
     requested_new_node_id = Keyword.fetch!(args, :requested_new_node_id) |> to_c()
     parent_node_id = Keyword.fetch!(args, :parent_node_id) |> to_c()
     reference_type_node_id = Keyword.fetch!(args, :reference_type_node_id) |> to_c()
@@ -531,7 +588,7 @@ defmodule OpcUA.Server do
     {:noreply, state}
   end
 
-  def handle_call({:add_variable_type_node, args}, caller_info, state) do
+  def handle_call({:add, {:variable_type_node, args}}, caller_info, state) do
     requested_new_node_id = Keyword.fetch!(args, :requested_new_node_id) |> to_c()
     parent_node_id = Keyword.fetch!(args, :parent_node_id) |> to_c()
     reference_type_node_id = Keyword.fetch!(args, :reference_type_node_id) |> to_c()
@@ -546,7 +603,7 @@ defmodule OpcUA.Server do
     {:noreply, state}
   end
 
-  def handle_call({:add_object_node, args}, caller_info, state) do
+  def handle_call({:add, {:object_node, args}}, caller_info, state) do
     requested_new_node_id = Keyword.fetch!(args, :requested_new_node_id) |> to_c()
     parent_node_id = Keyword.fetch!(args, :parent_node_id) |> to_c()
     reference_type_node_id = Keyword.fetch!(args, :reference_type_node_id) |> to_c()
@@ -561,7 +618,7 @@ defmodule OpcUA.Server do
     {:noreply, state}
   end
 
-  def handle_call({:add_object_type_node, args}, caller_info, state) do
+  def handle_call({:add, {:object_type_node, args}}, caller_info, state) do
     requested_new_node_id = Keyword.fetch!(args, :requested_new_node_id) |> to_c()
     parent_node_id = Keyword.fetch!(args, :parent_node_id) |> to_c()
     reference_type_node_id = Keyword.fetch!(args, :reference_type_node_id) |> to_c()
@@ -572,7 +629,7 @@ defmodule OpcUA.Server do
     {:noreply, state}
   end
 
-  def handle_call({:add_view_node, args}, caller_info, state) do
+  def handle_call({:add, {:view_node, args}}, caller_info, state) do
     requested_new_node_id = Keyword.fetch!(args, :requested_new_node_id) |> to_c()
     parent_node_id = Keyword.fetch!(args, :parent_node_id) |> to_c()
     reference_type_node_id = Keyword.fetch!(args, :reference_type_node_id) |> to_c()
@@ -583,7 +640,7 @@ defmodule OpcUA.Server do
     {:noreply, state}
   end
 
-  def handle_call({:add_reference_type_node, args}, caller_info, state) do
+  def handle_call({:add, {:reference_type_node, args}}, caller_info, state) do
     requested_new_node_id = Keyword.fetch!(args, :requested_new_node_id) |> to_c()
     parent_node_id = Keyword.fetch!(args, :parent_node_id) |> to_c()
     reference_type_node_id = Keyword.fetch!(args, :reference_type_node_id) |> to_c()
@@ -605,7 +662,7 @@ defmodule OpcUA.Server do
     {:noreply, state}
   end
 
-  def handle_call({:add_reference, args}, caller_info, state) do
+  def handle_call({:add, {:reference, args}}, caller_info, state) do
     source_id = Keyword.fetch!(args, :source_id) |> to_c()
     reference_type_id = Keyword.fetch!(args, :reference_type_id) |> to_c()
     target_id = Keyword.fetch!(args, :target_id) |> to_c()

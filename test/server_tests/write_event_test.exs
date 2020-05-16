@@ -7,14 +7,11 @@ defmodule ServerWriteEventTest do
     use OpcUA.Server
     alias OpcUA.{NodeId, Server, QualifiedName}
 
-    # def start_link() do
-    #   GenServer.start(__MODULE__, self(), [])
-    # end
 
     # Use the `init` function to configure your server.
-    def init(parent_pid) do
-      {:ok, s_pid} = Server.start_link()
-      :ok = Server.set_default_config(s_pid)
+    def init({parent_pid, 103}, s_pid) do
+      #{:ok, s_pid} = Server.start_link()
+      #:ok = Server.set_default_config(s_pid)
 
       {:ok, _ns_index} = Server.add_namespace(s_pid, "Room")
 
@@ -57,9 +54,10 @@ defmodule ServerWriteEventTest do
 
       :ok = Server.start(s_pid)
 
-      {:ok, %{s_pid: s_pid, parent_pid: parent_pid}}
+      %{s_pid: s_pid, parent_pid: parent_pid}
     end
 
+    @impl true
     def handle_write(write_event, %{parent_pid: parent_pid} = state) do
       send(parent_pid, write_event)
       state
@@ -67,7 +65,7 @@ defmodule ServerWriteEventTest do
   end
 
   setup() do
-    {:ok, _pid} = MyServer.start_link()
+    {:ok, _pid} = MyServer.start_link({self(), 103})
 
     {:ok, c_pid} = Client.start_link()
     :ok = Client.set_config(c_pid)

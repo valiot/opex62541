@@ -1,4 +1,7 @@
 defmodule OpcUA.QualifiedName do
+  use IsEnumerable
+  use IsAccessible
+
   @moduledoc """
   A name qualified by a namespace.
   """

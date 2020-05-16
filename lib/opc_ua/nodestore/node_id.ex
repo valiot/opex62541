@@ -1,4 +1,7 @@
 defmodule OpcUA.NodeId do
+  use IsEnumerable
+  use IsAccessible
+
   @moduledoc """
   An identifier for a node in the address space of an OPC UA Server.
 
@@ -9,6 +12,7 @@ defmodule OpcUA.NodeId do
   alias OpcUA.NodeId
   @enforce_keys [:ns_index, :identifier_type, :identifier]
   @identifier_types ["integer", "string", "guid", "bytestring"]
+
 
   defstruct ns_index: nil,
             identifier_type: nil,
@@ -39,6 +43,9 @@ defmodule OpcUA.NodeId do
 end
 
 defmodule OpcUA.ExpandedNodeId do
+  use IsEnumerable
+  use IsAccessible
+
   @moduledoc """
   A NodeId that allows the namespace URI to be specified instead of an index.
   """

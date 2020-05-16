@@ -32,7 +32,7 @@ defmodule OpcUA.Common do
       """
       @spec write_node_browse_name(GenServer.server(), %NodeId{}, %QualifiedName{}) :: :ok | {:error, binary()} | {:error, :einval}
       def write_node_browse_name(pid, %NodeId{} = node_id, browse_name) do
-        GenServer.call(pid, {:write_node_browse_name, node_id, browse_name})
+        GenServer.call(pid, {:write, {:browse_name, node_id, browse_name}})
       end
 
       @doc """
@@ -40,7 +40,7 @@ defmodule OpcUA.Common do
       """
       @spec write_node_display_name(GenServer.server(), %NodeId{}, binary(), binary()) :: :ok | {:error, binary()} | {:error, :einval}
       def write_node_display_name(pid, %NodeId{} = node_id, locale, name) do
-        GenServer.call(pid, {:write_node_display_name, node_id, locale, name})
+        GenServer.call(pid, {:write, {:display_name, node_id, {locale, name}}})
       end
 
       @doc """
@@ -48,7 +48,7 @@ defmodule OpcUA.Common do
       """
       @spec write_node_description(GenServer.server(), %NodeId{}, binary(), binary()) :: :ok | {:error, binary()} | {:error, :einval}
       def write_node_description(pid, %NodeId{} = node_id, locale, description) do
-        GenServer.call(pid, {:write_node_description, node_id, locale, description})
+        GenServer.call(pid, {:write, {:description, node_id, {locale, description}}})
       end
 
       #TODO: friendlier write_mask params
@@ -57,7 +57,7 @@ defmodule OpcUA.Common do
       """
       @spec write_node_write_mask(GenServer.server(), %NodeId{}, integer()) :: :ok | {:error, binary()} | {:error, :einval}
       def write_node_write_mask(pid, %NodeId{} = node_id, write_mask) do
-        GenServer.call(pid, {:write_node_write_mask, node_id, write_mask})
+        GenServer.call(pid, {:write, {:write_mask, node_id, write_mask}})
       end
 
       @doc """
@@ -65,7 +65,7 @@ defmodule OpcUA.Common do
       """
       @spec write_node_is_abstract(GenServer.server(), %NodeId{}, boolean()) :: :ok | {:error, binary()} | {:error, :einval}
       def write_node_is_abstract(pid, %NodeId{} = node_id, is_abstract?) do
-        GenServer.call(pid, {:write_node_is_abstract, node_id, is_abstract?})
+        GenServer.call(pid, {:write, {:is_abstract, node_id, is_abstract?}})
       end
 
       @doc """
@@ -73,7 +73,7 @@ defmodule OpcUA.Common do
       """
       @spec write_node_inverse_name(GenServer.server(), %NodeId{}, binary(), binary()) :: :ok | {:error, binary()} | {:error, :einval}
       def write_node_inverse_name(pid, %NodeId{} = node_id, locale, inverse_name) do
-        GenServer.call(pid, {:write_node_inverse_name, node_id, locale, inverse_name})
+        GenServer.call(pid, {:write, {:inverse_name, node_id, {locale, inverse_name}}})
       end
 
       @doc """
@@ -81,7 +81,7 @@ defmodule OpcUA.Common do
       """
       @spec write_node_data_type(GenServer.server(), %NodeId{}, %NodeId{}) :: :ok | {:error, binary()} | {:error, :einval}
       def write_node_data_type(pid, %NodeId{} = node_id, %NodeId{} = data_type_node_id) do
-        GenServer.call(pid, {:write_node_data_type, node_id, data_type_node_id})
+        GenServer.call(pid, {:write, {:data_type, node_id, data_type_node_id}})
       end
 
       @doc """
@@ -89,7 +89,7 @@ defmodule OpcUA.Common do
       """
       @spec write_node_value_rank(GenServer.server(), %NodeId{}, integer()) :: :ok | {:error, binary()} | {:error, :einval}
       def write_node_value_rank(pid, %NodeId{} = node_id, value_rank) do
-        GenServer.call(pid, {:write_node_value_rank, node_id, value_rank})
+        GenServer.call(pid, {:write, {:value_rank, node_id, value_rank}})
       end
 
       @doc """
@@ -97,7 +97,7 @@ defmodule OpcUA.Common do
       """
       @spec write_node_access_level(GenServer.server(), %NodeId{}, integer()) :: :ok | {:error, binary()} | {:error, :einval}
       def write_node_access_level(pid, %NodeId{} = node_id, access_level) do
-        GenServer.call(pid, {:write_node_access_level, node_id, access_level})
+        GenServer.call(pid, {:write, {:access_level, node_id, access_level}})
       end
 
       @doc """
@@ -105,7 +105,7 @@ defmodule OpcUA.Common do
       """
       @spec write_node_minimum_sampling_interval(GenServer.server(), %NodeId{}, integer()) :: :ok | {:error, binary()} | {:error, :einval}
       def write_node_minimum_sampling_interval(pid, %NodeId{} = node_id, minimum_sampling_interval) do
-        GenServer.call(pid, {:write_node_minimum_sampling_interval, node_id, minimum_sampling_interval})
+        GenServer.call(pid, {:write, {:minimum_sampling_interval, node_id, minimum_sampling_interval}})
       end
 
       @doc """
@@ -113,7 +113,7 @@ defmodule OpcUA.Common do
       """
       @spec write_node_historizing(GenServer.server(), %NodeId{}, boolean()) :: :ok | {:error, binary()} | {:error, :einval}
       def write_node_historizing(pid, %NodeId{} = node_id, historizing?) do
-        GenServer.call(pid, {:write_node_historizing, node_id, historizing?})
+        GenServer.call(pid, {:write, {:historizing, node_id, historizing?}})
       end
 
       @doc """
@@ -121,7 +121,7 @@ defmodule OpcUA.Common do
       """
       @spec write_node_executable(GenServer.server(), %NodeId{}, boolean()) :: :ok | {:error, binary()} | {:error, :einval}
       def write_node_executable(pid, %NodeId{} = node_id, executable?) do
-        GenServer.call(pid, {:write_node_executable, node_id, executable?})
+        GenServer.call(pid, {:write, {:executable, node_id, executable?}})
       end
 
       @doc """
@@ -129,7 +129,7 @@ defmodule OpcUA.Common do
       """
       @spec write_node_value(GenServer.server(), %NodeId{}, integer(), term()) :: :ok | {:error, binary()} | {:error, :einval}
       def write_node_value(pid, %NodeId{} = node_id, data_type, value) do
-        GenServer.call(pid, {:write_node_value, node_id, data_type, value})
+        GenServer.call(pid, {:write, {:value, node_id, {data_type, value}}})
       end
 
       # Read nodes Attributes function
@@ -248,79 +248,79 @@ defmodule OpcUA.Common do
       end
 
       # Write nodes Attributes handlers
-      def handle_call({:write_node_browse_name, node_id, browse_name}, caller_info, state) do
+      def handle_call({:write, {:browse_name, node_id, browse_name}}, caller_info, state) do
         c_args = {to_c(node_id), to_c(browse_name)}
         call_port(state, :write_node_browse_name, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:write_node_display_name, node_id, locale, name}, caller_info, state) when is_binary(locale) and is_binary(name) do
+      def handle_call({:write, {:display_name, node_id, {locale, name}}}, caller_info, state) when is_binary(locale) and is_binary(name) do
         c_args = {to_c(node_id), locale, name}
         call_port(state, :write_node_display_name, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:write_node_description, node_id, locale, description}, caller_info, state) when is_binary(locale) and is_binary(description) do
+      def handle_call({:write, {:description, node_id, {locale, description}}}, caller_info, state) when is_binary(locale) and is_binary(description) do
         c_args = {to_c(node_id), locale, description}
         call_port(state, :write_node_description, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:write_node_write_mask, node_id, write_mask}, caller_info, state) when is_integer(write_mask) do
+      def handle_call({:write, {:write_mask, node_id, write_mask}}, caller_info, state) when is_integer(write_mask) do
         c_args = {to_c(node_id), write_mask}
         call_port(state, :write_node_write_mask, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:write_node_is_abstract, node_id, is_abstract?}, caller_info, state) when is_boolean(is_abstract?) do
+      def handle_call({:write, {:is_abstract, node_id, is_abstract?}}, caller_info, state) when is_boolean(is_abstract?) do
         c_args = {to_c(node_id), is_abstract?}
         call_port(state, :write_node_is_abstract, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:write_node_inverse_name, node_id, locale, inverse_name}, caller_info, state) when is_binary(locale) and is_binary(inverse_name) do
+      def handle_call({:write, {:inverse_name, node_id, {locale, inverse_name}}}, caller_info, state) when is_binary(locale) and is_binary(inverse_name) do
         c_args = {to_c(node_id), locale, inverse_name}
         call_port(state, :write_node_inverse_name, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:write_node_data_type, node_id, data_type_node_id}, caller_info, state) do
+      def handle_call({:write, {:data_type, node_id, data_type_node_id}}, caller_info, state) do
         c_args = {to_c(node_id), to_c(data_type_node_id)}
         call_port(state, :write_node_data_type, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:write_node_value_rank, node_id, value_rank}, caller_info, state) when is_integer(value_rank) do
+      def handle_call({:write, {:value_rank, node_id, value_rank}}, caller_info, state) when is_integer(value_rank) do
         c_args = {to_c(node_id), value_rank}
         call_port(state, :write_node_value_rank, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:write_node_access_level, node_id, access_level}, caller_info, state) when is_integer(access_level) do
+      def handle_call({:write, {:access_level, node_id, access_level}}, caller_info, state) when is_integer(access_level) do
         c_args = {to_c(node_id), access_level}
         call_port(state, :write_node_access_level, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:write_node_minimum_sampling_interval, node_id, minimum_sampling_interval}, caller_info, state) when is_float(minimum_sampling_interval) do
+      def handle_call({:write, {:minimum_sampling_interval, node_id, minimum_sampling_interval}}, caller_info, state) when is_float(minimum_sampling_interval) do
         c_args = {to_c(node_id), minimum_sampling_interval}
         call_port(state, :write_node_minimum_sampling_interval, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:write_node_historizing, node_id, historizing?}, caller_info, state) when is_boolean(historizing?) do
+      def handle_call({:write, {:historizing, node_id, historizing?}}, caller_info, state) when is_boolean(historizing?) do
         c_args = {to_c(node_id), historizing?}
         call_port(state, :write_node_historizing, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:write_node_executable, node_id, executable?}, caller_info, state) when is_boolean(executable?) do
+      def handle_call({:write, {:executable, node_id, executable?}}, caller_info, state) when is_boolean(executable?) do
         c_args = {to_c(node_id), executable?}
         call_port(state, :write_node_executable, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:write_node_value, node_id, data_type, raw_value}, caller_info, state) do
+      def handle_call({:write, {:value, node_id, {data_type, raw_value}}}, caller_info, state) do
         c_args = {to_c(node_id), data_type, value_to_c(data_type, raw_value)}
         call_port(state, :write_node_value, caller_info, c_args)
         {:noreply, state}
