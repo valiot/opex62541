@@ -115,14 +115,13 @@ defmodule OpcUA.Server do
       def handle_info(:init, user_initial_params) do
 
         # Server Terraform
-
         {:ok, s_pid} = OpcUA.Server.start_link()
         configuration = apply(__MODULE__, :configuration, [])
         address_space = apply(__MODULE__, :address_space, [])
 
         OpcUA.Server.set_default_config(s_pid)
 
-        # configutation = [config; list(), discovery: {term(), term()}]
+        # configutation = [config: list(), discovery: {term(), term()}]
         set_server_config(s_pid, configuration, :config)
         set_server_config(s_pid, configuration, :discovery)
 
@@ -185,8 +184,13 @@ defmodule OpcUA.Server do
 
       defp add_node_attrs(s_pid, node_id, node_attrs) do
         for {attr, attr_value} <- node_attrs do
-          GenServer.call(s_pid, {:write, {attr, node_id, attr_value}})
+          set_node_attr(s_pid, node_id, attr, attr_value)
         end
+      end
+
+      defp set_node_attr(_s_pid, _node_id, _attr, nil), do: nil
+      defp set_node_attr(s_pid, node_id, attr, attr_value) do
+        GenServer.call(s_pid, {:write, {attr, node_id, attr_value}})
       end
 
       # TODO: complete the function.
@@ -651,7 +655,7 @@ defmodule OpcUA.Server do
     {:noreply, state}
   end
 
-  def handle_call({:add_data_type_node, args}, caller_info, state) do
+  def handle_call({:add, {:data_type_node, args}}, caller_info, state) do
     requested_new_node_id = Keyword.fetch!(args, :requested_new_node_id) |> to_c()
     parent_node_id = Keyword.fetch!(args, :parent_node_id) |> to_c()
     reference_type_node_id = Keyword.fetch!(args, :reference_type_node_id) |> to_c()
