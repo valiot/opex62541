@@ -1,0 +1,161 @@
+defmodule ServerTerraformTest do
+  use ExUnit.Case
+
+  alias OpcUA.{Client, NodeId, Server, QualifiedName}
+
+  @configuration [
+    config: [
+      port: 4040,
+      users: [{"alde103", "secret"}]
+    ]
+  ]
+
+  @address_space [
+    namespace: "Sensor",
+    object_type_node: OpcUA.ObjectTypeNode.new(
+      [
+        requested_new_node_id: NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10000),
+        parent_node_id: NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 58),
+        reference_type_node_id: NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 45),
+        browse_name: QualifiedName.new(ns_index: 1, name: "Obj")
+      ],
+      write_mask: 0x3FFFFF,
+      is_abstract: true
+    ),
+
+    object_node: OpcUA.ObjectNode.new(
+      [
+        requested_new_node_id: NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10002),
+        parent_node_id: NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 85),
+        reference_type_node_id: NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 35),
+        browse_name: QualifiedName.new(ns_index: 1, name: "Test1"),
+        type_definition: NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 58)
+      ]
+    ),
+
+    object_node: OpcUA.ObjectNode.new(
+      [
+        requested_new_node_id: NodeId.new(ns_index: 2, identifier_type: "string", identifier: "R1_TS1_Sensor"),
+        parent_node_id: NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 85),
+        reference_type_node_id: NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 35),
+        browse_name: QualifiedName.new(ns_index: 2, name: "Temperature sensor"),
+        type_definition: NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 58)
+      ]
+    ),
+
+    variable_node:  OpcUA.VariableNode.new(
+      [
+        requested_new_node_id: NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10001),
+        parent_node_id: NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10002),
+        reference_type_node_id: NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 47),
+        browse_name: QualifiedName.new(ns_index: 1, name: "Var"),
+        type_definition: NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 63)
+      ],
+      write_mask: 0x3BFFFF,
+      access_level: 3,
+      browse_name: QualifiedName.new(ns_index: 2, name: "Var_N"),
+      display_name: {"en-US", "var"},
+      description: {"en-US", "variable"},
+      data_type: NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 63),
+      value_rank: 3,
+      minimum_sampling_interval: 100.0,
+      historizing: true
+    ),
+
+    variable_node:  OpcUA.VariableNode.new(
+      [
+        requested_new_node_id: NodeId.new(ns_index: 2, identifier_type: "string", identifier: "R1_TS1_Temperature"),
+        parent_node_id: NodeId.new(ns_index: 2, identifier_type: "string", identifier: "R1_TS1_Sensor"),
+        reference_type_node_id: NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 47),
+        browse_name: QualifiedName.new(ns_index: 2, name: "Temperature"),
+        type_definition: NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 63)
+      ],
+      write_mask: 0x3FFFFF,
+      value: {0, false},
+      access_level: 3
+    ),
+  ]
+
+  defmodule MyServer do
+    use OpcUA.Server
+    alias OpcUA.Server
+
+    # Use the `init` function to configure your server.
+    def init({parent_pid, 103}, s_pid) do
+      Server.start(s_pid)
+      %{parent_pid: parent_pid}
+    end
+
+    def configuration(), do: Application.get_env(:opex62541, :configuration, [])
+    def address_space(), do: Application.get_env(:opex62541, :address_space, [])
+
+    @impl true
+    def handle_write(write_event, %{parent_pid: parent_pid} = state) do
+      send(parent_pid, write_event)
+      state
+    end
+  end
+
+  setup() do
+    Application.put_env(:opex62541, :address_space, @address_space)
+    Application.put_env(:opex62541, :configuration, @configuration)
+
+    {:ok, _pid} = MyServer.start_link({self(), 103})
+
+    {:ok, c_pid} = Client.start_link()
+    :ok = Client.set_config(c_pid)
+
+    %{c_pid: c_pid}
+  end
+
+  test "Write value event", %{c_pid: c_pid} do
+    {:ok, localhost} = :inet.gethostname()
+    url = "opc.tcp://#{localhost}:4040/"
+    user = "alde103"
+    password = "secret"
+
+    assert :ok == Client.connect_by_username(c_pid, url: url, user: user, password: password)
+
+    node_id =  NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10001)
+
+    c_response = Client.read_node_browse_name(c_pid, node_id)
+    assert c_response == {:ok, %QualifiedName{name: "Var_N", ns_index: 2}}
+
+    c_response = Client.read_node_display_name(c_pid, node_id)
+    assert c_response == {:ok, {"en-US", "var"}}
+
+    c_response = Client.read_node_description(c_pid, node_id)
+    assert c_response == {:ok, {"en-US", "variable"}}
+
+    c_response = Client.read_node_write_mask(c_pid, node_id)
+    assert c_response == {:ok, 0x3BFFFF}
+
+    object_type_nid = NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10000)
+    c_response = Client.read_node_is_abstract(c_pid, object_type_nid)
+    assert c_response == {:ok, true}
+
+    c_response = Client.read_node_data_type(c_pid, node_id)
+    assert c_response == {:ok, %NodeId{identifier: 63, identifier_type: 0, ns_index: 0}}
+
+    c_response = Client.read_node_value_rank(c_pid, node_id)
+    assert c_response == {:ok, 3}
+
+    c_response = Client.read_node_access_level(c_pid, node_id)
+    assert c_response == {:ok, 3}
+
+    c_response = Client.read_node_minimum_sampling_interval(c_pid, node_id)
+    assert c_response == {:ok, 100.0}
+
+    c_response = Client.read_node_historizing(c_pid, node_id)
+    assert c_response == {:ok, true}
+
+    node_id =  NodeId.new(ns_index: 2, identifier_type: "string", identifier: "R1_TS1_Temperature")
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, false}
+
+    assert :ok == Client.write_node_value(c_pid, node_id, 0, true)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, true}
+    assert_receive({node_id, true}, 1000)
+  end
+end
