@@ -205,7 +205,9 @@ defmodule OpcUA.Server do
       #   end
       # end
 
-      defoverridable  configuration: 0,
+      defoverridable  start_link: 0,
+                      start_link: 1,
+                      configuration: 0,
                       address_space: 0,
                       handle_write: 2
     end
