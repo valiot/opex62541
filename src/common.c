@@ -28,11 +28,12 @@
 #include <time.h>
 #endif
 
-const char response_id = 'r';
-
 #ifdef DEBUG
 FILE *log_location;
 #endif
+
+const char response_id = 'r';
+bool server_is_writing = false;
 
 /**
  * @return a monotonic timestamp in milliseconds
@@ -919,6 +920,12 @@ void send_write_response(UA_Server *server,
                const UA_NodeId *sessionId, void *sessionContext,
                const UA_NodeId *nodeId, void *nodeContext,
                const UA_NumericRange *range, const UA_DataValue *data) {
+
+    if(server_is_writing) 
+    {
+        server_is_writing = false;
+        return;
+    }
 
     switch(data->value.type->typeIndex)
     {
@@ -2348,7 +2355,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
     if(entity_type)
         retval = UA_Client_writeValueAttribute((UA_Client *)entity, node_id, &value);
     else
+    {
+        server_is_writing = true;
         retval = UA_Server_writeValue((UA_Server *)entity, node_id, value);
+    }
     
     free(arg1);
     free(arg2);

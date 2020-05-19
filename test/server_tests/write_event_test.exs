@@ -1,12 +1,12 @@
 defmodule ServerWriteEventTest do
   use ExUnit.Case
 
-  alias OpcUA.{NodeId, Client}
+  alias OpcUA.{NodeId, Client, Server}
 
   defmodule MyServer do
     use OpcUA.Server
     alias OpcUA.{NodeId, Server, QualifiedName}
-
+    require Logger
 
     # Use the `init` function to configure your server.
     def init({parent_pid, 103}, s_pid) do
@@ -57,28 +57,54 @@ defmodule ServerWriteEventTest do
       %{s_pid: s_pid, parent_pid: parent_pid}
     end
 
+    def get_server_pid(pid) do
+      GenServer.call(pid, :get_server_pid)
+    end
+
     @impl true
     def handle_write(write_event, %{parent_pid: parent_pid} = state) do
+      Logger.debug("(#{__MODULE__} Received #{inspect(write_event)})")
       send(parent_pid, write_event)
       state
     end
+
+    def handle_call(:get_server_pid, _from , state), do: {:reply, state.s_pid, state}
   end
 
   setup() do
-    {:ok, _pid} = MyServer.start_link({self(), 103})
+    {:ok, my_pid} = MyServer.start_link({self(), 103})
 
     {:ok, c_pid} = Client.start_link()
     :ok = Client.set_config(c_pid)
     :ok = Client.connect_by_url(c_pid, url: "opc.tcp://alde-Satellite-S845:4840/")
 
-    %{c_pid: c_pid}
+    %{c_pid: c_pid, my_pid: my_pid}
   end
 
-  test "Write value event", %{c_pid: c_pid} do
+  test "Write value event", %{c_pid: c_pid, my_pid: my_pid} do
     node_id =  NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10001)
+
+    s_pid = MyServer.get_server_pid(my_pid)
+    assert :ok == Server.write_node_value(s_pid, node_id, 0, false)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, false}
+
     assert :ok == Client.write_node_value(c_pid, node_id, 0, true)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, true}
     assert_receive({node_id, true}, 1000)
+    # Server values write must not activate a write event.
+    refute_receive({_node_id, false}, 1000)
+
+    assert :ok == Client.write_node_value(c_pid, node_id, 9, 100.0)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, 100.0}
+    assert_receive({node_id, 100.0}, 1000)
+
+    assert :ok == Server.write_node_value(s_pid, node_id, 9, 90.0)
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, 90.0}
+    # Server values write must not activate a write event.
+    refute_receive({_node_id, 90.0}, 1000)
   end
 end

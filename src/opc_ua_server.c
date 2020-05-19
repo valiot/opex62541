@@ -10,8 +10,6 @@
 #include "erlcmd.h"
 #include "common.h"
 
-#define DISCOVERY_SERVER_ENDPOINT "opc.tcp://localhost:4840"
-
 pthread_t server_tid;
 pthread_attr_t server_attr;
 UA_Boolean running = true;
