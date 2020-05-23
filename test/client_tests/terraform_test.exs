@@ -1,4 +1,4 @@
-defmodule ServerTerraformTest do
+defmodule ClientTerraformTest do
   use ExUnit.Case
 
   alias OpcUA.{Client, NodeId, Server, QualifiedName}
@@ -89,6 +89,7 @@ defmodule ServerTerraformTest do
     def configuration(), do: Application.get_env(:opex62541, :configuration, [])
     def address_space(), do: Application.get_env(:opex62541, :address_space, [])
 
+    @impl true
     def handle_write(write_event, %{parent_pid: parent_pid} = state) do
       send(parent_pid, write_event)
       state

@@ -11,6 +11,7 @@ defmodule OpcUA.BaseNodeAttrs do
 
     TODO: add node_id, node_class, references_size, :reference backend
   """
+  @doc false
   def basic_nodes_attrs(), do: [:browse_name, :display_name, :description, :write_mask, :args]
 end
 
@@ -22,7 +23,6 @@ defmodule OpcUA.VariableNode do
 
   @moduledoc """
     VariableNode
-    ------------
 
     Variables store values in a `value` together with metadata for introspection.
     Most notably, the attributes data type, `value_rank` and array dimensions constrain the possible values the variable can take
@@ -38,12 +38,11 @@ defmodule OpcUA.VariableNode do
     attributes.
 
     Data Type
-    ^^^^^^^^^
 
     The (scalar) data type of the variable is constrained to be of a specific
     type or one of its children in the type hierarchy. The data type is given as
-    a NodeId pointing to a `datatypenode` in the type hierarchy. See the
-    Section `datatypenode` for more details.
+    a NodeId pointing to a `DataTypeNode` in the type hierarchy. See the
+    Section `DataTypeNode` for more details.
 
     If the data type attribute points to ``UInt32``, then the value attribute
     must be of that exact type since ``UInt32`` does not have children in the
@@ -55,7 +54,7 @@ defmodule OpcUA.VariableNode do
     `VariableTypeNode` is ensured.
 
     Value Rank
-    ^^^^^^^^^^
+
 
     This attribute indicates whether the value attribute of the variable is an
     array and how many dimensions the array has. It may have the following
@@ -70,8 +69,8 @@ defmodule OpcUA.VariableNode do
     Consistency between the value rank attribute in the variable and its
     `variabletypenode` is ensured.
 
-    TODO: Array Dimensions
-    ^^^^^^^^^^^^^^^^
+    TODO:
+    Array Dimensions
 
     If the value rank permits the value to be a (multi-dimensional) array, the
     exact length in each dimensions can be further constrained with this
@@ -116,7 +115,6 @@ defmodule OpcUA.VariableTypeNode do
 
   @moduledoc """
     VariableTypeNode
-    ----------------
 
     VariableTypes are used to provide type definitions for variables.
     VariableTypes constrain the data type, value rank and array dimensions
@@ -147,7 +145,7 @@ defmodule OpcUA.VariableTypeNode do
 end
 
 #TODO: add Method Node backend.
-defmodule OpcUA.MetodNode do
+defmodule OpcUA.MethodNode do
   use IsEnumerable
   use IsAccessible
 
@@ -155,7 +153,6 @@ defmodule OpcUA.MetodNode do
 
   @moduledoc """
     MethodNode
-    ----------
 
     Methods define callable functions and are invoked using the :ref:`Call
     <method-services>` service. MethodNodes may have special properties (variable
@@ -199,7 +196,6 @@ defmodule OpcUA.ObjectNode do
 
   @moduledoc """
     ObjectNode
-    ----------
 
     Objects are used to represent systems, system components, real-world objects
     and software objects. Objects are instances of an `object
@@ -234,7 +230,6 @@ defmodule OpcUA.ObjectTypeNode do
 
   @moduledoc """
     ObjectTypeNode
-    --------------
 
     ObjectTypes provide definitions for Objects. Abstract objects cannot be
     instantiated.
@@ -267,7 +262,6 @@ defmodule OpcUA.ReferenceTypeNode do
 
   @moduledoc """
     ReferenceTypeNode
-    -----------------
 
     Each reference between two nodes is typed with a ReferenceType that gives
     meaning to the relation. The OPC UA standard defines a set of ReferenceTypes
@@ -305,7 +299,6 @@ defmodule OpcUA.DataTypeNode do
 
   @moduledoc """
     DataTypeNode
-    ------------
 
     DataTypes represent simple and structured data types. DataTypes may contain
     arrays. But they always describe the structure of a single instance. In
@@ -343,7 +336,6 @@ defmodule OpcUA.ViewNode do
 
   @moduledoc """
     ViewNode
-    --------
 
     Each View defines a subset of the Nodes in the AddressSpace. Views can be
     used when browsing an information model to focus on a subset of nodes and

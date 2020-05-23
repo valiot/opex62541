@@ -4,95 +4,91 @@ defmodule OpcUA.Server do
   alias OpcUA.{NodeId}
 
   @moduledoc """
-  `OpcUA.Server` is implemented as a `__using__` macro so that you can put it in any module you want
-  to handle the writes to the OPC Server events. Because it is small GenServer, it [accepts the same options for supervision](https://hexdocs.pm/elixir/GenServer.html#module-how-to-supervise)
-  to configure the child spec and passes them along to `GenServer`:
-  ```elixir
-  defmodule MyModule do
-    use OpcUA.Server, restart: :transient, shutdown: 10_000
-  end
-  ```
-  The following example shows a OPC UA Server module that has an object node with a single variable
-  and it logs whenever an updates to its value:
+
+  OPC UA Server API module.
+
+  This module provides functions for configuration, add/delete/read/write nodes and discovery a OPC UA Server.
+
+  `OpcUA.Server` is implemented as a `__using__` macro so that you can put it in any module,
+  you can initialize your Server manually (see `test/server_tests/write_event_test.exs`) or by overwriting
+  `configuration/0` and `address_space/0` to autoset  the configuration and information model. It also helps you to
+  handle Server's "write value" events by overwriting `handle_write/2` callback.
+
+  The following example shows a module that takes its configuration from the enviroment:
 
   ```elixir
   defmodule MyServer do
     use OpcUA.Server
-    alias OpcUA.{NodeId, Server, QualifiedName}
-
-    require Logger
-
-    def start_link() do
-      GenServer.start(__MODULE__, self(), [])
-    end
+    alias OpcUA.Server
 
     # Use the `init` function to configure your server.
-    def init() do
-      {:ok, s_pid} = Server.start_link()
-      :ok = Server.set_default_config(s_pid)
-
-      {:ok, _ns_index} = Server.add_namespace(s_pid, "Room")
-
-      # Object Node
-      requested_new_node_id =
-        NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10002)
-
-      parent_node_id = NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 85)
-      reference_type_node_id = NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 35)
-      browse_name = QualifiedName.new(ns_index: 1, name: "Test1")
-      type_definition = NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 58)
-
-      :ok = Server.add_object_node(s_pid,
-        requested_new_node_id: requested_new_node_id,
-        parent_node_id: parent_node_id,
-        reference_type_node_id: reference_type_node_id,
-        browse_name: browse_name,
-        type_definition: type_definition
-      )
-
-      # Variable Node
-      requested_new_node_id =
-        NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10001)
-
-      parent_node_id = NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10002)
-      reference_type_node_id = NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 47)
-      browse_name = QualifiedName.new(ns_index: 1, name: "Var")
-      type_definition = NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 63)
-
-      :ok = Server.add_variable_node(s_pid,
-        requested_new_node_id: requested_new_node_id,
-        parent_node_id: parent_node_id,
-        reference_type_node_id: reference_type_node_id,
-        browse_name: browse_name,
-        type_definition: type_definition
-      )
-
-      :ok = Server.write_node_write_mask(s_pid, requested_new_node_id, 0x3FFFFF)
-      :ok = Server.write_node_access_level(s_pid, requested_new_node_id, 3)
-
-      :ok = Server.start(s_pid)
-
-      {:ok, %{s_pid: s_pid}}
+    def init({parent_pid, 103} = _user_init_state, opc_ua_server_pid) do
+      Server.start(opc_ua_server_pid)
+      %{parent_pid: parent_pid}
     end
 
-    def handle_write(write_event, state) do
-      Logger.debug("Update: \#{inspect(write_event)}")
+    def configuration(), do: Application.get_env(:opex62541, :configuration, [])
+    def address_space(), do: Application.get_env(:opex62541, :address_space, [])
+
+    def handle_write(write_event, %{parent_pid: parent_pid} = state) do
+      send(parent_pid, write_event)
       state
     end
   end
   ```
 
+  Because it is small a GenServer, it accepts the same [options](https://hexdocs.pm/elixir/GenServer.html#module-how-to-supervise) for supervision
+  to configure the child spec and passes them along to `GenServer`:
+
+  ```elixir
+  defmodule MyModule do
+    use OpcUA.Server, restart: :transient, shutdown: 10_000
+  end
+  ```
   """
 
   @doc """
-  Required callback that handles node values updates from a Client or Server.
+  Optional callback that handles node values updates from a Client to a Server.
 
   It's first argument will a tuple, in which its first element is the `node_id` of the updated node
   and the second element is the updated value.
 
   the second argument it's the Process state (Parent process).
   """
-  @callback handle_write(key :: any, map) :: map
+  @callback handle_write(key :: {%NodeId{}, any}, map) :: map
+
+  @type config_params ::
+          {:hostname, binary()}
+          | {:port, non_neg_integer()}
+          | {:users, keyword()}
+
+
+  @type config_options ::
+          {:config, config_params}
+          | {:discovery, {binary(), non_neg_integer()}}
+
+  @doc """
+  Optional callback that gets the Server configuration and discovery connection parameters.
+  """
+  @callback configuration() :: config_options
+
+  @type address_space_list ::
+          {:namespace, binary()}
+          | {:variable_node, %OpcUA.VariableNode{}}
+          | {:variable_type_node, %OpcUA.VariableTypeNode{}}
+          | {:method_node, %OpcUA.MethodNode{}}  #WIP
+          | {:object_node, %OpcUA.ObjectNode{}}
+          | {:object_type_node, %OpcUA.ObjectTypeNode{}}
+          | {:reference_type_node, %OpcUA.ReferenceTypeNode{}}
+          | {:data_type_node, %OpcUA.DataTypeNode{}}
+          | {:view_node, %OpcUA.ViewNode{}}
+          | {:reference_node, %OpcUA.ReferenceNode{}}
+
+
+  @doc """
+  Optional callback that gets a list of nodes (with their attributes) to be automatically set.
+  """
+  @callback address_space() :: address_space_list
 
   defmacro __using__(opts) do
     quote location: :keep, bind_quoted: [opts: opts] do
@@ -125,7 +121,7 @@ defmodule OpcUA.Server do
         set_server_config(s_pid, configuration, :config)
         set_server_config(s_pid, configuration, :discovery)
 
-        # address_space = [namespace: "", namespace: "", varaible: %VariableNode{}, ...]
+        # address_space = [namespace: "", namespace: "", variable: %VariableNode{}, ...]
         set_server_address_space(s_pid, address_space)
 
         # User initialization.
@@ -144,7 +140,10 @@ defmodule OpcUA.Server do
         raise "No handle_write/2 clause in #{__MODULE__} provided for #{inspect(write_event)}"
       end
 
+      @impl true
       def address_space(), do: []
+
+      @impl true
       def configuration(), do: []
 
       defp set_server_config(s_pid, configuration, type) do

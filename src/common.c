@@ -1943,6 +1943,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
     }
 
     UA_Variant value;
+    UA_Variant_init(&value);
     switch (data_type)
     {
         case UA_TYPES_BOOLEAN:
@@ -2353,23 +2354,23 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
     }
     
     if(entity_type)
+    {
         retval = UA_Client_writeValueAttribute((UA_Client *)entity, node_id, &value);
+    }
     else
     {
         server_is_writing = true;
         retval = UA_Server_writeValue((UA_Server *)entity, node_id, value);
     }
     
+
     free(arg1);
     free(arg2);
     UA_NodeId_clear(&node_id);
     
     UA_NodeId_clear(&node_id_arg_1);
     UA_NodeId_clear(&node_id_arg_2);
-    // if (data_type == 1)
-    // {
-    //     errx(EXIT_FAILURE, "aqui");
-    // }
+    
     if(data_type == UA_TYPES_EXPANDEDNODEID)
         UA_ExpandedNodeId_clear(&expanded_node_id_arg_1);
     if(data_type == UA_TYPES_QUALIFIEDNAME)
