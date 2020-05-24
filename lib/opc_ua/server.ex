@@ -14,7 +14,7 @@ defmodule OpcUA.Server do
   `configuration/0` and `address_space/0` to autoset  the configuration and information model. It also helps you to
   handle Server's "write value" events by overwriting `handle_write/2` callback.
 
-  The following example shows a module that takes its configuration from the enviroment:
+  The following example shows a module that takes its configuration from the enviroment (see `test/server_tests/terraform_test.exs`):
 
   ```elixir
   defmodule MyServer do
@@ -53,7 +53,7 @@ defmodule OpcUA.Server do
   It's first argument will a tuple, in which its first element is the `node_id` of the updated node
   and the second element is the updated value.
 
-  the second argument it's the Process state (Parent process).
+  the second argument it's the GenServer state (Parent process).
   """
   @callback handle_write(key :: {%NodeId{}, any}, map) :: map
 
