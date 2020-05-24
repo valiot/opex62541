@@ -628,6 +628,7 @@ defmodule OpcUA.Common do
           System.get_env("LD_LIBRARY_PATH", "")
           |> Path.join(":")
           |> Path.join(priv_dir)
+          |> Path.join("/lib")
         System.put_env("LD_LIBRARY_PATH", ld_dirs)
         priv_dir
       end

@@ -15,10 +15,10 @@ defmodule ServerRefactorTest do
   test "Set LD_LIBRARY_PATH" do
     System.put_env("LD_LIBRARY_PATH", "")
     assert "/priv" == Server.set_ld_library_path("/priv")
-    assert System.get_env("LD_LIBRARY_PATH") == ":/priv"
+    assert System.get_env("LD_LIBRARY_PATH") == ":/priv/lib"
     assert "/priv" == Server.set_ld_library_path("/priv")
-    assert System.get_env("LD_LIBRARY_PATH") == ":/priv"
+    assert System.get_env("LD_LIBRARY_PATH") == ":/priv/lib"
     assert "/privd" == Server.set_ld_library_path("/privd")
-    assert System.get_env("LD_LIBRARY_PATH") == ":/priv/:/privd"
+    assert System.get_env("LD_LIBRARY_PATH") == ":/priv/lib/:/privd/lib"
   end
 end
