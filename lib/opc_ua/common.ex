@@ -139,7 +139,7 @@ defmodule OpcUA.Common do
       """
       @spec read_node_browse_name(GenServer.server(), %NodeId{}) :: {:ok, %QualifiedName{}} | {:error, binary()} | {:error, :einval}
       def read_node_browse_name(pid, %NodeId{} = node_id) do
-        GenServer.call(pid, {:read_node_browse_name, node_id})
+        GenServer.call(pid, {:read, {:browse_name, node_id}})
       end
 
       @doc """
@@ -147,7 +147,7 @@ defmodule OpcUA.Common do
       """
       @spec read_node_display_name(GenServer.server(), %NodeId{}) :: {:ok, {binary(), binary()}} | {:error, binary()} | {:error, :einval}
       def read_node_display_name(pid, %NodeId{} = node_id) do
-        GenServer.call(pid, {:read_node_display_name, node_id})
+        GenServer.call(pid, {:read, {:display_name, node_id}})
       end
 
       @doc """
@@ -155,7 +155,7 @@ defmodule OpcUA.Common do
       """
       @spec read_node_description(GenServer.server(), %NodeId{}) :: {:ok, {binary(), binary()}} | {:error, binary()} | {:error, :einval}
       def read_node_description(pid, node_id) do
-        GenServer.call(pid, {:read_node_description, node_id})
+        GenServer.call(pid, {:read, {:description, node_id}})
       end
 
       @doc """
@@ -163,7 +163,7 @@ defmodule OpcUA.Common do
       """
       @spec read_node_is_abstract(GenServer.server(), %NodeId{}) :: {:ok, boolean()} | {:error, binary()} | {:error, :einval}
       def read_node_is_abstract(pid, node_id) do
-        GenServer.call(pid, {:read_node_is_abstract, node_id})
+        GenServer.call(pid, {:read, {:is_abstract, node_id}})
       end
 
       #TODO: friendlier write_mask params
@@ -172,7 +172,7 @@ defmodule OpcUA.Common do
       """
       @spec read_node_write_mask(GenServer.server(), %NodeId{}) :: {:ok, integer()} | {:error, binary()} | {:error, :einval}
       def read_node_write_mask(pid, node_id) do
-        GenServer.call(pid, {:read_node_write_mask, node_id})
+        GenServer.call(pid, {:read, {:write_mask, node_id}})
       end
 
       @doc """
@@ -180,7 +180,7 @@ defmodule OpcUA.Common do
       """
       @spec read_node_data_type(GenServer.server(), %NodeId{}) :: {:ok, %NodeId{}} | {:error, binary()} | {:error, :einval}
       def read_node_data_type(pid, node_id) do
-        GenServer.call(pid, {:read_node_data_type, node_id})
+        GenServer.call(pid, {:read, {:data_type, node_id}})
       end
 
       @doc """
@@ -188,7 +188,7 @@ defmodule OpcUA.Common do
       """
       @spec read_node_inverse_name(GenServer.server(), %NodeId{}) :: {:ok, {binary(), binary()}} | {:error, binary()} | {:error, :einval}
       def read_node_inverse_name(pid, node_id) do
-        GenServer.call(pid, {:read_node_inverse_name, node_id})
+        GenServer.call(pid, {:read, {:inverse_name, node_id}})
       end
 
       @doc """
@@ -196,7 +196,7 @@ defmodule OpcUA.Common do
       """
       @spec read_node_value_rank(GenServer.server(), %NodeId{}) :: {:ok, integer()} | {:error, binary()} | {:error, :einval}
       def read_node_value_rank(pid, node_id) do
-        GenServer.call(pid, {:read_node_value_rank, node_id})
+        GenServer.call(pid, {:read, {:value_rank, node_id}})
       end
 
       @doc """
@@ -204,7 +204,7 @@ defmodule OpcUA.Common do
       """
       @spec read_node_access_level(GenServer.server(), %NodeId{}) :: {:ok, integer()} | {:error, binary()} | {:error, :einval}
       def read_node_access_level(pid, node_id) do
-        GenServer.call(pid, {:read_node_access_level, node_id})
+        GenServer.call(pid, {:read, {:access_level, node_id}})
       end
 
       @doc """
@@ -212,7 +212,7 @@ defmodule OpcUA.Common do
       """
       @spec read_node_minimum_sampling_interval(GenServer.server(), %NodeId{}) :: {:ok, integer()} | {:error, binary()} | {:error, :einval}
       def read_node_minimum_sampling_interval(pid, node_id) do
-        GenServer.call(pid, {:read_node_minimum_sampling_interval, node_id})
+        GenServer.call(pid, {:read, {:minimum_sampling_interval, node_id}})
       end
 
       @doc """
@@ -220,7 +220,7 @@ defmodule OpcUA.Common do
       """
       @spec read_node_historizing(GenServer.server(), %NodeId{}) :: {:ok, boolean()} | {:error, binary()} | {:error, :einval}
       def read_node_historizing(pid, node_id) do
-        GenServer.call(pid, {:read_node_historizing, node_id})
+        GenServer.call(pid, {:read, {:historizing, node_id}})
       end
 
       @doc """
@@ -228,7 +228,7 @@ defmodule OpcUA.Common do
       """
       @spec read_node_executable(GenServer.server(), %NodeId{}) :: {:ok, boolean()} | {:error, binary()} | {:error, :einval}
       def read_node_executable(pid, node_id) do
-        GenServer.call(pid, {:read_node_executable, node_id})
+        GenServer.call(pid, {:read, {:executable, node_id}})
       end
 
       @doc """
@@ -236,7 +236,7 @@ defmodule OpcUA.Common do
       """
       @spec read_node_value(GenServer.server(), %NodeId{}) :: {:ok, term()} | {:error, binary()} | {:error, :einval}
       def read_node_value(pid, node_id) do
-        GenServer.call(pid, {:read_node_value, node_id})
+        GenServer.call(pid, {:read, {:value, node_id}})
       end
 
       @doc """
@@ -244,7 +244,7 @@ defmodule OpcUA.Common do
       """
       @spec read_node_value_by_data_type(GenServer.server(), %NodeId{}, integer()) :: {:ok, term()} | {:error, binary()} | {:error, :einval}
       def read_node_value_by_data_type(pid, node_id, data_type) when is_integer(data_type) do
-        GenServer.call(pid, {:read_node_value_by_data_type, node_id, data_type})
+        GenServer.call(pid, {:read, {:value_by_data_type, {node_id, data_type}}})
       end
 
       # Write nodes Attributes handlers
@@ -328,85 +328,85 @@ defmodule OpcUA.Common do
 
       # Read nodes Attributes handlers
 
-      def handle_call({:read_node_browse_name, node_id}, caller_info, state) do
+      def handle_call({:read, {:browse_name, node_id}}, caller_info, state) do
         c_args = to_c(node_id)
         call_port(state, :read_node_browse_name, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:read_node_display_name, node_id}, caller_info, state) do
+      def handle_call({:read, {:display_name, node_id}}, caller_info, state) do
         c_args = to_c(node_id)
         call_port(state, :read_node_display_name, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:read_node_description, node_id}, caller_info, state) do
+      def handle_call({:read, {:description, node_id}}, caller_info, state) do
         c_args = to_c(node_id)
         call_port(state, :read_node_description, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:read_node_is_abstract, node_id}, caller_info, state) do
+      def handle_call({:read, {:is_abstract, node_id}}, caller_info, state) do
         c_args = to_c(node_id)
         call_port(state, :read_node_is_abstract, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:read_node_write_mask, node_id}, caller_info, state) do
+      def handle_call({:read, {:write_mask, node_id}}, caller_info, state) do
         c_args = to_c(node_id)
         call_port(state, :read_node_write_mask, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:read_node_data_type, node_id}, caller_info, state) do
+      def handle_call({:read, {:data_type, node_id}}, caller_info, state) do
         c_args = to_c(node_id)
         call_port(state, :read_node_data_type, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:read_node_inverse_name, node_id}, caller_info, state) do
+      def handle_call({:read, {:inverse_name, node_id}}, caller_info, state) do
         c_args = to_c(node_id)
         call_port(state, :read_node_inverse_name, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:read_node_value_rank, node_id}, caller_info, state) do
+      def handle_call({:read, {:value_rank, node_id}}, caller_info, state) do
         c_args = to_c(node_id)
         call_port(state, :read_node_value_rank, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:read_node_access_level, node_id}, caller_info, state) do
+      def handle_call({:read, {:access_level, node_id}}, caller_info, state) do
         c_args = to_c(node_id)
         call_port(state, :read_node_access_level, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:read_node_minimum_sampling_interval, node_id}, caller_info, state) do
+      def handle_call({:read, {:minimum_sampling_interval, node_id}}, caller_info, state) do
         c_args = to_c(node_id)
         call_port(state, :read_node_minimum_sampling_interval, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:read_node_historizing, node_id}, caller_info, state) do
+      def handle_call({:read, {:historizing, node_id}}, caller_info, state) do
         c_args = to_c(node_id)
         call_port(state, :read_node_historizing, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:read_node_executable, node_id}, caller_info, state) do
+      def handle_call({:read, {:executable, node_id}}, caller_info, state) do
         c_args = to_c(node_id)
         call_port(state, :read_node_executable, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:read_node_value, node_id}, caller_info, state) do
+      def handle_call({:read, {:value, node_id}}, caller_info, state) do
         c_args = to_c(node_id)
         call_port(state, :read_node_value, caller_info, c_args)
         {:noreply, state}
       end
 
-      def handle_call({:read_node_value_by_data_type, node_id, data_type}, caller_info, state) do
+      def handle_call({:read, {:value_by_data_type, {node_id, data_type}}}, caller_info, state) do
         c_args = {to_c(node_id), data_type}
         call_port(state, :read_node_value_by_data_type, caller_info, c_args)
         {:noreply, state}

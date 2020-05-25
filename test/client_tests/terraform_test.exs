@@ -3,9 +3,9 @@ defmodule ClientTerraformTest do
 
   alias OpcUA.{Client, NodeId, Server, QualifiedName}
 
-  @configuration [
+  @configuration_server [
     config: [
-      port: 4040,
+      port: 4041,
       users: [{"alde103", "secret"}]
     ]
   ]
@@ -71,10 +71,45 @@ defmodule ClientTerraformTest do
         type_definition: NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 63)
       ],
       write_mask: 0x3FFFFF,
-      value: {0, false},
+      value: {10, 103.0},
       access_level: 3
     ),
   ]
+
+  {:ok, localhost} = :inet.gethostname()
+
+  @configuration_client [
+    config: [],
+    conn: [
+      by_username: [
+        url: "opc.tcp://#{localhost}:4041/",
+        user: "alde103",
+        password: "secret"
+      ]
+    ]
+  ]
+
+  @monitored_items []
+
+  defmodule MyClient do
+    use OpcUA.Client
+    alias OpcUA.Client
+
+    # Use the `init` function to configure your Client.
+    def init({parent_pid, 103} = _user_init_state, opc_ua_client_pid) do
+      %{parent_pid: parent_pid, opc_ua_client_pid: opc_ua_client_pid}
+    end
+
+    def configuration(), do: Application.get_env(:my_client, :configuration, [])
+    def monitored_items(), do: Application.get_env(:my_client, :monitored_items, [])
+
+    def read_node_value(pid, node), do: GenServer.call(pid, {:read, node})
+
+    def handle_call({:read, node}, _from, state) do
+      resp = Client.read_node_value(state.opc_ua_client_pid, node)
+      {:reply, resp, state}
+    end
+  end
 
   defmodule MyServer do
     use OpcUA.Server
@@ -86,8 +121,8 @@ defmodule ClientTerraformTest do
       %{parent_pid: parent_pid}
     end
 
-    def configuration(), do: Application.get_env(:opex62541, :configuration, [])
-    def address_space(), do: Application.get_env(:opex62541, :address_space, [])
+    def configuration(), do: Application.get_env(:my_server, :configuration, [])
+    def address_space(), do: Application.get_env(:my_server, :address_space, [])
 
     @impl true
     def handle_write(write_event, %{parent_pid: parent_pid} = state) do
@@ -97,65 +132,21 @@ defmodule ClientTerraformTest do
   end
 
   setup() do
-    Application.put_env(:opex62541, :address_space, @address_space)
-    Application.put_env(:opex62541, :configuration, @configuration)
+    Application.put_env(:my_server, :address_space, @address_space)
+    Application.put_env(:my_server, :configuration, @configuration_server)
+
+    Application.put_env(:my_client, :monitored_items, @monitored_items)
+    Application.put_env(:my_client, :configuration, @configuration_client)
 
     {:ok, _pid} = MyServer.start_link({self(), 103})
-
-    {:ok, c_pid} = Client.start_link()
-    :ok = Client.set_config(c_pid)
+    {:ok, c_pid} = MyClient.start_link({self(), 103})
 
     %{c_pid: c_pid}
   end
 
   test "Write value event", %{c_pid: c_pid} do
-    {:ok, localhost} = :inet.gethostname()
-    url = "opc.tcp://#{localhost}:4040/"
-    user = "alde103"
-    password = "secret"
-
-    assert :ok == Client.connect_by_username(c_pid, url: url, user: user, password: password)
-
-    node_id =  NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10001)
-
-    c_response = Client.read_node_browse_name(c_pid, node_id)
-    assert c_response == {:ok, %QualifiedName{name: "Var_N", ns_index: 2}}
-
-    c_response = Client.read_node_display_name(c_pid, node_id)
-    assert c_response == {:ok, {"en-US", "var"}}
-
-    c_response = Client.read_node_description(c_pid, node_id)
-    assert c_response == {:ok, {"en-US", "variable"}}
-
-    c_response = Client.read_node_write_mask(c_pid, node_id)
-    assert c_response == {:ok, 0x3BFFFF}
-
-    object_type_nid = NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10000)
-    c_response = Client.read_node_is_abstract(c_pid, object_type_nid)
-    assert c_response == {:ok, true}
-
-    c_response = Client.read_node_data_type(c_pid, node_id)
-    assert c_response == {:ok, %NodeId{identifier: 63, identifier_type: 0, ns_index: 0}}
-
-    c_response = Client.read_node_value_rank(c_pid, node_id)
-    assert c_response == {:ok, 3}
-
-    c_response = Client.read_node_access_level(c_pid, node_id)
-    assert c_response == {:ok, 3}
-
-    c_response = Client.read_node_minimum_sampling_interval(c_pid, node_id)
-    assert c_response == {:ok, 100.0}
-
-    c_response = Client.read_node_historizing(c_pid, node_id)
-    assert c_response == {:ok, true}
-
     node_id =  NodeId.new(ns_index: 2, identifier_type: "string", identifier: "R1_TS1_Temperature")
-    c_response = Client.read_node_value(c_pid, node_id)
-    assert c_response == {:ok, false}
-
-    assert :ok == Client.write_node_value(c_pid, node_id, 0, true)
-    c_response = Client.read_node_value(c_pid, node_id)
-    assert c_response == {:ok, true}
-    assert_receive({node_id, true}, 1000)
+    c_response = MyClient.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, 103.0}
   end
 end
