@@ -136,6 +136,7 @@ defmodule OpcUA.Server do
         {:noreply, state}
       end
 
+      @impl true
       def handle_write(write_event, _state) do
         raise "No handle_write/2 clause in #{__MODULE__} provided for #{inspect(write_event)}"
       end
@@ -299,7 +300,7 @@ defmodule OpcUA.Server do
     * `:application_uri` -> binary().
     * `:timeout` -> boolean().
   """
-  @spec set_lds_config(GenServer.server(), binary(), integer()) ::
+  @spec set_lds_config(GenServer.server(), binary(), integer() | nil) ::
           :ok | {:error, binary()} | {:error, :einval}
   def set_lds_config(pid, application_uri, timeout \\ nil)
       when is_binary(application_uri) and (is_integer(timeout) or is_nil(timeout)) do
@@ -498,7 +499,7 @@ defmodule OpcUA.Server do
     executable = lib_dir <> "/opc_ua_server"
 
     port =
-      Port.open({:spawn_executable, executable}, [
+      Port.open({:spawn_executable, to_charlist(executable)}, [
         {:args, []},
         {:packet, 2},
         :use_stdio,

@@ -8,7 +8,7 @@ defmodule OpcUA.Client do
 
   OPC UA Client API module.
 
-  This module provides functions for configuration, read/write nodes attributes and discovery of a OPC UA Serve Client.
+  This module provides functions for configuration, read/write nodes attributes and discovery of a OPC UA Client.
 
   `OpcUA.Client` is implemented as a `__using__` macro so that you can put it in any module,
   you can initialize your Client manually (see `test/client_tests`) or by overwriting
@@ -23,8 +23,7 @@ defmodule OpcUA.Client do
     alias OpcUA.Client
 
     # Use the `init` function to configure your Client.
-    def init({parent_pid, 103} = _user_init_state, opc_ua_Client_pid) do
-      Client.start(opc_ua_Client_pid)
+    def init({parent_pid, 103} = _user_init_state, opc_ua_client_pid) do
       %{parent_pid: parent_pid}
     end
 
@@ -62,6 +61,13 @@ defmodule OpcUA.Client do
   Optional callback that gets the Server configuration and discovery connection parameters.
   """
   @callback configuration() :: config_options
+
+  #TODO:
+  @type monitored_items_options ::
+          {:config, config_params}
+          | {:connection, {binary(), non_neg_integer()}}
+
+  @callback monitored_items() :: monitored_items_options
 
   @doc """
   Optional callback that handles node values updates from a Client to a Server.
@@ -118,6 +124,7 @@ defmodule OpcUA.Client do
         {:noreply, state}
       end
 
+      @impl true
       def handle_subscription(subscription_event, _state) do
         raise "No handle_subscription/2 clause in #{__MODULE__} provided for #{inspect(subscription_event)}"
       end
@@ -134,9 +141,7 @@ defmodule OpcUA.Client do
       end
 
       defp set_client_monitored_items(c_pid, monitored_items) do
-        for node_params <- monitored_items, reduce: %{} do
-          acc -> add_node(c_pid, node_params)
-        end
+        Enum.each(monitored_items, fn(monitored_item) -> GenServer.call(c_pid, {:add, {:monitored_items, monitored_item}}) end)
       end
 
       defoverridable  start_link: 0,
@@ -282,7 +287,7 @@ defmodule OpcUA.Client do
     executable = lib_dir <> "/opc_ua_client"
 
     port =
-      Port.open({:spawn_executable, executable}, [
+      Port.open({:spawn_executable, to_charlist(executable)}, [
         {:args, []},
         {:packet, 2},
         :use_stdio,

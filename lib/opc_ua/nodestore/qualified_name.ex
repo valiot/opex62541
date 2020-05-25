@@ -14,7 +14,7 @@ defmodule OpcUA.QualifiedName do
   @doc """
   Creates a structure for a name qualified by a namespace.
   """
-  @spec new(GenServer.server()) :: %QualifiedName{}
+  @spec new(list()) :: %QualifiedName{}
   def new(ns_index: ns_index, name: name) when is_integer(ns_index) and is_binary(name) do
     %QualifiedName{ns_index: ns_index, name: name}
   end
