@@ -276,6 +276,11 @@ defmodule OpcUA.Client do
     GenServer.call(pid, {:discovery, {:get_endpoints, url}})
   end
 
+  @doc false
+  def command(pid, request) do
+    GenServer.call(pid, request)
+  end
+
   # Handlers
   def init({_args, controlling_process}) do
     lib_dir =
