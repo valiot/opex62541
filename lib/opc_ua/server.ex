@@ -481,6 +481,20 @@ defmodule OpcUA.Server do
     GenServer.call(pid, {:delete_node, args})
   end
 
+  # Add Monitored Items function
+
+  @doc """
+  Create a local MonitoredItem with a sampling interval that detects data changes.
+  The following must be filled:
+    * `:monitored_item` -> %NodeID{}.
+    * `:sampling_time` -> double().
+  """
+  @spec add_monitored_item(GenServer.server(), list()) ::
+          :ok | {:error, binary()} | {:error, :einval}
+  def add_monitored_item(pid, args) when is_list(args) do
+    GenServer.call(pid, {:add, {:monitored_item, args}})
+  end
+
 
   @doc false
   def test(pid) do
@@ -700,6 +714,21 @@ defmodule OpcUA.Server do
     {:noreply, state}
   end
 
+  # Add Monitored Items function
+
+  def handle_call({:add, {:monitored_item, args}}, caller_info, state) do
+    with  monitored_item <- Keyword.fetch!(args, :monitored_item) |> to_c(),
+          sampling_time <- Keyword.fetch!(args, :sampling_time),
+          true <- is_float(sampling_time) do
+      c_args = {monitored_item, sampling_time}
+      call_port(state, :add_monitored_item, caller_info, c_args)
+      {:noreply, state}
+    else
+      _ ->
+        {:reply, {:error, :einval} ,state}
+    end
+  end
+
   # Catch all
 
   def handle_call({:test, nil}, caller_info, state) do
@@ -853,6 +882,13 @@ defmodule OpcUA.Server do
   end
 
   defp handle_c_response({:discovery_unregister, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  # Add Monitored Items function
+
+  defp handle_c_response({:add_monitored_item, caller_metadata, data}, state) do
     GenServer.reply(caller_metadata, data)
     state
   end

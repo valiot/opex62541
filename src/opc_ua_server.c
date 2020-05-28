@@ -46,6 +46,13 @@ void* server_runner(void* arg)
     return NULL;
 }
 
+static void
+dataChangeNotificationCallback(UA_Server *server, UA_UInt32 monitoredItemId,
+                               void *monitoredItemContext, const UA_NodeId *nodeId,
+                               void *nodeContext, UA_UInt32 attributeId,
+                               const UA_DataValue *value) {
+}
+
 /***************************************/
 /* Configuration & Lifecycle Functions */
 /***************************************/
@@ -421,6 +428,48 @@ void handle_discovery_unregister(void *entity, bool entity_type, const char *req
     send_ok_response();
 }
 
+/************************/
+/* Local MonitoredItems */
+/************************/
+
+/* 
+ *  MonitoredItems are used with the Subscription mechanism of OPC UA to transported notifications for data changes and events. 
+ *  MonitoredItems can also be registered locally. Notifications are then forwarded to a user-defined callback 
+ *  instead of a remote client.
+ */
+void handle_add_monitored_item(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_MonitoredItemCreateResult retval;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":handle_add_monitored_item requires a 2-tuple, term_size = %d", term_size);
+
+    UA_NodeId monitored_node = assemble_node_id(req, req_index);
+
+    double sampling_interval;
+    if (ei_decode_double(req, req_index, &sampling_interval) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    UA_MonitoredItemCreateRequest monitor_request = UA_MonitoredItemCreateRequest_default(monitored_node);
+    monitor_request.requestedParameters.samplingInterval = (UA_Double) sampling_interval;
+    
+    retval = UA_Server_createDataChangeMonitoredItem(server, UA_TIMESTAMPSTORETURN_SOURCE,
+                                            monitor_request, NULL, dataChangeNotificationCallback);
+
+    if(retval.statusCode != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval.statusCode);
+        return;
+    }
+
+    send_ok_response();
+}
+
+
 /*******************************/
 /* Elixir -> C Message Handler */
 /*******************************/
@@ -464,14 +513,8 @@ static struct request_handler request_handlers[] = {
     {"read_node_minimum_sampling_interval", handle_read_node_minimum_sampling_interval},
     {"read_node_historizing", handle_read_node_historizing},
     {"read_node_executable", handle_read_node_executable},
-    // configuration & lifecycle functions
-    {"get_server_config", handle_get_server_config},
-    {"set_default_server_config", handle_set_default_server_config},
-    {"set_hostname", handle_set_hostname},
-    {"set_port", handle_set_port},
-    {"set_users", handle_set_users_and_passwords},
-    {"start_server", handle_start_server},
-    {"stop_server", handle_stop_server},
+    // Local MonitoredItems
+    {"add_monitored_item", handle_add_monitored_item},
     // Node Addition and Deletion
     {"add_namespace", handle_add_namespace},
     {"add_variable_node", handle_add_variable_node},
@@ -484,6 +527,14 @@ static struct request_handler request_handlers[] = {
     {"add_reference", handle_add_reference},
     {"delete_reference", handle_delete_reference},
     {"delete_node", handle_delete_node},
+    // configuration & lifecycle functions
+    {"get_server_config", handle_get_server_config},
+    {"set_default_server_config", handle_set_default_server_config},
+    {"set_hostname", handle_set_hostname},
+    {"set_port", handle_set_port},
+    {"set_users", handle_set_users_and_passwords},
+    {"start_server", handle_start_server},
+    {"stop_server", handle_stop_server},
     // Discovery
     {"set_lds_config", handle_set_lds_config},
     {"discovery_register", handle_discovery_register},
