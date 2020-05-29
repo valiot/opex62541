@@ -492,9 +492,18 @@ defmodule OpcUA.Server do
     * `:sampling_time` -> double().
   """
   @spec add_monitored_item(GenServer.server(), list()) ::
-          :ok | {:error, binary()} | {:error, :einval}
+          {:ok, integer()} | {:error, binary()} | {:error, :einval}
   def add_monitored_item(pid, args) when is_list(args) do
     GenServer.call(pid, {:add, {:monitored_item, args}})
+  end
+
+  @doc """
+  Deletes a local MonitoredItem.
+  """
+  @spec delete_monitored_item(GenServer.server(), integer()) ::
+          :ok | {:error, binary()} | {:error, :einval}
+  def delete_monitored_item(pid, monitored_item_id) when is_integer(monitored_item_id) do
+    GenServer.call(pid, {:delete_monitored_item, monitored_item_id})
   end
 
 
@@ -716,7 +725,7 @@ defmodule OpcUA.Server do
     {:noreply, state}
   end
 
-  # Add Monitored Items function
+  # Add/delete Monitored Items function
 
   def handle_call({:add, {:monitored_item, args}}, caller_info, state) do
     with  monitored_item <- Keyword.fetch!(args, :monitored_item) |> to_c(),
@@ -729,6 +738,11 @@ defmodule OpcUA.Server do
       _ ->
         {:reply, {:error, :einval} ,state}
     end
+  end
+
+  def handle_call({:delete_monitored_item, monitored_item_id}, caller_info, state) do
+    call_port(state, :delete_monitored_item, caller_info, monitored_item_id)
+    {:noreply, state}
   end
 
   # Catch all
@@ -891,6 +905,11 @@ defmodule OpcUA.Server do
   # Add Monitored Items function
 
   defp handle_c_response({:add_monitored_item, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:delete_monitored_item, caller_metadata, data}, state) do
     GenServer.reply(caller_metadata, data)
     state
   end

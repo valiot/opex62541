@@ -468,6 +468,27 @@ void handle_add_monitored_item(void *entity, bool entity_type, const char *req, 
         return;
     }
 
+    send_data_response(&(retval.monitoredItemId), 27, 0);
+}
+
+void handle_delete_monitored_item(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+
+    unsigned long monitored_item_id;
+    if (ei_decode_ulong(req, req_index, &monitored_item_id) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    UA_StatusCode retval = UA_Server_deleteMonitoredItem(server, (UA_UInt32) monitored_item_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
     send_ok_response();
 }
 
@@ -517,6 +538,7 @@ static struct request_handler request_handlers[] = {
     {"read_node_executable", handle_read_node_executable},
     // Local MonitoredItems
     {"add_monitored_item", handle_add_monitored_item},
+    {"delete_monitored_item", handle_delete_monitored_item},
     // Node Addition and Deletion
     {"add_namespace", handle_add_namespace},
     {"add_variable_node", handle_add_variable_node},

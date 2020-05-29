@@ -47,8 +47,11 @@ defmodule MonitoredItemsTest do
     %{pid: pid, ns_index: ns_index}
   end
 
-  test "Add a monitored Item", state do
+  test "Add & delete a monitored Item", state do
     node_id = NodeId.new(ns_index: state.ns_index, identifier_type: "string", identifier: "R1_TS1_Temperature")
-    assert :ok == Server.add_monitored_item(state.pid, monitored_item: node_id, sampling_time: 1000.0)
+    assert {:ok, 1} == Server.add_monitored_item(state.pid, monitored_item: node_id, sampling_time: 1000.0)
+    # Expected error with a undefined monitored item.
+    assert {:error, "BadMonitoredItemIdInvalid"} == Server.delete_monitored_item(state.pid, 10)
+    assert :ok == Server.delete_monitored_item(state.pid, 1)
   end
 end
