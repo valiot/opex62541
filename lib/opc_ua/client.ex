@@ -1,6 +1,5 @@
 defmodule OpcUA.Client do
   use OpcUA.Common
-  alias OpcUA.NodeId
 
   @config_keys ["requestedSessionTimeout", "secureChannelLifeTime", "timeout"]
 
@@ -77,7 +76,13 @@ defmodule OpcUA.Client do
 
   the second argument it's the GenServer state (Parent process).
   """
-  @callback handle_subscription(key :: {%NodeId{}, any}, map) :: map
+  @callback handle_monitored_data({integer(), integer(), any()}, term()) :: term()
+
+  @callback handle_deleted_monitored_item(integer(), integer(), term()) :: term()
+
+  @callback handle_subscription_timeout(integer(), term()) :: term()
+
+  @callback handle_deleted_subscription(integer(), term()) :: term()
 
   defmacro __using__(opts) do
     quote location: :keep, bind_quoted: [opts: opts] do
@@ -119,14 +124,52 @@ defmodule OpcUA.Client do
         {:noreply, user_state}
       end
 
-      def handle_info({%NodeId{} = node_id, value}, state) do
-        state = apply(__MODULE__, :subscription_event, [{node_id, value}, state])
+      def handle_info({:timeout, subscription_id}, state) do
+        state = apply(__MODULE__, :handle_subscription_timeout, [subscription_id, state])
+        {:noreply, state}
+      end
+
+      def handle_info({:delete, subscription_id}, state) do
+        state = apply(__MODULE__, :handle_deleted_subscription, [subscription_id, state])
+        {:noreply, state}
+      end
+
+      def handle_info({:data, subscription_id, monitored_id, value}, state) do
+        state = apply(__MODULE__, :handle_monitored_data, [{subscription_id, monitored_id, value}, state])
+        {:noreply, state}
+      end
+
+      def handle_info({:delete, subscription_id, monitored_id}, state) do
+        state = apply(__MODULE__, :handle_deleted_monitored_item, [subscription_id, monitored_id, state])
         {:noreply, state}
       end
 
       @impl true
-      def handle_subscription(subscription_event, _state) do
-        raise "No handle_subscription/2 clause in #{__MODULE__} provided for #{inspect(subscription_event)}"
+      def handle_subscription_timeout(subscription_id, state) do
+        require Logger
+        Logger.warn("No handle_subscription_timeout/2 clause in #{__MODULE__} provided for #{inspect(subscription_id)}")
+        state
+      end
+
+      @impl true
+      def handle_deleted_subscription(subscription_id, state) do
+        require Logger
+        Logger.warn("No handle_deleted_subscription/2 clause in #{__MODULE__} provided for #{inspect(subscription_id)}")
+        state
+      end
+
+      @impl true
+      def handle_monitored_data(changed_data_event, state) do
+        require Logger
+        Logger.warn("No handle_monitored_data/2 clause in #{__MODULE__} provided for #{inspect(changed_data_event)}")
+        state
+      end
+
+      @impl true
+      def handle_deleted_monitored_item(subscription_id, monitored_id, state) do
+        require Logger
+        Logger.warn("No handle_deleted_monitored_item/3 clause in #{__MODULE__} provided for #{inspect({subscription_id, monitored_id})}")
+        state
       end
 
       @impl true
@@ -148,7 +191,11 @@ defmodule OpcUA.Client do
                       start_link: 1,
                       configuration: 0,
                       monitored_items: 0,
-                      handle_subscription: 2
+                      handle_subscription_timeout: 2,
+                      handle_deleted_subscription: 2,
+                      handle_monitored_data: 2,
+                      handle_deleted_monitored_item: 3
+
     end
   end
 
@@ -405,6 +452,24 @@ defmodule OpcUA.Client do
   def handle_info(msg, state) do
     Logger.warn("(#{__MODULE__}) Unhandled message: #{inspect(msg)}.")
     {:noreply, state}
+  end
+
+  # Subscription C message handlers
+  defp handle_c_response(
+         {:subscription, {:data, subscription_id, monitored_id, c_value}},
+         %{controlling_process: c_pid} = state
+       ) do
+    value = parse_c_value(c_value)
+    send(c_pid, {:data, subscription_id, monitored_id, value})
+    state
+  end
+
+  defp handle_c_response(
+         {:subscription, message},
+         %{controlling_process: c_pid} = state
+       ) do
+    send(c_pid, message)
+    state
   end
 
   # Lifecycle C Handlers

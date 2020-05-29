@@ -9,10 +9,153 @@
 #include "erlcmd.h"
 #include "common.h"
 
-static const char response_id = 'r';
-
 UA_Client *client;
 
+/************************************/
+/* Default Client backend callbacks */
+/************************************/
+
+static void subscriptionInactivityCallback (UA_Client *client, UA_UInt32 subscription_id, void *subContext) 
+{
+    send_subscription_timeout_response(&subscription_id, 27, 0);
+}
+
+static void deleteSubscriptionCallback(UA_Client *client, UA_UInt32 subscription_id, void *subscriptionContext) 
+{
+    send_subscription_deleted_response(&subscription_id, 27, 0);
+}
+
+static void dataChangeNotificationCallback(UA_Client *client, UA_UInt32 subscription_id, void *subContext, UA_UInt32 monitored_id, void *monContext, UA_DataValue *data) 
+{
+     switch(data->value.type->typeIndex)
+    {
+        case UA_TYPES_BOOLEAN:
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 0, 0);
+        break;
+
+        case UA_TYPES_SBYTE:
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 23, 0);
+        break;
+
+        case UA_TYPES_BYTE:
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 24, 0);
+        break;
+
+        case UA_TYPES_INT16:
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 25, 0);
+        break;
+        
+        case UA_TYPES_UINT16:
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 26, 0);
+        break;
+
+        case UA_TYPES_INT32:
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 1, 0);
+        break;
+
+        case UA_TYPES_UINT32:
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 2, 0);
+        break;
+
+        case UA_TYPES_INT64:
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 15, 0);
+        break;
+
+        case UA_TYPES_UINT64:
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 16, 0);
+        break;
+
+        case UA_TYPES_FLOAT:
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 17, 0);
+        break;
+
+        case UA_TYPES_DOUBLE:
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 4, 0);
+        break;
+
+        case UA_TYPES_STRING:
+            send_monitored_item_response(&subscription_id, &monitored_id, (*(UA_String *)data->value.data).data, 5, (*(UA_String *)data->value.data).length);
+        break;
+
+        case UA_TYPES_DATETIME:
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 15, 0);
+        break;
+
+        case UA_TYPES_GUID:
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 18, 0);
+        break;
+
+        case UA_TYPES_BYTESTRING:
+            send_monitored_item_response(&subscription_id, &monitored_id, (*(UA_ByteString *)data->value.data).data, 5, (*(UA_ByteString *)data->value.data).length);
+        break;
+
+        case UA_TYPES_XMLELEMENT:
+            send_monitored_item_response(&subscription_id, &monitored_id, (*(UA_XmlElement *)data->value.data).data, 5, (*(UA_XmlElement *)data->value.data).length);
+        break;
+
+        case UA_TYPES_NODEID:
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 12, 0);
+        break;
+
+        case UA_TYPES_EXPANDEDNODEID:
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 19, 0);
+        break;
+
+        case UA_TYPES_STATUSCODE:
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 20, 0);
+        break;
+
+        case UA_TYPES_QUALIFIEDNAME:
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 13, 0);
+        break;
+
+        case UA_TYPES_LOCALIZEDTEXT:
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 14, 0);
+        break;
+
+        // TODO: UA_TYPES_EXTENSIONOBJECT
+    
+        // TODO: UA_TYPES_DATAVALUE
+
+        // TODO: UA_TYPES_VARIANT
+
+        // TODO: UA_TYPES_DIAGNOSTICINFO
+
+        case UA_TYPES_SEMANTICCHANGESTRUCTUREDATATYPE:
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 21, 0);
+        break;
+
+        case UA_TYPES_TIMESTRING:
+            send_monitored_item_response(&subscription_id, &monitored_id, (*(UA_TimeString *)data->value.data).data, 5, (*(UA_TimeString *)data->value.data).length);
+        break;
+
+        // TODO: UA_TYPES_VIEWATTRIBUTES
+
+        case UA_TYPES_UADPNETWORKMESSAGECONTENTMASK:
+            errx(EXIT_FAILURE, "checar");
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 2, 0);
+        break;
+
+        case UA_TYPES_XVTYPE:
+            //errx(EXIT_FAILURE, "checar2");
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 22, 0);
+        break;
+
+        case UA_TYPES_ELEMENTOPERAND:
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 27, 0);
+        break;
+
+        default:
+            errx(EXIT_FAILURE, "error");
+            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 2, -1);
+        break;
+    }
+}
+
+static void deleteMonitoredItemCallback(UA_Client *client, UA_UInt32 subscription_id, void *subContext, UA_UInt32 monitored_id, void *monContext)
+{
+    send_monitored_item_delete_response(&subscription_id, &monitored_id);
+}
 /***************************************/
 /* Configuration & Lifecycle Functions */
 /***************************************/
@@ -416,6 +559,134 @@ void handle_add_reference(void *entity, bool entity_type, const char *req, int *
     send_ok_response();
 }
 
+/***********************************************/
+/* Subscriptions and Monitored Items functions */
+/***********************************************/
+
+/*  Subscriptions
+ *
+ *  Subscriptions in OPC UA are asynchronous. That is, the client sends several PublishRequests to the server. 
+ *  The server returns PublishResponses with notifications. But only when a notification has been generated. 
+ *  The client does not wait for the responses and continues normal operations.
+ *  Note the difference between Subscriptions and MonitoredItems. Subscriptions are used to report back notifications. 
+ *  MonitoredItems are used to generate notifications. Every MonitoredItem is attached to exactly one Subscription. 
+ *  And a Subscription can contain many MonitoredItems.
+ */
+
+void handle_add_subscription(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_CreateSubscriptionResponse response;
+
+    UA_ClientConfig *client_config = UA_Client_getConfig(client);
+    client_config->subscriptionInactivityCallback = subscriptionInactivityCallback;
+
+    UA_CreateSubscriptionRequest request = UA_CreateSubscriptionRequest_default();
+    response = UA_Client_Subscriptions_create(client, request, NULL, NULL, deleteSubscriptionCallback);
+
+    if(response.responseHeader.serviceResult != UA_STATUSCODE_GOOD) {
+        send_opex_response(response.responseHeader.serviceResult);
+        return;
+    }
+
+    send_data_response(&(response.subscriptionId), 27, 0);
+}
+
+void handle_delete_subscription(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    unsigned long subscription_id;
+    if (ei_decode_ulong(req, req_index, &subscription_id) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    UA_StatusCode retval = UA_Client_Subscriptions_deleteSingle(client, (UA_UInt32) subscription_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
+/*  Monitored Items
+ *
+ *  Subscriptions in OPC UA are asynchronous. That is, the client sends several PublishRequests to the server. 
+ *  The server returns PublishResponses with notifications. But only when a notification has been generated. 
+ *  The client does not wait for the responses and continues normal operations.
+ *  Note the difference between Subscriptions and MonitoredItems. Subscriptions are used to report back notifications. 
+ *  MonitoredItems are used to generate notifications. Every MonitoredItem is attached to exactly one Subscription. 
+ *  And a Subscription can contain many MonitoredItems.
+ */
+
+void handle_add_monitored_item(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_MonitoredItemCreateResult monitored_item_response;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":handle_add_monitored_item requires a 2-tuple, term_size = %d", term_size);
+
+    UA_NodeId monitored_node = assemble_node_id(req, req_index);
+
+    unsigned long subscription_id;
+    if (ei_decode_ulong(req, req_index, &subscription_id) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    UA_MonitoredItemCreateRequest monitored_item_request = UA_MonitoredItemCreateRequest_default(monitored_node);
+
+    monitored_item_response = UA_Client_MonitoredItems_createDataChange(client, subscription_id,
+                                                                        UA_TIMESTAMPSTORETURN_BOTH, monitored_item_request,
+                                                                        NULL, dataChangeNotificationCallback, deleteMonitoredItemCallback);
+
+    UA_NodeId_clear(&monitored_node);
+
+    if(monitored_item_response.statusCode != UA_STATUSCODE_GOOD) {
+        send_opex_response(monitored_item_response.statusCode);
+        return;
+    }
+
+    send_data_response(&(monitored_item_response.monitoredItemId), 27, 0);
+}
+
+void handle_delete_monitored_item(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_StatusCode retval;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":handle_delete_monitored_item requires a 2-tuple, term_size = %d", term_size);
+
+    unsigned long subscription_id;
+    if (ei_decode_ulong(req, req_index, &subscription_id) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long monitored_item_id;
+    if (ei_decode_ulong(req, req_index, &monitored_item_id) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    retval = UA_Client_MonitoredItems_deleteSingle(client, (UA_UInt32) subscription_id, (UA_UInt32) monitored_item_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
 /*******************************/
 /* Elixir -> C Message Handler */
 /*******************************/
@@ -474,6 +745,11 @@ static struct request_handler request_handlers[] = {
     {"find_servers_on_network", handle_find_servers_on_network},
     {"find_servers", handle_find_servers}, 
     {"get_endpoints", handle_get_endpoints},
+    // Subscriptions and Monitored Items functions.
+    {"add_subscription", handle_add_subscription},
+    {"delete_subscription", handle_delete_subscription},
+    {"add_monitored_item", handle_add_monitored_item},
+    {"delete_monitored_item", handle_delete_monitored_item},
     // Node Addition and Deletion
     {"add_variable_node", handle_add_variable_node},
     {"add_variable_type_node", handle_add_variable_type_node},

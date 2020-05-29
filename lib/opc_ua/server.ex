@@ -137,8 +137,10 @@ defmodule OpcUA.Server do
       end
 
       @impl true
-      def handle_write(write_event, _state) do
-        raise "No handle_write/2 clause in #{__MODULE__} provided for #{inspect(write_event)}"
+      def handle_write(write_event, state) do
+        require Logger
+        Logger.warn("No handle_write/2 clause in #{__MODULE__} provided for #{inspect(write_event)}")
+        state
       end
 
       @impl true

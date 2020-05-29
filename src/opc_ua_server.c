@@ -460,6 +460,8 @@ void handle_add_monitored_item(void *entity, bool entity_type, const char *req, 
     
     retval = UA_Server_createDataChangeMonitoredItem(server, UA_TIMESTAMPSTORETURN_SOURCE,
                                             monitor_request, NULL, dataChangeNotificationCallback);
+    
+    UA_NodeId_clear(&monitored_node);
 
     if(retval.statusCode != UA_STATUSCODE_GOOD) {
         send_opex_response(retval.statusCode);

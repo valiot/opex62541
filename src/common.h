@@ -64,6 +64,10 @@ void encode_server_on_the_network_struct(char *resp, int *resp_index, void *data
 void encode_application_description_struct(char *resp, int *resp_index, void *data, int data_len);
 void encode_endpoint_description_struct(char *resp, int *resp_index, void *data, int data_len);
 void encode_server_config(char *resp, int *resp_index, void *data);
+void send_subscription_timeout_response(void *data, int data_type, int data_len);
+void send_subscription_deleted_response(void *data, int data_type, int data_len);
+void send_monitored_item_response(void *subscription_id, void *monitored_id, void *data, int data_type, int data_len);
+void send_monitored_item_delete_response(void *subscription_id, void *monitored_id);
 void send_data_response(void *data, int data_type, int data_len);
 void send_error_response(const char *reason);
 void send_ok_response();
