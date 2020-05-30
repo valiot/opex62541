@@ -1,4 +1,4 @@
-defmodule MonitoredItemsTest do
+defmodule ServerMonitoredItemsTest do
   use ExUnit.Case
 
   alias OpcUA.{NodeId, Server, QualifiedName}

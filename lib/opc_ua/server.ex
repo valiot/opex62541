@@ -11,7 +11,7 @@ defmodule OpcUA.Server do
 
   `OpcUA.Server` is implemented as a `__using__` macro so that you can put it in any module,
   you can initialize your Server manually (see `test/server_tests/write_event_test.exs`) or by overwriting
-  `configuration/0` and `address_space/0` to autoset  the configuration and information model. It also helps you to
+  `configuration/1` and `address_space/1` to autoset  the configuration and information model. It also helps you to
   handle Server's "write value" events by overwriting `handle_write/2` callback.
 
   The following example shows a module that takes its configuration from the enviroment (see `test/server_tests/terraform_test.exs`):
@@ -27,8 +27,8 @@ defmodule OpcUA.Server do
       %{parent_pid: parent_pid}
     end
 
-    def configuration(), do: Application.get_env(:opex62541, :configuration, [])
-    def address_space(), do: Application.get_env(:opex62541, :address_space, [])
+    def configuration(_user_init_state), do: Application.get_env(:opex62541, :configuration, [])
+    def address_space(_user_init_state), do: Application.get_env(:opex62541, :address_space, [])
 
     def handle_write(write_event, %{parent_pid: parent_pid} = state) do
       send(parent_pid, write_event)
@@ -55,7 +55,7 @@ defmodule OpcUA.Server do
 
   the second argument it's the GenServer state (Parent process).
   """
-  @callback handle_write(key :: {%NodeId{}, any}, map) :: map
+  @callback handle_write(key :: {%NodeId{}, any}, term()) :: term()
 
   @type config_params ::
           {:hostname, binary()}
@@ -70,7 +70,7 @@ defmodule OpcUA.Server do
   @doc """
   Optional callback that gets the Server configuration and discovery connection parameters.
   """
-  @callback configuration() :: config_options
+  @callback configuration(term()) :: config_options
 
   @type address_space_list ::
           {:namespace, binary()}
@@ -83,12 +83,13 @@ defmodule OpcUA.Server do
           | {:data_type_node, %OpcUA.DataTypeNode{}}
           | {:view_node, %OpcUA.ViewNode{}}
           | {:reference_node, %OpcUA.ReferenceNode{}}
+          | {:monitored_item, %OpcUA.MonitoredItem{}}
 
 
   @doc """
   Optional callback that gets a list of nodes (with their attributes) to be automatically set.
   """
-  @callback address_space() :: address_space_list
+  @callback address_space(term()) :: address_space_list
 
   defmacro __using__(opts) do
     quote location: :keep, bind_quoted: [opts: opts] do
@@ -112,8 +113,8 @@ defmodule OpcUA.Server do
 
         # Server Terraform
         {:ok, s_pid} = OpcUA.Server.start_link()
-        configuration = apply(__MODULE__, :configuration, [])
-        address_space = apply(__MODULE__, :address_space, [])
+        configuration = apply(__MODULE__, :configuration, [user_initial_params])
+        address_space = apply(__MODULE__, :address_space, [user_initial_params])
 
         OpcUA.Server.set_default_config(s_pid)
 
@@ -144,10 +145,10 @@ defmodule OpcUA.Server do
       end
 
       @impl true
-      def address_space(), do: []
+      def address_space(_user_init_state), do: []
 
       @impl true
-      def configuration(), do: []
+      def configuration(_user_init_state), do: []
 
       defp set_server_config(s_pid, configuration, type) do
         config_params = Keyword.get(configuration, type, [])
@@ -177,7 +178,7 @@ defmodule OpcUA.Server do
         GenServer.call(s_pid, {:add, {node_type, node_args}})
 
         # add nodes attribures
-        node_id = Keyword.fetch!(node_args, :requested_new_node_id)
+        node_id = Keyword.get(node_args, :requested_new_node_id, nil)
         #node_attrs = replace_namespace(node_attrs, namespaces)
         add_node_attrs(s_pid, node_id, node_attrs)
 
@@ -209,8 +210,8 @@ defmodule OpcUA.Server do
 
       defoverridable  start_link: 0,
                       start_link: 1,
-                      configuration: 0,
-                      address_space: 0,
+                      configuration: 1,
+                      address_space: 1,
                       handle_write: 2
     end
   end

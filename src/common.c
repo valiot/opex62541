@@ -1,21 +1,3 @@
-/*
- *  Copyright 2016 Frank Hunleth
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-#define CLIENT
-
-
 #include "common.h"
 #include "open62541.h"
 #include "erlcmd.h"
@@ -886,7 +868,7 @@ void send_monitored_item_delete_response(void *subscription_id, void *monitored_
     ei_encode_tuple_header(resp, &resp_index, 2);
     ei_encode_atom(resp, &resp_index, "subscription");
 
-    ei_encode_tuple_header(resp, &resp_index, 4);
+    ei_encode_tuple_header(resp, &resp_index, 3);
     ei_encode_atom(resp, &resp_index, "delete");
     encode_data_response(resp, &resp_index, subscription_id, 27, 0);
     encode_data_response(resp, &resp_index, monitored_id, 27, 0);
@@ -1114,7 +1096,6 @@ void send_write_response(UA_Server *server,
         // TODO: UA_TYPES_VIEWATTRIBUTES
 
         case UA_TYPES_UADPNETWORKMESSAGECONTENTMASK:
-            errx(EXIT_FAILURE, "checar");
             send_write_data_response(nodeId, data->value.data, 2, 0);
         break;
 
@@ -1128,7 +1109,6 @@ void send_write_response(UA_Server *server,
         break;
 
         default:
-            errx(EXIT_FAILURE, "error");
             send_write_data_response(nodeId, data->value.data, 2, -1);
         break;
     }

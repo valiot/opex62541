@@ -27,7 +27,7 @@ static void deleteSubscriptionCallback(UA_Client *client, UA_UInt32 subscription
 
 static void dataChangeNotificationCallback(UA_Client *client, UA_UInt32 subscription_id, void *subContext, UA_UInt32 monitored_id, void *monContext, UA_DataValue *data) 
 {
-     switch(data->value.type->typeIndex)
+    switch(data->value.type->typeIndex)
     {
         case UA_TYPES_BOOLEAN:
             send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 0, 0);
@@ -132,12 +132,11 @@ static void dataChangeNotificationCallback(UA_Client *client, UA_UInt32 subscrip
         // TODO: UA_TYPES_VIEWATTRIBUTES
 
         case UA_TYPES_UADPNETWORKMESSAGECONTENTMASK:
-            errx(EXIT_FAILURE, "checar");
             send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 2, 0);
         break;
 
         case UA_TYPES_XVTYPE:
-            //errx(EXIT_FAILURE, "checar2");
+
             send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 22, 0);
         break;
 
@@ -146,7 +145,6 @@ static void dataChangeNotificationCallback(UA_Client *client, UA_UInt32 subscrip
         break;
 
         default:
-            errx(EXIT_FAILURE, "error");
             send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 2, -1);
         break;
     }

@@ -33,7 +33,7 @@ defmodule CClientDiscoveryTest do
 
     url = "opc.tcp://localhost:4840"
 
-    c_response = Client.get_endpoints(c_pid, url: url)
+    c_response = Client.get_endpoints(c_pid, url)
     assert c_response == desired
   end
 
@@ -53,7 +53,7 @@ defmodule CClientDiscoveryTest do
 
     url = "opc.tcp://localhost:4840"
 
-    c_response = Client.find_servers(c_pid, url: url)
+    c_response = Client.find_servers(c_pid, url)
     assert c_response == desired
   end
 
@@ -77,7 +77,7 @@ defmodule CClientDiscoveryTest do
 
     url = "opc.tcp://localhost:4840"
 
-    c_response = Client.find_servers_on_network(c_pid, url: url)
+    c_response = Client.find_servers_on_network(c_pid, url)
     #TODO: Add Server discovery
     assert c_response == {:error, "BadNotImplemented"}
   end

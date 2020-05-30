@@ -100,8 +100,8 @@ defmodule ClientTerraformTest do
       %{parent_pid: parent_pid, opc_ua_client_pid: opc_ua_client_pid}
     end
 
-    def configuration(), do: Application.get_env(:my_client, :configuration, [])
-    def monitored_items(), do: Application.get_env(:my_client, :monitored_items, [])
+    def configuration(_user_init_state), do: Application.get_env(:my_client, :configuration, [])
+    def monitored_items(_user_init_state), do: Application.get_env(:my_client, :monitored_items, [])
 
     def read_node_value(pid, node), do: GenServer.call(pid, {:read, node})
 
@@ -121,8 +121,8 @@ defmodule ClientTerraformTest do
       %{parent_pid: parent_pid}
     end
 
-    def configuration(), do: Application.get_env(:my_server, :configuration, [])
-    def address_space(), do: Application.get_env(:my_server, :address_space, [])
+    def configuration(_user_init_state), do: Application.get_env(:my_server, :configuration, [])
+    def address_space(_user_init_state), do: Application.get_env(:my_server, :address_space, [])
 
     @impl true
     def handle_write(write_event, %{parent_pid: parent_pid} = state) do

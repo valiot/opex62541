@@ -46,27 +46,27 @@ defmodule OpcUA.Client do
   ```
   """
 
-  @type config_params ::
+  @type conn_params ::
           {:hostname, binary()}
           | {:port, non_neg_integer()}
           | {:users, keyword()}
 
 
   @type config_options ::
-          {:config, config_params}
-          | {:connection, {binary(), non_neg_integer()}}
+          {:config, map()}
+          | {:conn, conn_params}
 
   @doc """
   Optional callback that gets the Server configuration and discovery connection parameters.
   """
-  @callback configuration() :: config_options
+  @callback configuration(term()) :: config_options
 
   #TODO:
   @type monitored_items_options ::
-          {:config, config_params}
+          {:config, map()}
           | {:connection, {binary(), non_neg_integer()}}
 
-  @callback monitored_items() :: monitored_items_options
+  @callback monitored_items(term()) :: monitored_items_options
 
   @doc """
   Optional callback that handles node values updates from a Client to a Server.
@@ -106,8 +106,8 @@ defmodule OpcUA.Client do
 
         # Client Terraform
         {:ok, c_pid} = OpcUA.Client.start_link()
-        configuration = apply(__MODULE__, :configuration, [])
-        monitored_items = apply(__MODULE__, :monitored_items, [])
+        configuration = apply(__MODULE__, :configuration, [user_initial_params])
+        monitored_items = apply(__MODULE__, :monitored_items, [user_initial_params])
 
         OpcUA.Client.set_config(c_pid)
 
@@ -173,10 +173,10 @@ defmodule OpcUA.Client do
       end
 
       @impl true
-      def monitored_items(), do: []
+      def configuration(_user_init_state), do: []
 
       @impl true
-      def configuration(), do: []
+      def monitored_items(_user_init_state), do: []
 
       defp set_client_config(c_pid, configuration, type) do
         config_params = Keyword.get(configuration, type, [])
@@ -184,18 +184,17 @@ defmodule OpcUA.Client do
       end
 
       defp set_client_monitored_items(c_pid, monitored_items) do
-        Enum.each(monitored_items, fn(monitored_item) -> GenServer.call(c_pid, {:add, {:monitored_items, monitored_item}}) end)
+        Enum.each(monitored_items, fn(monitored_item) -> GenServer.call(c_pid, {:add, {:monitored_item, monitored_item}}) end)
       end
 
       defoverridable  start_link: 0,
                       start_link: 1,
-                      configuration: 0,
-                      monitored_items: 0,
+                      configuration: 1,
+                      monitored_items: 1,
                       handle_subscription_timeout: 2,
                       handle_deleted_subscription: 2,
                       handle_monitored_data: 2,
                       handle_deleted_monitored_item: 3
-
     end
   end
 
@@ -298,8 +297,8 @@ defmodule OpcUA.Client do
     The following must be filled:
     * `:url` -> binary().
   """
-  @spec find_servers_on_network(GenServer.server(), list()) :: :ok | {:error, term} | {:error, :einval}
-  def find_servers_on_network(pid, url: url) when is_binary(url) do
+  @spec find_servers_on_network(GenServer.server(), binary()) :: :ok | {:error, term} | {:error, :einval}
+  def find_servers_on_network(pid, url) when is_binary(url) do
     GenServer.call(pid, {:discovery, {:find_servers_on_network, url}})
   end
 
@@ -308,8 +307,8 @@ defmodule OpcUA.Client do
     The following must be filled:
     * `:url` -> binary().
   """
-  @spec find_servers(GenServer.server(), list()) :: :ok | {:error, term} | {:error, :einval}
-  def find_servers(pid, url: url) when is_binary(url) do
+  @spec find_servers(GenServer.server(), binary()) :: :ok | {:error, term} | {:error, :einval}
+  def find_servers(pid, url) when is_binary(url) do
     GenServer.call(pid, {:discovery, {:find_servers, url}})
   end
 
@@ -318,9 +317,49 @@ defmodule OpcUA.Client do
     The following must be filled:
     * `:url` -> binary().
   """
-  @spec get_endpoints(GenServer.server(), list()) :: :ok | {:error, term} | {:error, :einval}
-  def get_endpoints(pid, url: url) when is_binary(url) do
+  @spec get_endpoints(GenServer.server(), binary()) :: :ok | {:error, term} | {:error, :einval}
+  def get_endpoints(pid, url) when is_binary(url) do
     GenServer.call(pid, {:discovery, {:get_endpoints, url}})
+  end
+
+  # Subscriptions and Monitored Items functions.
+
+  @doc """
+    Sends an OPC UA Server request to start subscription (to monitored items, events, etc).
+  """
+  @spec add_subscription(GenServer.server()) :: {:ok, integer()} | {:error, term} | {:error, :einval}
+  def add_subscription(pid) do
+    GenServer.call(pid, {:subscription, {:subscription, nil}})
+  end
+
+  @doc """
+    Sends an OPC UA Server request to delete a subscription.
+  """
+  @spec delete_subscription(GenServer.server(), integer()) :: :ok | {:error, term} | {:error, :einval}
+  def delete_subscription(pid, subscription_id) when is_integer(subscription_id) do
+    GenServer.call(pid, {:subscription, {:delete, subscription_id}})
+  end
+
+  @doc """
+    Adds a monitored item used to request a server for notifications of each change of value in a specific node.
+    The following option must be filled:
+    * `:subscription_id` -> integer().
+    * `:monitored_item` -> %NodeId{}.
+  """
+  @spec add_monitored_item(GenServer.server(), list()) :: {:ok, integer()} | {:error, term} | {:error, :einval}
+  def add_monitored_item(pid, args) when is_list(args) do
+    GenServer.call(pid, {:subscription, {:monitored_item, args}})
+  end
+
+  @doc """
+    Adds a monitored item used to request a server for notifications of each change of value in a specific node.
+    The following option must be filled:
+    * `:subscription_id` -> integer().
+    * `:monitored_item_id` -> integer().
+  """
+  @spec delete_monitored_item(GenServer.server(), list()) :: :ok | {:error, term} | {:error, :einval}
+  def delete_monitored_item(pid, args) when is_list(args) do
+    GenServer.call(pid, {:subscription, {:delete_monitored_item, args}})
   end
 
   @doc false
@@ -428,6 +467,45 @@ defmodule OpcUA.Client do
     {:noreply, state}
   end
 
+  # Subscriptions and Monitored Items functions.
+
+  def handle_call({:subscription, {:subscription, nil}}, caller_info, state) do
+    call_port(state, :add_subscription, caller_info, nil)
+    {:noreply, state}
+  end
+
+  def handle_call({:subscription, {:delete, subscription_id}}, caller_info, state) do
+    call_port(state, :delete_subscription, caller_info, subscription_id)
+    {:noreply, state}
+  end
+
+  def handle_call({:subscription, {:monitored_item, args}}, caller_info, state) do
+    with  monitored_item <- Keyword.fetch!(args, :monitored_item) |> to_c(),
+          subscription_id <- Keyword.fetch!(args, :subscription_id),
+          true <- is_integer(subscription_id) do
+      c_args = {monitored_item, subscription_id}
+      call_port(state, :add_monitored_item, caller_info, c_args)
+      {:noreply, state}
+    else
+      _ ->
+        {:reply, {:error, :einval} ,state}
+    end
+  end
+
+  def handle_call({:subscription, {:delete_monitored_item, args}}, caller_info, state) do
+    with  monitored_item_id <- Keyword.fetch!(args, :monitored_item_id),
+          subscription_id <- Keyword.fetch!(args, :subscription_id),
+          true <- is_integer(monitored_item_id),
+          true <- is_integer(subscription_id) do
+      c_args = {subscription_id, monitored_item_id}
+      call_port(state, :delete_monitored_item, caller_info, c_args)
+      {:noreply, state}
+    else
+      _ ->
+        {:reply, {:error, :einval} ,state}
+    end
+  end
+
   # Catch all
 
   def handle_call(invalid_call, _caller_info, state) do
@@ -517,7 +595,7 @@ defmodule OpcUA.Client do
     state
   end
 
-    # Discovery functions C Handlers
+  # Discovery functions C Handlers
 
   defp handle_c_response({:find_servers_on_network, caller_metadata, c_response}, state) do
     GenServer.reply(caller_metadata, c_response)
@@ -530,6 +608,28 @@ defmodule OpcUA.Client do
   end
 
   defp handle_c_response({:get_endpoints, caller_metadata, c_response}, state) do
+    GenServer.reply(caller_metadata, c_response)
+    state
+  end
+
+  # Subscriptions and Monitored Items functions.
+
+  defp handle_c_response({:add_subscription, caller_metadata, c_response}, state) do
+    GenServer.reply(caller_metadata, c_response)
+    state
+  end
+
+  defp handle_c_response({:delete_subscription, caller_metadata, c_response}, state) do
+    GenServer.reply(caller_metadata, c_response)
+    state
+  end
+
+  defp handle_c_response({:add_monitored_item, caller_metadata, c_response}, state) do
+    GenServer.reply(caller_metadata, c_response)
+    state
+  end
+
+  defp handle_c_response({:delete_monitored_item, caller_metadata, c_response}, state) do
     GenServer.reply(caller_metadata, c_response)
     state
   end
