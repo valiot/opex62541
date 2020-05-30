@@ -533,6 +533,7 @@ defmodule OpcUA.Client do
   end
 
   # Subscription C message handlers
+
   defp handle_c_response(
          {:subscription, {:data, subscription_id, monitored_id, c_value}},
          %{controlling_process: c_pid} = state
