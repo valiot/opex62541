@@ -62,7 +62,7 @@ defmodule ClientTerraformTest do
       historizing: true
     ),
 
-    variable_node:  OpcUA.VariableNode.new(
+    variable_node: OpcUA.VariableNode.new(
       [
         requested_new_node_id: NodeId.new(ns_index: 2, identifier_type: "string", identifier: "R1_TS1_Temperature"),
         parent_node_id: NodeId.new(ns_index: 2, identifier_type: "string", identifier: "R1_TS1_Sensor"),
@@ -74,6 +74,13 @@ defmodule ClientTerraformTest do
       value: {10, 103.0},
       access_level: 3
     ),
+    monitored_item: OpcUA.MonitoredItem.new(
+      [
+        monitored_item: NodeId.new(ns_index: 2, identifier_type: "string", identifier: "R1_TS1_Temperature"),
+        sampling_time: 1000.0,
+        subscription_id: 1
+      ]
+    )
   ]
 
   {:ok, localhost} = :inet.gethostname()
@@ -89,7 +96,16 @@ defmodule ClientTerraformTest do
     ]
   ]
 
-  @monitored_items []
+  @monitored_items [
+    subscription: 200.0,
+    monitored_item: OpcUA.MonitoredItem.new(
+      [
+        monitored_item: NodeId.new(ns_index: 2, identifier_type: "string", identifier: "R1_TS1_Temperature"),
+        sampling_time: 100.0,
+        subscription_id: 1
+      ]
+    )
+  ]
 
   defmodule MyClient do
     use OpcUA.Client
@@ -103,11 +119,37 @@ defmodule ClientTerraformTest do
     def configuration(_user_init_state), do: Application.get_env(:my_client, :configuration, [])
     def monitored_items(_user_init_state), do: Application.get_env(:my_client, :monitored_items, [])
 
+    def handle_subscription_timeout(subscription_id, state) do
+      send(state.parent_pid, {:subscription_timeout, subscription_id})
+      state
+    end
+
+    def handle_deleted_subscription(subscription_id, state) do
+      send(state.parent_pid, {:subscription_delete, subscription_id})
+      state
+    end
+
+    def handle_monitored_data(changed_data_event, state) do
+      send(state.parent_pid, {:value_changed, changed_data_event})
+      state
+    end
+
+    def handle_deleted_monitored_item(subscription_id, monitored_id, state) do
+      send(state.parent_pid, {:item_deleted, {subscription_id, monitored_id}})
+      state
+    end
+
     def read_node_value(pid, node), do: GenServer.call(pid, {:read, node})
+
+    def get_client(pid), do: GenServer.call(pid, {:get_client, nil})
 
     def handle_call({:read, node}, _from, state) do
       resp = Client.read_node_value(state.opc_ua_client_pid, node)
       {:reply, resp, state}
+    end
+
+    def handle_call({:get_client, nil}, _from, state) do
+      {:reply, state.opc_ua_client_pid, state}
     end
   end
 
@@ -135,8 +177,8 @@ defmodule ClientTerraformTest do
     Application.put_env(:my_server, :address_space, @address_space)
     Application.put_env(:my_server, :configuration, @configuration_server)
 
-    Application.put_env(:my_client, :monitored_items, @monitored_items)
     Application.put_env(:my_client, :configuration, @configuration_client)
+    Application.put_env(:my_client, :monitored_items, @monitored_items)
 
     {:ok, _pid} = MyServer.start_link({self(), 103})
     {:ok, c_pid} = MyClient.start_link({self(), 103})
@@ -148,5 +190,21 @@ defmodule ClientTerraformTest do
     node_id =  NodeId.new(ns_index: 2, identifier_type: "string", identifier: "R1_TS1_Temperature")
     c_response = MyClient.read_node_value(c_pid, node_id)
     assert c_response == {:ok, 103.0}
+
+    pid = MyClient.get_client(c_pid)
+
+    assert :ok == Client.write_node_value(pid, node_id, 10, 103103.0)
+
+    Process.sleep(200)
+
+    assert :ok == Client.delete_monitored_item(pid, monitored_item_id: 1, subscription_id: 1)
+
+    assert :ok == Client.delete_subscription(pid, 1)
+
+    assert_receive({:value_changed, {1, 1, 103103.0}}, 1000)
+
+    assert_receive({:item_deleted, {1, 1}}, 1000)
+
+    assert_receive({:subscription_delete, 1}, 1000)
   end
 end

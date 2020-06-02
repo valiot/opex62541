@@ -578,10 +578,17 @@ void handle_add_subscription(void *entity, bool entity_type, const char *req, in
     int term_type;
     UA_CreateSubscriptionResponse response;
 
+    double publishing_interval;
+    if (ei_decode_double(req, req_index, &publishing_interval) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
     UA_ClientConfig *client_config = UA_Client_getConfig(client);
     client_config->subscriptionInactivityCallback = subscriptionInactivityCallback;
 
     UA_CreateSubscriptionRequest request = UA_CreateSubscriptionRequest_default();
+    request.requestedPublishingInterval = (UA_Double) publishing_interval;
     response = UA_Client_Subscriptions_create(client, request, NULL, NULL, deleteSubscriptionCallback);
 
     if(response.responseHeader.serviceResult != UA_STATUSCODE_GOOD) {

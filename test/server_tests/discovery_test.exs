@@ -1,6 +1,5 @@
 defmodule ServerDiscoveryTest do
   use ExUnit.Case, async: false
-  doctest Opex62541
 
   alias OpcUA.{Server, Client}
 

@@ -1,6 +1,5 @@
 defmodule WriteAttrTest do
   use ExUnit.Case
-  doctest Opex62541
 
   alias OpcUA.{NodeId, Server, QualifiedName}
 

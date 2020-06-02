@@ -1,6 +1,5 @@
 defmodule ServerLifecycleTest do
   use ExUnit.Case
-  doctest Opex62541
 
   #alias OpcUA.{NodeId, Server, QualifiedName}
   alias OpcUA.Server
