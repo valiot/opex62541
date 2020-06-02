@@ -1,6 +1,5 @@
 defmodule ClientConnectionTest do
   use ExUnit.Case
-  doctest Opex62541
 
   alias OpcUA.{Client, Server}
 

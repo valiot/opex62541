@@ -10,8 +10,6 @@ defmodule ServerWriteEventTest do
 
     # Use the `init` function to configure your server.
     def init({parent_pid, 103}, s_pid) do
-      #{:ok, s_pid} = Server.start_link()
-      #:ok = Server.set_default_config(s_pid)
 
       {:ok, _ns_index} = Server.add_namespace(s_pid, "Room")
 
@@ -63,7 +61,7 @@ defmodule ServerWriteEventTest do
 
     @impl true
     def handle_write(write_event, %{parent_pid: parent_pid} = state) do
-      Logger.debug("(#{__MODULE__} Received #{inspect(write_event)})")
+      Logger.debug("(#{__MODULE__}) Received #{inspect(write_event)})")
       send(parent_pid, write_event)
       state
     end

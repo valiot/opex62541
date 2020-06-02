@@ -11,7 +11,7 @@ defmodule OpcUA.Server do
 
   `OpcUA.Server` is implemented as a `__using__` macro so that you can put it in any module,
   you can initialize your Server manually (see `test/server_tests/write_event_test.exs`) or by overwriting
-  `configuration/0` and `address_space/0` to autoset  the configuration and information model. It also helps you to
+  `configuration/1` and `address_space/1` to autoset  the configuration and information model. It also helps you to
   handle Server's "write value" events by overwriting `handle_write/2` callback.
 
   The following example shows a module that takes its configuration from the enviroment (see `test/server_tests/terraform_test.exs`):
@@ -27,8 +27,8 @@ defmodule OpcUA.Server do
       %{parent_pid: parent_pid}
     end
 
-    def configuration(), do: Application.get_env(:opex62541, :configuration, [])
-    def address_space(), do: Application.get_env(:opex62541, :address_space, [])
+    def configuration(_user_init_state), do: Application.get_env(:opex62541, :configuration, [])
+    def address_space(_user_init_state), do: Application.get_env(:opex62541, :address_space, [])
 
     def handle_write(write_event, %{parent_pid: parent_pid} = state) do
       send(parent_pid, write_event)
@@ -55,7 +55,7 @@ defmodule OpcUA.Server do
 
   the second argument it's the GenServer state (Parent process).
   """
-  @callback handle_write(key :: {%NodeId{}, any}, map) :: map
+  @callback handle_write(key :: {%NodeId{}, any}, term()) :: term()
 
   @type config_params ::
           {:hostname, binary()}
@@ -70,7 +70,7 @@ defmodule OpcUA.Server do
   @doc """
   Optional callback that gets the Server configuration and discovery connection parameters.
   """
-  @callback configuration() :: config_options
+  @callback configuration(term()) :: config_options
 
   @type address_space_list ::
           {:namespace, binary()}
@@ -83,12 +83,13 @@ defmodule OpcUA.Server do
           | {:data_type_node, %OpcUA.DataTypeNode{}}
           | {:view_node, %OpcUA.ViewNode{}}
           | {:reference_node, %OpcUA.ReferenceNode{}}
+          | {:monitored_item, %OpcUA.MonitoredItem{}}
 
 
   @doc """
   Optional callback that gets a list of nodes (with their attributes) to be automatically set.
   """
-  @callback address_space() :: address_space_list
+  @callback address_space(term()) :: address_space_list
 
   defmacro __using__(opts) do
     quote location: :keep, bind_quoted: [opts: opts] do
@@ -112,8 +113,8 @@ defmodule OpcUA.Server do
 
         # Server Terraform
         {:ok, s_pid} = OpcUA.Server.start_link()
-        configuration = apply(__MODULE__, :configuration, [])
-        address_space = apply(__MODULE__, :address_space, [])
+        configuration = apply(__MODULE__, :configuration, [user_initial_params])
+        address_space = apply(__MODULE__, :address_space, [user_initial_params])
 
         OpcUA.Server.set_default_config(s_pid)
 
@@ -137,15 +138,17 @@ defmodule OpcUA.Server do
       end
 
       @impl true
-      def handle_write(write_event, _state) do
-        raise "No handle_write/2 clause in #{__MODULE__} provided for #{inspect(write_event)}"
+      def handle_write(write_event, state) do
+        require Logger
+        Logger.warn("No handle_write/2 clause in #{__MODULE__} provided for #{inspect(write_event)}")
+        state
       end
 
       @impl true
-      def address_space(), do: []
+      def address_space(_user_init_state), do: []
 
       @impl true
-      def configuration(), do: []
+      def configuration(_user_init_state), do: []
 
       defp set_server_config(s_pid, configuration, type) do
         config_params = Keyword.get(configuration, type, [])
@@ -175,7 +178,7 @@ defmodule OpcUA.Server do
         GenServer.call(s_pid, {:add, {node_type, node_args}})
 
         # add nodes attribures
-        node_id = Keyword.fetch!(node_args, :requested_new_node_id)
+        node_id = Keyword.get(node_args, :requested_new_node_id, nil)
         #node_attrs = replace_namespace(node_attrs, namespaces)
         add_node_attrs(s_pid, node_id, node_attrs)
 
@@ -207,8 +210,8 @@ defmodule OpcUA.Server do
 
       defoverridable  start_link: 0,
                       start_link: 1,
-                      configuration: 0,
-                      address_space: 0,
+                      configuration: 1,
+                      address_space: 1,
                       handle_write: 2
     end
   end
@@ -481,6 +484,29 @@ defmodule OpcUA.Server do
     GenServer.call(pid, {:delete_node, args})
   end
 
+  # Add Monitored Items function
+
+  @doc """
+  Create a local MonitoredItem with a sampling interval that detects data changes.
+  The following must be filled:
+    * `:monitored_item` -> %NodeID{}.
+    * `:sampling_time` -> double().
+  """
+  @spec add_monitored_item(GenServer.server(), list()) ::
+          {:ok, integer()} | {:error, binary()} | {:error, :einval}
+  def add_monitored_item(pid, args) when is_list(args) do
+    GenServer.call(pid, {:add, {:monitored_item, args}})
+  end
+
+  @doc """
+  Deletes a local MonitoredItem.
+  """
+  @spec delete_monitored_item(GenServer.server(), integer()) ::
+          :ok | {:error, binary()} | {:error, :einval}
+  def delete_monitored_item(pid, monitored_item_id) when is_integer(monitored_item_id) do
+    GenServer.call(pid, {:delete_monitored_item, monitored_item_id})
+  end
+
 
   @doc false
   def test(pid) do
@@ -506,6 +532,16 @@ defmodule OpcUA.Server do
         :binary,
         :exit_status
       ])
+
+    #Valgrind
+    # port =
+    #   Port.open({:spawn_executable, to_charlist("/usr/bin/valgrind.bin")}, [
+    #     {:args, ["-q", "--leak-check=full", "--show-leak-kinds=all", "--track-origins=yes", "--show-reachable=no", executable]},
+    #     {:packet, 2},
+    #     :use_stdio,
+    #     :binary,
+    #     :exit_status
+    #   ])
 
     state = %State{port: port, controlling_process: controlling_process}
     {:ok, state}
@@ -700,6 +736,26 @@ defmodule OpcUA.Server do
     {:noreply, state}
   end
 
+  # Add/delete Monitored Items function
+
+  def handle_call({:add, {:monitored_item, args}}, caller_info, state) do
+    with  monitored_item <- Keyword.fetch!(args, :monitored_item) |> to_c(),
+          sampling_time <- Keyword.fetch!(args, :sampling_time),
+          true <- is_float(sampling_time) do
+      c_args = {monitored_item, sampling_time}
+      call_port(state, :add_monitored_item, caller_info, c_args)
+      {:noreply, state}
+    else
+      _ ->
+        {:reply, {:error, :einval} ,state}
+    end
+  end
+
+  def handle_call({:delete_monitored_item, monitored_item_id}, caller_info, state) do
+    call_port(state, :delete_monitored_item, caller_info, monitored_item_id)
+    {:noreply, state}
+  end
+
   # Catch all
 
   def handle_call({:test, nil}, caller_info, state) do
@@ -853,6 +909,18 @@ defmodule OpcUA.Server do
   end
 
   defp handle_c_response({:discovery_unregister, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  # Add Monitored Items function
+
+  defp handle_c_response({:add_monitored_item, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:delete_monitored_item, caller_metadata, data}, state) do
     GenServer.reply(caller_metadata, data)
     state
   end

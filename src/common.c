@@ -1,21 +1,3 @@
-/*
- *  Copyright 2016 Frank Hunleth
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-#define CLIENT
-
-
 #include "common.h"
 #include "open62541.h"
 #include "erlcmd.h"
@@ -787,7 +769,7 @@ void decode_caller_metadata(const char *req, int *req_index, const char* cmd)
     if(ei_decode_tuple_header(req, req_index, &tuple_arity) < 0 || tuple_arity != 2)
             errx(EXIT_FAILURE, "caller metadata requires a 2-tuple, term_size = %d", tuple_arity);
 
-    caller_function = malloc(strlen(cmd));
+    caller_function = malloc(strlen(cmd) + 1);
     strcpy(caller_function, cmd);
     
     caller_pid = malloc(sizeof(erlang_pid));
@@ -810,13 +792,96 @@ void free_caller_metadata()
 /***************************/
 /* Elixir Message senders */
 /***************************/
+
 /**
- * @brief Send write data back to Elixir in form of {:ok, data}
+ * @brief Sends subscription timeout/inactivity back to Elixir in form of {:subscription, {:timeout, subId}}
+ */
+void send_subscription_timeout_response(void *data, int data_type, int data_len)
+{
+    char resp[1024];
+    long i_struct;
+    int resp_index = sizeof(uint16_t); // Space for payload size
+    resp[resp_index++] = response_id;
+    ei_encode_version(resp, &resp_index);
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "subscription");
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "timeout");
+    encode_data_response(resp, &resp_index, data, data_type, data_len);
+    erlcmd_send(resp, resp_index);
+}
+
+/**
+ * @brief Sends subscription delete event back to Elixir in form of {:subscription, {:delete, subId}}
+ */
+void send_subscription_deleted_response(void *data, int data_type, int data_len)
+{
+    char resp[1024];
+    long i_struct;
+    int resp_index = sizeof(uint16_t); // Space for payload size
+    resp[resp_index++] = response_id;
+    ei_encode_version(resp, &resp_index);
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "subscription");
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "delete");
+    encode_data_response(resp, &resp_index, data, data_type, data_len);
+    erlcmd_send(resp, resp_index);
+}
+
+/**
+ * @brief Send changed data back to Elixir in form of {:subscription, {:data, subId, monId, data}}
+ */
+void send_monitored_item_response(void *subscription_id, void *monitored_id, void *data, int data_type, int data_len)
+{
+    char resp[1024];
+    long i_struct;
+    int resp_index = sizeof(uint16_t); // Space for payload size
+    resp[resp_index++] = response_id;
+    ei_encode_version(resp, &resp_index);
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "subscription");
+
+    ei_encode_tuple_header(resp, &resp_index, 4);
+    ei_encode_atom(resp, &resp_index, "data");
+    encode_data_response(resp, &resp_index, subscription_id, 27, 0);
+    encode_data_response(resp, &resp_index, monitored_id, 27, 0);
+    
+    if(data_len != -1) 
+        encode_data_response(resp, &resp_index, data, data_type, data_len);
+    else
+        ei_encode_atom(resp, &resp_index, "error");
+
+    erlcmd_send(resp, resp_index);
+}
+
+/**
+ * @brief Send deleted items back to Elixir in form of {:subscription, {:delete, subId, monId}}
+ */
+void send_monitored_item_delete_response(void *subscription_id, void *monitored_id)
+{
+    char resp[1024];
+    long i_struct;
+    int resp_index = sizeof(uint16_t); // Space for payload size
+    resp[resp_index++] = response_id;
+    ei_encode_version(resp, &resp_index);
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "subscription");
+
+    ei_encode_tuple_header(resp, &resp_index, 3);
+    ei_encode_atom(resp, &resp_index, "delete");
+    encode_data_response(resp, &resp_index, subscription_id, 27, 0);
+    encode_data_response(resp, &resp_index, monitored_id, 27, 0);
+
+    erlcmd_send(resp, resp_index);
+}
+
+/**
+ * @brief Send write data back to Elixir in form of {:write, node_id, value}
  */
 void send_write_data_response(const UA_NodeId *nodeId, void *data, int data_type, int data_len)
 {
     char resp[1024];
-    char r_len = 1;
     long i_struct;
     int resp_index = sizeof(uint16_t); // Space for payload size
     resp[resp_index++] = response_id;
@@ -840,7 +905,6 @@ void send_write_data_response(const UA_NodeId *nodeId, void *data, int data_type
 void send_data_response(void *data, int data_type, int data_len)
 {
     char resp[1024];
-    char r_len = 1;
     long i_struct;
     int resp_index = sizeof(uint16_t); // Space for payload size
     resp[resp_index++] = response_id;
@@ -1032,7 +1096,6 @@ void send_write_response(UA_Server *server,
         // TODO: UA_TYPES_VIEWATTRIBUTES
 
         case UA_TYPES_UADPNETWORKMESSAGECONTENTMASK:
-            errx(EXIT_FAILURE, "checar");
             send_write_data_response(nodeId, data->value.data, 2, 0);
         break;
 
@@ -1046,7 +1109,6 @@ void send_write_response(UA_Server *server,
         break;
 
         default:
-            errx(EXIT_FAILURE, "error");
             send_write_data_response(nodeId, data->value.data, 2, -1);
         break;
     }
@@ -2744,9 +2806,11 @@ void handle_read_node_executable(void *entity, bool entity_type, const char *req
  */
 void handle_read_node_value(void *entity, bool entity_type, const char *req, int *req_index)
 {
-    UA_Variant *value = UA_Variant_new(); ;
+    UA_Variant *value = UA_Variant_new();
     UA_StatusCode retval;
     UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    UA_Variant_init(value);
    
     if(entity_type)
         retval = UA_Client_readValueAttribute((UA_Client *)entity, node_id, value);

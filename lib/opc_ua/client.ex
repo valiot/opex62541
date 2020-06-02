@@ -1,10 +1,9 @@
 defmodule OpcUA.Client do
   use OpcUA.Common
-  alias OpcUA.NodeId
 
   @config_keys ["requestedSessionTimeout", "secureChannelLifeTime", "timeout"]
 
-   @moduledoc """
+  @moduledoc """
 
   OPC UA Client API module.
 
@@ -12,7 +11,7 @@ defmodule OpcUA.Client do
 
   `OpcUA.Client` is implemented as a `__using__` macro so that you can put it in any module,
   you can initialize your Client manually (see `test/client_tests`) or by overwriting
-  `configuration/0` and `monitored_items` to autoset the configuration and subscription items. It also helps you to
+  `configuration/1` and `monitored_items/1` to autoset the configuration and subscription items. It also helps you to
   handle Client's "subscription" events (monitorItems) by overwriting `handle_subscription/2` callback.
 
   The following example shows a module that takes its configuration from the enviroment (see `test/client_tests/terraform_test.exs`):
@@ -20,18 +19,32 @@ defmodule OpcUA.Client do
   ```elixir
   defmodule MyClient do
     use OpcUA.Client
-    alias OpcUA.Client
 
     # Use the `init` function to configure your Client.
     def init({parent_pid, 103} = _user_init_state, opc_ua_client_pid) do
-      %{parent_pid: parent_pid}
+      %{parent_pid: parent_pid, opc_ua_client_pid: opc_ua_client_pid}
     end
 
-    def configuration(), do: Application.get_env(:opex62541, :configuration, [])
-    def monitored_items(), do: Application.get_env(:opex62541, :monitored_items, [])
+    def configuration(_user_init_state), do: Application.get_env(:my_client, :configuration, [])
+    def monitored_items(_user_init_state), do: Application.get_env(:my_client, :monitored_items, [])
 
-    def handle_write(write_event, %{parent_pid: parent_pid} = state) do
-      send(parent_pid, write_event)
+    def handle_subscription_timeout(subscription_id, state) do
+      send(state.parent_pid, {:subscription_timeout, subscription_id})
+      state
+    end
+
+    def handle_deleted_subscription(subscription_id, state) do
+      send(state.parent_pid, {:subscription_delete, subscription_id})
+      state
+    end
+
+    def handle_monitored_data(changed_data_event, state) do
+      send(state.parent_pid, {:value_changed, changed_data_event})
+      state
+    end
+
+    def handle_deleted_monitored_item(subscription_id, monitored_id, state) do
+      send(state.parent_pid, {:item_deleted, {subscription_id, monitored_id}})
       state
     end
   end
@@ -47,37 +60,67 @@ defmodule OpcUA.Client do
   ```
   """
 
-  @type config_params ::
+  @type conn_params ::
           {:hostname, binary()}
           | {:port, non_neg_integer()}
           | {:users, keyword()}
 
-
   @type config_options ::
-          {:config, config_params}
-          | {:connection, {binary(), non_neg_integer()}}
+          {:config, map()}
+          | {:conn, conn_params}
 
   @doc """
   Optional callback that gets the Server configuration and discovery connection parameters.
   """
-  @callback configuration() :: config_options
+  @callback configuration(term()) :: config_options
 
-  #TODO:
+  # TODO:
   @type monitored_items_options ::
-          {:config, config_params}
-          | {:connection, {binary(), non_neg_integer()}}
+          {:subscription, float()}
+          | {:monitored_item, %OpcUA.MonitoredItem{}}
 
-  @callback monitored_items() :: monitored_items_options
+  @callback monitored_items(term()) :: monitored_items_options
 
   @doc """
   Optional callback that handles node values updates from a Client to a Server.
 
-  It's first argument will a tuple, in which its first element is the `node_id` of the monitored node
-  and the second element is the updated value.
+  It's first argument is a tuple, in which its first element is the `subscription_id`
+  of the subscription that the monitored item belongs to. the second element
+  is the 'monitored_item_id' which is an unique number asigned to a monitored item when
+  its created and the third element of the tuple is the new value of the monitored item.
 
   the second argument it's the GenServer state (Parent process).
   """
-  @callback handle_subscription(key :: {%NodeId{}, any}, map) :: map
+  @callback handle_monitored_data({integer(), integer(), any()}, term()) :: term()
+
+  @doc """
+  Optional callback that handles a deleted monitored items events.
+
+  It's first argument is the `subscription_id` of the subscription that the monitored
+  item belongs to. The second element is the 'monitored_item_id' which is an unique
+  number asigned to a monitored item when its created.
+
+  The third argument it's the GenServer state (Parent process).
+  """
+  @callback handle_deleted_monitored_item(integer(), integer(), term()) :: term()
+
+  @doc """
+  Optional callback that handles a subscriptions timeout events.
+
+  It's first argument is the `subscription_id` of the subscription.
+
+  The second argument it's the GenServer state (Parent process).
+  """
+  @callback handle_subscription_timeout(integer(), term()) :: term()
+
+  @doc """
+  Optional callback that handles a subscriptions timeout events.
+
+  It's first argument is the `subscription_id` of the subscription.
+
+  The second argument it's the GenServer state (Parent process).
+  """
+  @callback handle_deleted_subscription(integer(), term()) :: term()
 
   defmacro __using__(opts) do
     quote location: :keep, bind_quoted: [opts: opts] do
@@ -92,17 +135,17 @@ defmodule OpcUA.Client do
 
       @impl true
       def init(user_initial_params) do
-        send self(), :init
+        send(self(), :init)
         {:ok, user_initial_params}
       end
 
       @impl true
       def handle_info(:init, user_initial_params) do
-
         # Client Terraform
         {:ok, c_pid} = OpcUA.Client.start_link()
-        configuration = apply(__MODULE__, :configuration, [])
-        monitored_items = apply(__MODULE__, :monitored_items, [])
+
+        configuration = apply(__MODULE__, :configuration, [user_initial_params])
+        monitored_items = apply(__MODULE__, :monitored_items, [user_initial_params])
 
         OpcUA.Client.set_config(c_pid)
 
@@ -110,7 +153,7 @@ defmodule OpcUA.Client do
         set_client_config(c_pid, configuration, :config)
         set_client_config(c_pid, configuration, :conn)
 
-        # address_space = [namespace: "", namespace: "", variable: %VariableNode{}, ...]
+        # monitored_tiems = [subscription: 100.3, monitored_item: %MonitoredItem{}, ...]
         set_client_monitored_items(c_pid, monitored_items)
 
         # User initialization.
@@ -119,36 +162,117 @@ defmodule OpcUA.Client do
         {:noreply, user_state}
       end
 
-      def handle_info({%NodeId{} = node_id, value}, state) do
-        state = apply(__MODULE__, :subscription_event, [{node_id, value}, state])
+      def handle_info({:timeout, subscription_id}, state) do
+        state = apply(__MODULE__, :handle_subscription_timeout, [subscription_id, state])
+        {:noreply, state}
+      end
+
+      def handle_info({:delete, subscription_id}, state) do
+        state = apply(__MODULE__, :handle_deleted_subscription, [subscription_id, state])
+        {:noreply, state}
+      end
+
+      def handle_info({:data, subscription_id, monitored_id, value}, state) do
+        state =
+          apply(__MODULE__, :handle_monitored_data, [
+            {subscription_id, monitored_id, value},
+            state
+          ])
+
+        {:noreply, state}
+      end
+
+      def handle_info({:delete, subscription_id, monitored_id}, state) do
+        state =
+          apply(__MODULE__, :handle_deleted_monitored_item, [subscription_id, monitored_id, state])
+
         {:noreply, state}
       end
 
       @impl true
-      def handle_subscription(subscription_event, _state) do
-        raise "No handle_subscription/2 clause in #{__MODULE__} provided for #{inspect(subscription_event)}"
+      def handle_subscription_timeout(subscription_id, state) do
+        require Logger
+
+        Logger.warn(
+          "No handle_subscription_timeout/2 clause in #{__MODULE__} provided for #{
+            inspect(subscription_id)
+          }"
+        )
+
+        state
       end
 
       @impl true
-      def monitored_items(), do: []
+      def handle_deleted_subscription(subscription_id, state) do
+        require Logger
+
+        Logger.warn(
+          "No handle_deleted_subscription/2 clause in #{__MODULE__} provided for #{
+            inspect(subscription_id)
+          }"
+        )
+
+        state
+      end
 
       @impl true
-      def configuration(), do: []
+      def handle_monitored_data(changed_data_event, state) do
+        require Logger
+
+        Logger.warn(
+          "No handle_monitored_data/2 clause in #{__MODULE__} provided for #{
+            inspect(changed_data_event)
+          }"
+        )
+
+        state
+      end
+
+      @impl true
+      def handle_deleted_monitored_item(subscription_id, monitored_id, state) do
+        require Logger
+
+        Logger.warn(
+          "No handle_deleted_monitored_item/3 clause in #{__MODULE__} provided for #{
+            inspect({subscription_id, monitored_id})
+          }"
+        )
+
+        state
+      end
+
+      @impl true
+      def configuration(_user_init_state), do: []
+
+      @impl true
+      def monitored_items(_user_init_state), do: []
 
       defp set_client_config(c_pid, configuration, type) do
         config_params = Keyword.get(configuration, type, [])
-        Enum.each(config_params, fn(config_param) -> GenServer.call(c_pid, {type, config_param}) end)
+
+        Enum.each(config_params, fn config_param ->
+          GenServer.call(c_pid, {type, config_param})
+        end)
       end
 
       defp set_client_monitored_items(c_pid, monitored_items) do
-        Enum.each(monitored_items, fn(monitored_item) -> GenServer.call(c_pid, {:add, {:monitored_items, monitored_item}}) end)
+        Enum.each(monitored_items, fn {item_type, monitored_item} ->
+          item_args = get_monitored_item_args(monitored_item)
+          GenServer.call(c_pid, {:subscription, {item_type, item_args}})
+        end)
       end
 
-      defoverridable  start_link: 0,
-                      start_link: 1,
-                      configuration: 0,
-                      monitored_items: 0,
-                      handle_subscription: 2
+      defp get_monitored_item_args(monitored_item) when is_float(monitored_item), do: monitored_item
+      defp get_monitored_item_args(monitored_item)when is_struct(monitored_item), do: monitored_item[:args]
+
+      defoverridable start_link: 0,
+                     start_link: 1,
+                     configuration: 1,
+                     monitored_items: 1,
+                     handle_subscription_timeout: 2,
+                     handle_deleted_subscription: 2,
+                     handle_monitored_data: 2,
+                     handle_deleted_monitored_item: 3
     end
   end
 
@@ -221,7 +345,8 @@ defmodule OpcUA.Client do
     * `:user` -> binary().
     * `:password` -> binary().
   """
-  @spec connect_by_username(GenServer.server(), list()) :: :ok | {:error, term} | {:error, :einval}
+  @spec connect_by_username(GenServer.server(), list()) ::
+          :ok | {:error, term} | {:error, :einval}
   def connect_by_username(pid, args) when is_list(args) do
     GenServer.call(pid, {:conn, {:by_username, args}})
   end
@@ -251,8 +376,9 @@ defmodule OpcUA.Client do
     The following must be filled:
     * `:url` -> binary().
   """
-  @spec find_servers_on_network(GenServer.server(), list()) :: :ok | {:error, term} | {:error, :einval}
-  def find_servers_on_network(pid, url: url) when is_binary(url) do
+  @spec find_servers_on_network(GenServer.server(), binary()) ::
+          :ok | {:error, term} | {:error, :einval}
+  def find_servers_on_network(pid, url) when is_binary(url) do
     GenServer.call(pid, {:discovery, {:find_servers_on_network, url}})
   end
 
@@ -261,8 +387,8 @@ defmodule OpcUA.Client do
     The following must be filled:
     * `:url` -> binary().
   """
-  @spec find_servers(GenServer.server(), list()) :: :ok | {:error, term} | {:error, :einval}
-  def find_servers(pid, url: url) when is_binary(url) do
+  @spec find_servers(GenServer.server(), binary()) :: :ok | {:error, term} | {:error, :einval}
+  def find_servers(pid, url) when is_binary(url) do
     GenServer.call(pid, {:discovery, {:find_servers, url}})
   end
 
@@ -271,9 +397,53 @@ defmodule OpcUA.Client do
     The following must be filled:
     * `:url` -> binary().
   """
-  @spec get_endpoints(GenServer.server(), list()) :: :ok | {:error, term} | {:error, :einval}
-  def get_endpoints(pid, url: url) when is_binary(url) do
+  @spec get_endpoints(GenServer.server(), binary()) :: :ok | {:error, term} | {:error, :einval}
+  def get_endpoints(pid, url) when is_binary(url) do
     GenServer.call(pid, {:discovery, {:get_endpoints, url}})
+  end
+
+  # Subscriptions and Monitored Items functions.
+
+  @doc """
+    Sends an OPC UA Server request to start subscription (to monitored items, events, etc).
+  """
+  @spec add_subscription(GenServer.server()) ::
+          {:ok, integer()} | {:error, term} | {:error, :einval}
+  def add_subscription(pid, publishing_interval \\ 500.0) when is_float(publishing_interval) do
+    GenServer.call(pid, {:subscription, {:subscription, publishing_interval}})
+  end
+
+  @doc """
+    Sends an OPC UA Server request to delete a subscription.
+  """
+  @spec delete_subscription(GenServer.server(), integer()) ::
+          :ok | {:error, term} | {:error, :einval}
+  def delete_subscription(pid, subscription_id) when is_integer(subscription_id) do
+    GenServer.call(pid, {:subscription, {:delete, subscription_id}})
+  end
+
+  @doc """
+    Adds a monitored item used to request a server for notifications of each change of value in a specific node.
+    The following option must be filled:
+    * `:subscription_id` -> integer().
+    * `:monitored_item` -> %NodeId{}.
+  """
+  @spec add_monitored_item(GenServer.server(), list()) ::
+          {:ok, integer()} | {:error, term} | {:error, :einval}
+  def add_monitored_item(pid, args) when is_list(args) do
+    GenServer.call(pid, {:subscription, {:monitored_item, args}})
+  end
+
+  @doc """
+    Adds a monitored item used to request a server for notifications of each change of value in a specific node.
+    The following option must be filled:
+    * `:subscription_id` -> integer().
+    * `:monitored_item_id` -> integer().
+  """
+  @spec delete_monitored_item(GenServer.server(), list()) ::
+          :ok | {:error, term} | {:error, :einval}
+  def delete_monitored_item(pid, args) when is_list(args) do
+    GenServer.call(pid, {:subscription, {:delete_monitored_item, args}})
   end
 
   @doc false
@@ -299,6 +469,16 @@ defmodule OpcUA.Client do
         :binary,
         :exit_status
       ])
+
+    # #Valgrind
+    # port =
+    #   Port.open({:spawn_executable, to_charlist("/usr/bin/valgrind.bin")}, [
+    #     {:args, ["-q", "--leak-check=full", "--show-leak-kinds=all", "--track-origins=yes", executable]},
+    #     {:packet, 2},
+    #     :use_stdio,
+    #     :binary,
+    #     :exit_status
+    #   ])
 
     state = %State{port: port, controlling_process: controlling_process}
     {:ok, state}
@@ -381,6 +561,47 @@ defmodule OpcUA.Client do
     {:noreply, state}
   end
 
+  # Subscriptions and Monitored Items functions.
+
+  def handle_call({:subscription, {:subscription, publishing_interval}}, caller_info, state) do
+    call_port(state, :add_subscription, caller_info, publishing_interval)
+    {:noreply, state}
+  end
+
+  def handle_call({:subscription, {:delete, subscription_id}}, caller_info, state) do
+    call_port(state, :delete_subscription, caller_info, subscription_id)
+    {:noreply, state}
+  end
+
+  def handle_call({:subscription, {:monitored_item, args}}, caller_info, state) do
+    with monitored_item <- Keyword.fetch!(args, :monitored_item) |> to_c(),
+         subscription_id <- Keyword.fetch!(args, :subscription_id),
+         sampling_time <- Keyword.get(args, :sampling_time, 250.0),
+         true <- is_integer(subscription_id),
+         true <- is_float(sampling_time) do
+      c_args = {monitored_item, subscription_id, sampling_time}
+      call_port(state, :add_monitored_item, caller_info, c_args)
+      {:noreply, state}
+    else
+      _ ->
+        {:reply, {:error, :einval}, state}
+    end
+  end
+
+  def handle_call({:subscription, {:delete_monitored_item, args}}, caller_info, state) do
+    with monitored_item_id <- Keyword.fetch!(args, :monitored_item_id),
+         subscription_id <- Keyword.fetch!(args, :subscription_id),
+         true <- is_integer(monitored_item_id),
+         true <- is_integer(subscription_id) do
+      c_args = {subscription_id, monitored_item_id}
+      call_port(state, :delete_monitored_item, caller_info, c_args)
+      {:noreply, state}
+    else
+      _ ->
+        {:reply, {:error, :einval}, state}
+    end
+  end
+
   # Catch all
 
   def handle_call(invalid_call, _caller_info, state) do
@@ -405,6 +626,25 @@ defmodule OpcUA.Client do
   def handle_info(msg, state) do
     Logger.warn("(#{__MODULE__}) Unhandled message: #{inspect(msg)}.")
     {:noreply, state}
+  end
+
+  # Subscription C message handlers
+
+  defp handle_c_response(
+         {:subscription, {:data, subscription_id, monitored_id, c_value}},
+         %{controlling_process: c_pid} = state
+       ) do
+    value = parse_c_value(c_value)
+    send(c_pid, {:data, subscription_id, monitored_id, value})
+    state
+  end
+
+  defp handle_c_response(
+         {:subscription, message},
+         %{controlling_process: c_pid} = state
+       ) do
+    send(c_pid, message)
+    state
   end
 
   # Lifecycle C Handlers
@@ -452,7 +692,7 @@ defmodule OpcUA.Client do
     state
   end
 
-    # Discovery functions C Handlers
+  # Discovery functions C Handlers
 
   defp handle_c_response({:find_servers_on_network, caller_metadata, c_response}, state) do
     GenServer.reply(caller_metadata, c_response)
@@ -465,6 +705,28 @@ defmodule OpcUA.Client do
   end
 
   defp handle_c_response({:get_endpoints, caller_metadata, c_response}, state) do
+    GenServer.reply(caller_metadata, c_response)
+    state
+  end
+
+  # Subscriptions and Monitored Items functions.
+
+  defp handle_c_response({:add_subscription, caller_metadata, c_response}, state) do
+    GenServer.reply(caller_metadata, c_response)
+    state
+  end
+
+  defp handle_c_response({:delete_subscription, caller_metadata, c_response}, state) do
+    GenServer.reply(caller_metadata, c_response)
+    state
+  end
+
+  defp handle_c_response({:add_monitored_item, caller_metadata, c_response}, state) do
+    GenServer.reply(caller_metadata, c_response)
+    state
+  end
+
+  defp handle_c_response({:delete_monitored_item, caller_metadata, c_response}, state) do
     GenServer.reply(caller_metadata, c_response)
     state
   end
