@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <poll.h>
 #include <stdio.h>
+#include <pthread.h>
 #include "erlcmd.h"
 #include "common.h"
 
@@ -626,8 +627,8 @@ void handle_add_monitored_item(void *entity, bool entity_type, const char *req, 
     UA_MonitoredItemCreateResult monitored_item_response;
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-        term_size != 2)
-        errx(EXIT_FAILURE, ":handle_add_monitored_item requires a 2-tuple, term_size = %d", term_size);
+        term_size != 3)
+        errx(EXIT_FAILURE, ":handle_add_monitored_item requires a 3-tuple, term_size = %d", term_size);
 
     UA_NodeId monitored_node = assemble_node_id(req, req_index);
 
@@ -636,8 +637,16 @@ void handle_add_monitored_item(void *entity, bool entity_type, const char *req, 
         send_error_response("einval");
         return;
     }
+
+    double sampling_interval;
+    if (ei_decode_double(req, req_index, &sampling_interval) < 0) {
+        send_error_response("einval");
+        return;
+    }
     
     UA_MonitoredItemCreateRequest monitored_item_request = UA_MonitoredItemCreateRequest_default(monitored_node);
+
+    monitored_item_request.requestedParameters.samplingInterval = (UA_Double) sampling_interval;
 
     monitored_item_response = UA_Client_MonitoredItems_createDataChange(client, subscription_id,
                                                                         UA_TIMESTAMPSTORETURN_BOTH, monitored_item_request,
@@ -828,8 +837,14 @@ int main()
             if (erlcmd_process(handler))
                 break;
         }
+
+        if(UA_Client_getState(client) >= UA_CLIENTSTATE_CONNECTED)
+        {
+            UA_Client_run_iterate(client, 0);
+        }
     }
     
     /* Disconnects the client internally */
     UA_Client_delete(client); 
+    free(handler);
 }

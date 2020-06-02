@@ -77,7 +77,7 @@ defmodule ServerDiscoveryTest do
 
     url = "opc.tcp://localhost:4050"
 
-    c_response = Client.get_endpoints(c_pid, url: url)
+    c_response = Client.get_endpoints(c_pid, url)
     assert c_response == desired
 
     desired =
@@ -104,7 +104,7 @@ defmodule ServerDiscoveryTest do
          }
        ]}
 
-    c_response = Client.find_servers(c_pid, url: url)
+    c_response = Client.find_servers(c_pid, url)
     assert c_response == desired
 
     desired =
@@ -126,7 +126,7 @@ defmodule ServerDiscoveryTest do
 
     url = "opc.tcp://localhost:4050/"
 
-    c_response = Client.find_servers_on_network(c_pid, url: url)
+    c_response = Client.find_servers_on_network(c_pid, url)
     assert c_response == desired
   end
 end

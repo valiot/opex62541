@@ -533,6 +533,16 @@ defmodule OpcUA.Server do
         :exit_status
       ])
 
+    #Valgrind
+    # port =
+    #   Port.open({:spawn_executable, to_charlist("/usr/bin/valgrind.bin")}, [
+    #     {:args, ["-q", "--leak-check=full", "--show-leak-kinds=all", "--track-origins=yes", "--show-reachable=no", executable]},
+    #     {:packet, 2},
+    #     :use_stdio,
+    #     :binary,
+    #     :exit_status
+    #   ])
+
     state = %State{port: port, controlling_process: controlling_process}
     {:ok, state}
   end

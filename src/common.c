@@ -769,7 +769,7 @@ void decode_caller_metadata(const char *req, int *req_index, const char* cmd)
     if(ei_decode_tuple_header(req, req_index, &tuple_arity) < 0 || tuple_arity != 2)
             errx(EXIT_FAILURE, "caller metadata requires a 2-tuple, term_size = %d", tuple_arity);
 
-    caller_function = malloc(strlen(cmd));
+    caller_function = malloc(strlen(cmd) + 1);
     strcpy(caller_function, cmd);
     
     caller_pid = malloc(sizeof(erlang_pid));
@@ -2806,9 +2806,11 @@ void handle_read_node_executable(void *entity, bool entity_type, const char *req
  */
 void handle_read_node_value(void *entity, bool entity_type, const char *req, int *req_index)
 {
-    UA_Variant *value = UA_Variant_new(); ;
+    UA_Variant *value = UA_Variant_new();
     UA_StatusCode retval;
     UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    UA_Variant_init(value);
    
     if(entity_type)
         retval = UA_Client_readValueAttribute((UA_Client *)entity, node_id, value);

@@ -386,6 +386,17 @@ defmodule OpcUA.Client do
         :exit_status
       ])
 
+
+    # #Valgrind
+    # port =
+    #   Port.open({:spawn_executable, to_charlist("/usr/bin/valgrind.bin")}, [
+    #     {:args, ["-q", "--leak-check=full", "--show-leak-kinds=all", "--track-origins=yes", executable]},
+    #     {:packet, 2},
+    #     :use_stdio,
+    #     :binary,
+    #     :exit_status
+    #   ])
+
     state = %State{port: port, controlling_process: controlling_process}
     {:ok, state}
   end
@@ -482,8 +493,10 @@ defmodule OpcUA.Client do
   def handle_call({:subscription, {:monitored_item, args}}, caller_info, state) do
     with  monitored_item <- Keyword.fetch!(args, :monitored_item) |> to_c(),
           subscription_id <- Keyword.fetch!(args, :subscription_id),
-          true <- is_integer(subscription_id) do
-      c_args = {monitored_item, subscription_id}
+          sampling_time <- Keyword.get(args, :sampling_time, 250.0),
+          true <- is_integer(subscription_id),
+          true <- is_float(sampling_time) do
+      c_args = {monitored_item, subscription_id, sampling_time}
       call_port(state, :add_monitored_item, caller_info, c_args)
       {:noreply, state}
     else
