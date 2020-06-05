@@ -2145,6 +2145,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid string (size)");
 
+            free(arg1);
             arg1 = (char *)malloc(term_size + 1);
     
             long binary_len;
@@ -2213,7 +2214,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid byte_string (size)");
 
-            
+            free(arg1);
             arg1 = (char *)malloc(term_size + 1);
     
             long binary_len;
@@ -2233,6 +2234,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid xml (size)");
 
+            free(arg1);
             arg1 = (char *)malloc(term_size + 1);
     
             long binary_len;
@@ -2290,6 +2292,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid locale (size)");
 
+            free(arg1);
             arg1 = (char *)malloc(term_size + 1);
     
             long binary_len;
@@ -2302,6 +2305,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid text (size)");
 
+            free(arg2);
             arg2 = (char *)malloc(term_size + 1);
     
             if (ei_decode_binary(req, req_index, arg2, &binary_len) < 0) 
@@ -2340,9 +2344,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
 
         case UA_TYPES_TIMESTRING:
         {
-             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+            if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid time_string (size)");
 
+            free(arg1);
             arg1 = (char *)malloc(term_size + 1);
     
             long binary_len;
@@ -2449,7 +2454,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
 /* 
  *  Reads 'Node ID' Attribute from a node. 
  */
-void handle_read_node_id(void *entity, bool entity_type, const char *req, int *req_index)
+void handle_read_node_node_id(void *entity, bool entity_type, const char *req, int *req_index)
 {
     UA_StatusCode retval;
     UA_NodeId *node_id_out;
@@ -2471,6 +2476,70 @@ void handle_read_node_id(void *entity, bool entity_type, const char *req, int *r
     send_data_response(node_id_out, 12, 0);
 
     UA_NodeId_clear(node_id_out);
+}
+
+/* 
+ *  Reads 'Node Class' Attribute from a node. 
+ */
+void handle_read_node_node_class(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    UA_StatusCode retval;
+    UA_NodeClass *node_class;
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    if(entity_type)
+        retval = UA_Client_readNodeClassAttribute((UA_Client *)entity, node_id, node_class);
+    else
+        retval = UA_Server_readNodeClass((UA_Server *)entity, node_id, node_class);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        UA_NodeClass_clear(node_class);
+        send_opex_response(retval);
+        return;
+    }
+
+    switch(*node_class)
+    {
+        case UA_NODECLASS_UNSPECIFIED:
+            send_data_response("Unspecified", 3, 0);
+        break;
+
+        case UA_NODECLASS_OBJECT:
+            send_data_response("Object", 3, 0);
+        break;
+
+        case UA_NODECLASS_VARIABLE:
+            send_data_response("Variable", 3, 0);
+        break;
+
+        case UA_NODECLASS_METHOD:
+            send_data_response("Method", 3, 0);
+        break;
+
+        case UA_NODECLASS_OBJECTTYPE:
+            send_data_response("ObjectType", 3, 0);
+        break;
+
+        case UA_NODECLASS_VARIABLETYPE:
+            send_data_response("VariableType", 3, 0);
+        break;
+
+        case UA_NODECLASS_REFERENCETYPE:
+            send_data_response("ReferenceType", 3, 0);
+        break;
+
+        case UA_NODECLASS_DATATYPE:
+            send_data_response("DataType", 3, 0);
+        break;
+
+        case UA_NODECLASS_VIEW:
+            send_data_response("View", 3, 0);
+        break;
+    }
+
+    UA_NodeClass_clear(node_class);
 }
 
 /* 
@@ -2821,12 +2890,14 @@ void handle_read_node_value(void *entity, bool entity_type, const char *req, int
 
     if(retval != UA_STATUSCODE_GOOD) {
         UA_Variant_clear(value);
+        UA_Variant_delete(value);
         send_opex_response(retval);
         return;
     }
 
     if(UA_Variant_isEmpty(value)) {
         UA_Variant_clear(value);
+        UA_Variant_delete(value);
         send_error_response("nil");
         return;
     }
@@ -2900,6 +2971,7 @@ void handle_read_node_value(void *entity, bool entity_type, const char *req, int
         send_error_response("eagain");
 
     UA_Variant_clear(value);
+    UA_Variant_delete(value);
 }
 
 /* 
@@ -2934,12 +3006,14 @@ void handle_read_node_value_by_data_type(void *entity, bool entity_type, const c
 
     if(retval != UA_STATUSCODE_GOOD) {
         UA_Variant_clear(value);
+        UA_Variant_delete(value);
         send_opex_response(retval);
         return;
     }
 
     if(UA_Variant_isEmpty(value) && value->type == &UA_TYPES[data_type]) {
         UA_Variant_clear(value);
+        UA_Variant_delete(value);
         send_error_response("nil");
         return;
     }
@@ -3066,4 +3140,5 @@ void handle_read_node_value_by_data_type(void *entity, bool entity_type, const c
     }
 
     UA_Variant_clear(value);
+    UA_Variant_delete(value);
 }

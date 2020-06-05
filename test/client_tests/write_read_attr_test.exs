@@ -111,6 +111,24 @@ defmodule CClientWriteAttrTest do
   test "Write and Read Attributes", %{c_pid: c_pid, ns_index: ns_index} do
     node_id =  NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10001)
 
+    new_node_id =  NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10003)
+    c_response = Client.write_node_node_id(c_pid, node_id, new_node_id)
+    assert c_response == {:error, "BadWriteNotSupported"}
+
+    c_response = Client.read_node_node_id(c_pid, node_id)
+    assert c_response == {:ok, node_id}
+
+    c_response = Client.write_node_node_class(c_pid, node_id, 0)
+    assert c_response == {:error, "BadWriteNotSupported"}
+
+    ob_ty_node_id =  NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10000)
+    c_response = Client.read_node_node_class(c_pid, ob_ty_node_id)
+    assert c_response == {:ok, "ObjectType"}
+
+    ob_node_id =  NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10002)
+    c_response = Client.read_node_node_class(c_pid, ob_node_id)
+    assert c_response == {:ok, "Object"}
+
     new_browse_name = QualifiedName.new(ns_index: ns_index, name: "Var_N")
     assert :ok == Client.write_node_browse_name(c_pid, node_id, new_browse_name)
     c_response = Client.read_node_browse_name(c_pid, node_id)

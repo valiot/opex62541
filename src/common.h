@@ -104,7 +104,8 @@ void handle_write_node_historizing(void *entity, bool entity_type, const char *r
 void handle_write_node_executable(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_write_node_value(void *entity, bool entity_type, const char *req, int *req_index);
 
-void handle_read_node_id(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_read_node_node_id(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_read_node_node_class(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_read_node_browse_name(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_read_node_display_name(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_read_node_description(void *entity, bool entity_type, const char *req, int *req_index);

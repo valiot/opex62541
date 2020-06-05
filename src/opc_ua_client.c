@@ -558,6 +558,72 @@ void handle_add_reference(void *entity, bool entity_type, const char *req, int *
     send_ok_response();
 }
 
+/***************************************/
+/* Reading and Writing Node Attributes */
+/***************************************/
+
+/* 
+ *  Change 'data type' of a node in the server. 
+ */
+void handle_write_node_node_id(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_StatusCode retval;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":handle_write_node_node_id requires a 3-tuple, term_size = %d", term_size);
+    
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+    UA_NodeId new_node_id = assemble_node_id(req, req_index);
+
+    retval = UA_Client_writeNodeIdAttribute((UA_Client *)entity, node_id, &new_node_id);
+
+    UA_NodeId_clear(&node_id);
+    UA_NodeId_clear(&new_node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
+/* 
+ *  Change 'node class' attribute of a node in the server. 
+ */
+void handle_write_node_node_class(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_StatusCode retval;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":handle_write_node_node_class requires a 3-tuple, term_size = %d", term_size);
+    
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+    unsigned long node_class;
+    
+    if (ei_decode_ulong(req, req_index, &node_class) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    retval = UA_Client_writeNodeClassAttribute((UA_Client *)entity, node_id, (UA_NodeClass *) &node_class);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
 /***********************************************/
 /* Subscriptions and Monitored Items functions */
 /***********************************************/
@@ -720,6 +786,8 @@ static struct request_handler request_handlers[] = {
     {"write_node_value", handle_write_node_value},
     {"read_node_value", handle_read_node_value},
     {"read_node_value_by_data_type", handle_read_node_value_by_data_type},
+    {"write_node_node_id", handle_write_node_node_id},
+    {"write_node_node_class", handle_write_node_node_class},
     {"write_node_browse_name", handle_write_node_browse_name},
     {"write_node_display_name", handle_write_node_display_name},
     {"write_node_description", handle_write_node_description},
@@ -732,7 +800,8 @@ static struct request_handler request_handlers[] = {
     {"write_node_minimum_sampling_interval", handle_write_node_minimum_sampling_interval},
     {"write_node_historizing", handle_write_node_historizing},
     {"write_node_executable", handle_write_node_executable},
-    {"read_node_id", handle_read_node_id},
+    {"read_node_node_id", handle_read_node_node_id},
+    {"read_node_node_class", handle_read_node_node_class},
     {"read_node_browse_name", handle_read_node_browse_name},
     {"read_node_display_name", handle_read_node_display_name},
     {"read_node_description", handle_read_node_description},

@@ -3,6 +3,8 @@ defmodule OpcUA.Client do
 
   @config_keys ["requestedSessionTimeout", "secureChannelLifeTime", "timeout"]
 
+  alias OpcUA.NodeId
+
   @moduledoc """
 
   OPC UA Client API module.
@@ -262,8 +264,11 @@ defmodule OpcUA.Client do
         end)
       end
 
-      defp get_monitored_item_args(monitored_item) when is_float(monitored_item), do: monitored_item
-      defp get_monitored_item_args(monitored_item)when is_struct(monitored_item), do: monitored_item[:args]
+      defp get_monitored_item_args(monitored_item) when is_float(monitored_item),
+        do: monitored_item
+
+      defp get_monitored_item_args(monitored_item) when is_struct(monitored_item),
+        do: monitored_item[:args]
 
       defoverridable start_link: 0,
                      start_link: 1,
@@ -446,6 +451,37 @@ defmodule OpcUA.Client do
     GenServer.call(pid, {:subscription, {:delete_monitored_item, args}})
   end
 
+  # Write nodes Attributes
+
+  @doc """
+    Change 'node_id' attribute of a node in the server.
+  """
+  @spec write_node_node_id(GenServer.server(), %NodeId{}, %NodeId{}) ::
+          :ok | {:error, binary()} | {:error, :einval}
+  def write_node_node_id(pid, %NodeId{} = node_id, %NodeId{} = new_node_id) do
+    GenServer.call(pid, {:write, {:node_id, node_id, new_node_id}})
+  end
+
+  @doc """
+    Change 'node_class' attribute of a node in the server.
+    Avalable value are:
+      UNSPECIFIED = 0,
+      OBJECT = 1,
+      VARIABLE = 2,
+      METHOD = 4,
+      OBJECTTYPE = 8,
+      VARIABLETYPE = 16,
+      REFERENCETYPE = 32,
+      DATATYPE = 64,
+      VIEW = 128,
+  """
+  @spec write_node_node_class(GenServer.server(), %NodeId{}, integer()) ::
+          :ok | {:error, binary()} | {:error, :einval}
+  def write_node_node_class(pid, %NodeId{} = node_id, node_class)
+      when node_class in [0, 1, 2, 4, 8, 16, 32, 64, 128] do
+    GenServer.call(pid, {:write, {:node_class, node_id, node_class}})
+  end
+
   @doc false
   def command(pid, request) do
     GenServer.call(pid, request)
@@ -470,10 +506,18 @@ defmodule OpcUA.Client do
         :exit_status
       ])
 
-    # #Valgrind
+    # Valgrind
     # port =
     #   Port.open({:spawn_executable, to_charlist("/usr/bin/valgrind.bin")}, [
-    #     {:args, ["-q", "--leak-check=full", "--show-leak-kinds=all", "--track-origins=yes", executable]},
+    #     {:args,
+    #      [
+    #        "-q",
+    #        "--undef-value-errors=no",
+    #        "--leak-check=full",
+    #        "--show-leak-kinds=all",
+    #        # "--track-origins=yes",
+    #        executable
+    #      ]},
     #     {:packet, 2},
     #     :use_stdio,
     #     :binary,
@@ -600,6 +644,20 @@ defmodule OpcUA.Client do
       _ ->
         {:reply, {:error, :einval}, state}
     end
+  end
+
+  # Write nodes Attributes
+
+  def handle_call({:write, {:node_id, node_id, new_node_id}}, caller_info, state) do
+    c_args = {to_c(node_id), to_c(new_node_id)}
+    call_port(state, :write_node_node_id, caller_info, c_args)
+    {:noreply, state}
+  end
+
+  def handle_call({:write, {:node_class, node_id, node_class}}, caller_info, state) do
+    c_args = {to_c(node_id), node_class}
+    call_port(state, :write_node_node_class, caller_info, c_args)
+    {:noreply, state}
   end
 
   # Catch all
@@ -731,6 +789,15 @@ defmodule OpcUA.Client do
     state
   end
 
-  defp charlist_to_string({:ok, charlist}), do: {:ok, to_string(charlist)}
-  defp charlist_to_string(error_response), do: error_response
+  # Write nodes Attributes
+
+  defp handle_c_response({:write_node_node_id, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:write_node_node_class, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
 end
