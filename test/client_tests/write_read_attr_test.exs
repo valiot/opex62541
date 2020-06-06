@@ -129,6 +129,45 @@ defmodule CClientWriteAttrTest do
     c_response = Client.read_node_node_class(c_pid, ob_node_id)
     assert c_response == {:ok, "Object"}
 
+    c_response = Client.read_node_user_write_mask(c_pid, node_id)
+    assert c_response == {:ok, 0x3FFFFF}
+
+    c_response = Client.write_node_user_write_mask(c_pid, node_id, 0x3FFFFF)
+    assert c_response == {:error, "BadWriteNotSupported"}
+
+    c_response = Client.read_node_user_access_level(c_pid, node_id)
+    assert c_response == {:ok, 3}
+
+    assert :ok == Client.write_node_user_access_level(c_pid, node_id, 3)
+
+    # For Method nodes
+    c_response = Client.read_node_user_executable(c_pid, node_id)
+    assert c_response == {:error, "BadAttributeIdInvalid"}
+
+    c_response = Client.write_node_user_executable(c_pid, node_id, false)
+    assert c_response == {:error, "BadWriteNotSupported"}
+
+    # For Reference Type
+    c_response = Client.read_node_symmetric(c_pid, node_id)
+    assert c_response == {:error, "BadAttributeIdInvalid"}
+
+    c_response = Client.write_node_symmetric(c_pid, node_id, false)
+    assert c_response == {:error, "BadNodeClassInvalid"}
+
+    # For View Node
+    c_response = Client.read_node_contains_no_loops(c_pid, node_id)
+    assert c_response == {:error, "BadAttributeIdInvalid"}
+
+    c_response = Client.write_node_contains_no_loops(c_pid, node_id, false)
+    assert c_response == {:error, "BadNodeClassInvalid"}
+
+    # For View Node
+    c_response = Client.read_node_event_notifier(c_pid, node_id)
+    assert c_response == {:error, "BadAttributeIdInvalid"}
+
+    c_response = Client.write_node_event_notifier(c_pid, node_id, 103)
+    assert c_response == {:error, "BadNodeClassInvalid"}
+
     new_browse_name = QualifiedName.new(ns_index: ns_index, name: "Var_N")
     assert :ok == Client.write_node_browse_name(c_pid, node_id, new_browse_name)
     c_response = Client.read_node_browse_name(c_pid, node_id)

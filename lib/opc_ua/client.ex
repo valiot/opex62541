@@ -451,6 +451,35 @@ defmodule OpcUA.Client do
     GenServer.call(pid, {:subscription, {:delete_monitored_item, args}})
   end
 
+  # Read nodes Attributes
+
+  @doc """
+    Reads 'user_write_mask' attribute of a node in the server.
+  """
+  @spec read_node_user_write_mask(GenServer.server(), %NodeId{}) ::
+          :ok | {:error, binary()} | {:error, :einval}
+  def read_node_user_write_mask(pid, %NodeId{} = node_id) do
+    GenServer.call(pid, {:read, {:user_write_mask, node_id}})
+  end
+
+  @doc """
+    Reads 'user_access_level' attribute of a node in the server.
+  """
+  @spec read_node_user_access_level(GenServer.server(), %NodeId{}) ::
+          :ok | {:error, binary()} | {:error, :einval}
+  def read_node_user_access_level(pid, %NodeId{} = node_id) do
+    GenServer.call(pid, {:read, {:user_access_level, node_id}})
+  end
+
+  @doc """
+    Reads 'user_executable' attribute of a node in the server.
+  """
+  @spec read_node_user_executable(GenServer.server(), %NodeId{}) ::
+          :ok | {:error, binary()} | {:error, :einval}
+  def read_node_user_executable(pid, %NodeId{} = node_id) do
+    GenServer.call(pid, {:read, {:user_executable, node_id}})
+  end
+
   # Write nodes Attributes
 
   @doc """
@@ -460,6 +489,15 @@ defmodule OpcUA.Client do
           :ok | {:error, binary()} | {:error, :einval}
   def write_node_node_id(pid, %NodeId{} = node_id, %NodeId{} = new_node_id) do
     GenServer.call(pid, {:write, {:node_id, node_id, new_node_id}})
+  end
+
+  @doc """
+    Change 'symmetric' attribute of a node in the server.
+  """
+  @spec write_node_symmetric(GenServer.server(), %NodeId{}, boolean()) ::
+          :ok | {:error, binary()} | {:error, :einval}
+  def write_node_symmetric(pid, %NodeId{} = node_id, symmetric) when is_boolean(symmetric) do
+    GenServer.call(pid, {:write, {:symmetric, node_id, symmetric}})
   end
 
   @doc """
@@ -480,6 +518,46 @@ defmodule OpcUA.Client do
   def write_node_node_class(pid, %NodeId{} = node_id, node_class)
       when node_class in [0, 1, 2, 4, 8, 16, 32, 64, 128] do
     GenServer.call(pid, {:write, {:node_class, node_id, node_class}})
+  end
+
+  @doc """
+    Change 'user_write_mask' attribute of a node in the server.
+  """
+  @spec write_node_user_write_mask(GenServer.server(), %NodeId{}, integer()) ::
+          :ok | {:error, binary()} | {:error, :einval}
+  def write_node_user_write_mask(pid, %NodeId{} = node_id, user_write_mask)
+      when is_integer(user_write_mask) do
+    GenServer.call(pid, {:write, {:user_write_mask, node_id, user_write_mask}})
+  end
+
+  @doc """
+    Change 'contains_no_loops' attribute of a node in the server.
+  """
+  @spec write_node_contains_no_loops(GenServer.server(), %NodeId{}, boolean()) ::
+          :ok | {:error, binary()} | {:error, :einval}
+  def write_node_contains_no_loops(pid, %NodeId{} = node_id, contains_no_loops)
+      when is_boolean(contains_no_loops) do
+    GenServer.call(pid, {:write, {:contains_no_loops, node_id, contains_no_loops}})
+  end
+
+  @doc """
+    Change 'user_access_level' attribute of a node in the server.
+  """
+  @spec write_node_user_access_level(GenServer.server(), %NodeId{}, integer()) ::
+          :ok | {:error, binary()} | {:error, :einval}
+  def write_node_user_access_level(pid, %NodeId{} = node_id, user_access_level)
+      when is_integer(user_access_level) do
+    GenServer.call(pid, {:write, {:user_access_level, node_id, user_access_level}})
+  end
+
+  @doc """
+    Change 'user_executable' attribute of a node in the server.
+  """
+  @spec write_node_user_executable(GenServer.server(), %NodeId{}, boolean()) ::
+          :ok | {:error, binary()} | {:error, :einval}
+  def write_node_user_executable(pid, %NodeId{} = node_id, user_executable)
+      when is_boolean(user_executable) do
+    GenServer.call(pid, {:write, {:user_executable, node_id, user_executable}})
   end
 
   @doc false
@@ -506,7 +584,7 @@ defmodule OpcUA.Client do
         :exit_status
       ])
 
-    # Valgrind
+    # # Valgrind
     # port =
     #   Port.open({:spawn_executable, to_charlist("/usr/bin/valgrind.bin")}, [
     #     {:args,
@@ -648,6 +726,26 @@ defmodule OpcUA.Client do
 
   # Write nodes Attributes
 
+  def handle_call({:read, {:user_write_mask, node_id}}, caller_info, state) do
+    c_args = to_c(node_id)
+    call_port(state, :read_node_user_write_mask, caller_info, c_args)
+    {:noreply, state}
+  end
+
+  def handle_call({:read, {:user_access_level, node_id}}, caller_info, state) do
+    c_args = to_c(node_id)
+    call_port(state, :read_node_user_access_level, caller_info, c_args)
+    {:noreply, state}
+  end
+
+  def handle_call({:read, {:user_executable, node_id}}, caller_info, state) do
+    c_args = to_c(node_id)
+    call_port(state, :read_node_user_executable, caller_info, c_args)
+    {:noreply, state}
+  end
+
+  # Write nodes Attributes
+
   def handle_call({:write, {:node_id, node_id, new_node_id}}, caller_info, state) do
     c_args = {to_c(node_id), to_c(new_node_id)}
     call_port(state, :write_node_node_id, caller_info, c_args)
@@ -657,6 +755,36 @@ defmodule OpcUA.Client do
   def handle_call({:write, {:node_class, node_id, node_class}}, caller_info, state) do
     c_args = {to_c(node_id), node_class}
     call_port(state, :write_node_node_class, caller_info, c_args)
+    {:noreply, state}
+  end
+
+  def handle_call({:write, {:user_write_mask, node_id, user_write_mask}}, caller_info, state) do
+    c_args = {to_c(node_id), user_write_mask}
+    call_port(state, :write_node_user_write_mask, caller_info, c_args)
+    {:noreply, state}
+  end
+
+  def handle_call({:write, {:symmetric, node_id, symmetric}}, caller_info, state) do
+    c_args = {to_c(node_id), symmetric}
+    call_port(state, :write_node_symmetric, caller_info, c_args)
+    {:noreply, state}
+  end
+
+  def handle_call({:write, {:contains_no_loops, node_id, contains_no_loops}}, caller_info, state) do
+    c_args = {to_c(node_id), contains_no_loops}
+    call_port(state, :write_node_contains_no_loops, caller_info, c_args)
+    {:noreply, state}
+  end
+
+  def handle_call({:write, {:user_access_level, node_id, user_access_level}}, caller_info, state) do
+    c_args = {to_c(node_id), user_access_level}
+    call_port(state, :write_node_user_access_level, caller_info, c_args)
+    {:noreply, state}
+  end
+
+  def handle_call({:write, {:user_executable, node_id, user_executable}}, caller_info, state) do
+    c_args = {to_c(node_id), user_executable}
+    call_port(state, :write_node_user_executable, caller_info, c_args)
     {:noreply, state}
   end
 
@@ -789,6 +917,24 @@ defmodule OpcUA.Client do
     state
   end
 
+  # Read nodes Attributes
+
+  defp handle_c_response({:read_node_user_write_mask, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:read_node_user_access_level, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:read_node_user_executable, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+
   # Write nodes Attributes
 
   defp handle_c_response({:write_node_node_id, caller_metadata, data}, state) do
@@ -797,6 +943,31 @@ defmodule OpcUA.Client do
   end
 
   defp handle_c_response({:write_node_node_class, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:write_node_user_write_mask, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:write_node_symmetric, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:write_node_contains_no_loops, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:write_node_user_access_level, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:write_node_user_executable, caller_metadata, data}, state) do
     GenServer.reply(caller_metadata, data)
     state
   end

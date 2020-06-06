@@ -1971,6 +1971,44 @@ void handle_write_node_executable(void *entity, bool entity_type, const char *re
 }
 
 /* 
+ *  Change 'event_notifier' of a node in the server. 
+ */
+void handle_write_node_event_notifier(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_StatusCode retval;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":handle_write_node_event_notifier requires a 2-tuple, term_size = %d", term_size);
+    
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    unsigned long event_notifier;
+    if (ei_decode_ulong(req, req_index, &event_notifier) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    UA_Byte ua_event_notifier = (UA_Byte) event_notifier;
+
+    if(entity_type)
+        retval = UA_Client_writeEventNotifierAttribute((UA_Client *)entity, node_id, &ua_event_notifier);
+    else
+        retval = UA_Server_writeEventNotifier((UA_Server *)entity, node_id, ua_event_notifier);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
+/* 
  *  Change 'value' of a node in the server.
  *  BUG String is allocated in memory 
  */
@@ -2680,6 +2718,30 @@ void handle_read_node_is_abstract(void *entity, bool entity_type, const char *re
 }
 
 /* 
+ *  Reads 'symmetric' Attribute from a node. 
+ */
+void handle_read_node_symmetric(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    UA_StatusCode retval;
+    UA_Boolean symmetric;
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    if(entity_type)
+        retval = UA_Client_readSymmetricAttribute((UA_Client *)entity, node_id, &symmetric);
+    else
+        retval = UA_Server_readSymmetric((UA_Server *)entity, node_id, &symmetric);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_data_response(&symmetric, 0, 0);
+}
+
+/* 
  *  Reads 'Inverse Name' Attribute from a node. 
  */
 void handle_read_node_inverse_name(void *entity, bool entity_type, const char *req, int *req_index)
@@ -2706,6 +2768,30 @@ void handle_read_node_inverse_name(void *entity, bool entity_type, const char *r
     send_data_response(node_inverse_name, 14, 0);
 
     UA_LocalizedText_clear(node_inverse_name);
+}
+
+/* 
+ *  Reads 'contains_no_loops' Attribute from a node. 
+ */
+void handle_read_node_contains_no_loops(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    UA_StatusCode retval;
+    UA_Boolean contains_no_loops;
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    if(entity_type)
+        retval = UA_Client_readContainsNoLoopsAttribute((UA_Client *)entity, node_id, &contains_no_loops);
+    else
+        retval = UA_Server_readContainsNoLoop((UA_Server *)entity, node_id, &contains_no_loops);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_data_response(&contains_no_loops, 0, 0);
 }
 
 /* 
@@ -2868,6 +2954,30 @@ void handle_read_node_executable(void *entity, bool entity_type, const char *req
     send_data_response(node_executable, 0, 0);
 
     UA_Boolean_clear(node_executable);
+}
+
+/* 
+ *  Reads 'event_notifier' Attribute from a node. 
+ */
+void handle_read_node_event_notifier(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    UA_StatusCode retval;
+    UA_Byte event_notifier;
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    if(entity_type)
+        retval = UA_Client_readEventNotifierAttribute((UA_Client *)entity, node_id, &event_notifier);
+    else
+        retval = UA_Server_readEventNotifier((UA_Server *)entity, node_id, &event_notifier);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_data_response(&event_notifier, 24, 0);
 }
 
 /* 

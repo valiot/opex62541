@@ -154,6 +154,15 @@ defmodule OpcUA.Common do
       end
 
       @doc """
+      Change 'event_notifier' attribute of a node in the server.
+      """
+      @spec write_node_event_notifier(GenServer.server(), %NodeId{}, integer()) ::
+              :ok | {:error, binary()} | {:error, :einval}
+      def write_node_event_notifier(pid, %NodeId{} = node_id, event_notifier) when is_integer(event_notifier) do
+        GenServer.call(pid, {:write, {:event_notifier, node_id, event_notifier}})
+      end
+
+      @doc """
       Change 'Value' attribute of a node in the server.
       """
       @spec write_node_value(GenServer.server(), %NodeId{}, integer(), term()) ::
@@ -218,6 +227,15 @@ defmodule OpcUA.Common do
         GenServer.call(pid, {:read, {:is_abstract, node_id}})
       end
 
+      @doc """
+      Reads 'Symmetric' attribute of a node in the server.
+      """
+      @spec read_node_symmetric(GenServer.server(), %NodeId{}) ::
+              {:ok, boolean()} | {:error, binary()} | {:error, :einval}
+      def read_node_symmetric(pid, node_id) do
+        GenServer.call(pid, {:read, {:symmetric, node_id}})
+      end
+
       # TODO: friendlier write_mask params
       @doc """
       Reads 'Write Mask' attribute of a node in the server.
@@ -244,6 +262,15 @@ defmodule OpcUA.Common do
               {:ok, {binary(), binary()}} | {:error, binary()} | {:error, :einval}
       def read_node_inverse_name(pid, node_id) do
         GenServer.call(pid, {:read, {:inverse_name, node_id}})
+      end
+
+      @doc """
+      Reads 'contains_no_loops' attribute of a node in the server.
+      """
+      @spec read_node_contains_no_loops(GenServer.server(), %NodeId{}) ::
+              {:ok, {binary(), binary()}} | {:error, binary()} | {:error, :einval}
+      def read_node_contains_no_loops(pid, node_id) do
+        GenServer.call(pid, {:read, {:contains_no_loops, node_id}})
       end
 
       @doc """
@@ -292,7 +319,16 @@ defmodule OpcUA.Common do
       end
 
       @doc """
-      Reads 'Value' attribute of a node in the server.
+      Reads 'event_notifier' attribute of a node in the server.
+      """
+      @spec read_node_event_notifier(GenServer.server(), %NodeId{}) ::
+              {:ok, term()} | {:error, binary()} | {:error, :einval}
+      def read_node_event_notifier(pid, node_id) do
+        GenServer.call(pid, {:read, {:event_notifier, node_id}})
+      end
+
+      @doc """
+      Reads 'value' attribute of a node in the server.
       """
       @spec read_node_value(GenServer.server(), %NodeId{}) ::
               {:ok, term()} | {:error, binary()} | {:error, :einval}
@@ -404,6 +440,13 @@ defmodule OpcUA.Common do
         {:noreply, state}
       end
 
+      def handle_call({:write, {:event_notifier, node_id, event_notifier}}, caller_info, state)
+          when is_integer(event_notifier) do
+        c_args = {to_c(node_id), event_notifier}
+        call_port(state, :write_node_event_notifier, caller_info, c_args)
+        {:noreply, state}
+      end
+
       def handle_call({:write, {:value, node_id, {data_type, raw_value}}}, caller_info, state) do
         c_args = {to_c(node_id), data_type, value_to_c(data_type, raw_value)}
         call_port(state, :write_node_value, caller_info, c_args)
@@ -448,6 +491,12 @@ defmodule OpcUA.Common do
         {:noreply, state}
       end
 
+      def handle_call({:read, {:symmetric, node_id}}, caller_info, state) do
+        c_args = to_c(node_id)
+        call_port(state, :read_node_symmetric, caller_info, c_args)
+        {:noreply, state}
+      end
+
       def handle_call({:read, {:write_mask, node_id}}, caller_info, state) do
         c_args = to_c(node_id)
         call_port(state, :read_node_write_mask, caller_info, c_args)
@@ -463,6 +512,12 @@ defmodule OpcUA.Common do
       def handle_call({:read, {:inverse_name, node_id}}, caller_info, state) do
         c_args = to_c(node_id)
         call_port(state, :read_node_inverse_name, caller_info, c_args)
+        {:noreply, state}
+      end
+
+      def handle_call({:read, {:contains_no_loops, node_id}}, caller_info, state) do
+        c_args = to_c(node_id)
+        call_port(state, :read_node_contains_no_loops, caller_info, c_args)
         {:noreply, state}
       end
 
@@ -493,6 +548,12 @@ defmodule OpcUA.Common do
       def handle_call({:read, {:executable, node_id}}, caller_info, state) do
         c_args = to_c(node_id)
         call_port(state, :read_node_executable, caller_info, c_args)
+        {:noreply, state}
+      end
+
+      def handle_call({:read, {:event_notifier, node_id}}, caller_info, state) do
+        c_args = to_c(node_id)
+        call_port(state, :read_node_event_notifier, caller_info, c_args)
         {:noreply, state}
       end
 
@@ -584,6 +645,11 @@ defmodule OpcUA.Common do
         state
       end
 
+      defp handle_c_response({:write_node_event_notifier, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
       defp handle_c_response({:write_node_value, caller_metadata, data}, state) do
         GenServer.reply(caller_metadata, data)
         state
@@ -632,6 +698,11 @@ defmodule OpcUA.Common do
         state
       end
 
+      defp handle_c_response({:read_node_symmetric, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
       defp handle_c_response({:read_node_inverse_name, caller_metadata, data}, state) do
         GenServer.reply(caller_metadata, data)
         state
@@ -658,12 +729,22 @@ defmodule OpcUA.Common do
         state
       end
 
+      defp handle_c_response({:read_node_contains_no_loops, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
       defp handle_c_response({:read_node_historizing, caller_metadata, data}, state) do
         GenServer.reply(caller_metadata, data)
         state
       end
 
       defp handle_c_response({:read_node_executable, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:read_node_event_notifier, caller_metadata, data}, state) do
         GenServer.reply(caller_metadata, data)
         state
       end
