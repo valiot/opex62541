@@ -507,7 +507,6 @@ defmodule OpcUA.Server do
     GenServer.call(pid, {:delete_monitored_item, monitored_item_id})
   end
 
-
   @doc false
   def test(pid) do
     GenServer.call(pid, {:test, nil})

@@ -111,6 +111,16 @@ defmodule OpcUA.Common do
       end
 
       @doc """
+      Change 'Array Dimensions' of a node in the server.
+      """
+      @spec write_node_array_dimensions(GenServer.server(), %NodeId{}, list()) ::
+              :ok | {:error, binary()} | {:error, :einval}
+      def write_node_array_dimensions(pid, %NodeId{} = node_id, array_dimensions)
+          when is_list(array_dimensions) do
+        GenServer.call(pid, {:write, {:array_dimensions, node_id, array_dimensions}})
+      end
+
+      @doc """
       Change 'Access level' of a node in the server.
       """
       @spec write_node_access_level(GenServer.server(), %NodeId{}, integer()) ::
@@ -169,6 +179,17 @@ defmodule OpcUA.Common do
               :ok | {:error, binary()} | {:error, :einval}
       def write_node_value(pid, %NodeId{} = node_id, data_type, value) do
         GenServer.call(pid, {:write, {:value, node_id, {data_type, value}}})
+      end
+
+      @doc """
+      Creates a blank 'value array' attribute of a node in the server.
+      Note: the array must match with 'value_rank' and 'array_dimensions' attribute.
+      """
+      @spec write_node_blank_array(GenServer.server(), %NodeId{}, integer(), list()) ::
+              :ok | {:error, binary()} | {:error, :einval}
+      def write_node_blank_array(pid, %NodeId{} = node_id, data_type, array_dimensions)
+          when is_integer(data_type) and is_list(array_dimensions) do
+        GenServer.call(pid, {:write, {:array, node_id, {data_type, array_dimensions}}})
       end
 
       # Read nodes Attributes function
@@ -280,6 +301,15 @@ defmodule OpcUA.Common do
               {:ok, integer()} | {:error, binary()} | {:error, :einval}
       def read_node_value_rank(pid, node_id) do
         GenServer.call(pid, {:read, {:value_rank, node_id}})
+      end
+
+      @doc """
+      Reads 'array_dimensions' of a node in the server.
+      """
+      @spec read_node_array_dimensions(GenServer.server(), %NodeId{}) ::
+              {:ok, list()} | {:error, binary()} | {:error, :einval}
+      def read_node_array_dimensions(pid, node_id) do
+        GenServer.call(pid, {:read, {:array_dimensions, node_id}})
       end
 
       @doc """
@@ -408,6 +438,18 @@ defmodule OpcUA.Common do
         {:noreply, state}
       end
 
+      def handle_call({:write, {:array_dimensions, node_id, array_dimensions}}, caller_info, state)
+          when is_list(array_dimensions) do
+        with true <- all_must_be(:integer, array_dimensions) do
+          c_args = {to_c(node_id), length(array_dimensions), List.to_tuple(array_dimensions)}
+          call_port(state, :write_node_array_dimensions, caller_info, c_args)
+          {:noreply, state}
+        else
+          _ ->
+            {:reply, {:error, :einval}, state}
+        end
+      end
+
       def handle_call({:write, {:access_level, node_id, access_level}}, caller_info, state)
           when is_integer(access_level) do
         c_args = {to_c(node_id), access_level}
@@ -451,6 +493,20 @@ defmodule OpcUA.Common do
         c_args = {to_c(node_id), data_type, value_to_c(data_type, raw_value)}
         call_port(state, :write_node_value, caller_info, c_args)
         {:noreply, state}
+      end
+
+      def handle_call({:write, {:array, node_id, {data_type, array_dimensions}}}, caller_info, state)
+          when is_integer(data_type) and is_list(array_dimensions) do
+        with  true <- all_must_be(:integer, array_dimensions),
+              array_raw_size <- get_array_raw_size(array_dimensions) do
+          #{node_id, data_type, }
+          c_args = {to_c(node_id), data_type, length(array_dimensions), array_raw_size, List.to_tuple(array_dimensions)}
+          call_port(state, :write_node_blank_array, caller_info, c_args)
+          {:noreply, state}
+        else
+          _ ->
+            {:reply, {:error, :einval}, state}
+        end
       end
 
       # Read nodes Attributes handlers
@@ -524,6 +580,12 @@ defmodule OpcUA.Common do
       def handle_call({:read, {:value_rank, node_id}}, caller_info, state) do
         c_args = to_c(node_id)
         call_port(state, :read_node_value_rank, caller_info, c_args)
+        {:noreply, state}
+      end
+
+      def handle_call({:read, {:array_dimensions, node_id}}, caller_info, state) do
+        c_args = to_c(node_id)
+        call_port(state, :read_node_array_dimensions, caller_info, c_args)
         {:noreply, state}
       end
 
@@ -622,6 +684,11 @@ defmodule OpcUA.Common do
         state
       end
 
+      defp handle_c_response({:write_node_array_dimensions, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
       defp handle_c_response({:write_node_access_level, caller_metadata, data}, state) do
         GenServer.reply(caller_metadata, data)
         state
@@ -651,6 +718,11 @@ defmodule OpcUA.Common do
       end
 
       defp handle_c_response({:write_node_value, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:write_node_blank_array, caller_metadata, data}, state) do
         GenServer.reply(caller_metadata, data)
         state
       end
@@ -715,6 +787,11 @@ defmodule OpcUA.Common do
       end
 
       defp handle_c_response({:read_node_value_rank, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
+      defp handle_c_response({:read_node_array_dimensions, caller_metadata, data}, state) do
         GenServer.reply(caller_metadata, data)
         state
       end
@@ -866,6 +943,12 @@ defmodule OpcUA.Common do
         System.put_env("LD_LIBRARY_PATH", ld_dirs)
         priv_dir
       end
+
+      defp all_must_be(:integer, list),
+        do: Enum.all?(list, fn x -> is_integer(x) end)
+
+      defp get_array_raw_size(array_dimensions),
+        do: Enum.reduce(array_dimensions, 1, fn(x, acc) -> x * acc end)
 
       defp write_ld_library_path(true, priv_dir), do: priv_dir
     end

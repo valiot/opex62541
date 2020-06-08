@@ -45,6 +45,7 @@ defmodule ClientArraysTest do
     )
 
     :ok = Server.write_node_access_level(pid, requested_new_node_id, 3)
+    :ok = Server.write_node_write_mask(pid, requested_new_node_id, 3)
 
     :ok = Server.start(pid)
 
@@ -52,12 +53,28 @@ defmodule ClientArraysTest do
     :ok = Client.set_config(c_pid)
     :ok = Client.connect_by_url(c_pid, url: "opc.tcp://localhost:4840/")
 
-    %{c_pid: c_pid, ns_index: ns_index}
+    %{c_pid: c_pid, s_pid: pid, ns_index: ns_index}
   end
 
-  test "Read Arrays data", %{c_pid: c_pid} do
-    node_id = NodeId.new(ns_index: 2, identifier_type: "string", identifier: "R1_TS1_Temperature")
-    c_response = Client.read_node_node_id(c_pid, node_id)
-    assert c_response == {:ok, node_id}
+  test "write array node", state do
+    node_id = NodeId.new(ns_index: state.ns_index, identifier_type: "string", identifier: "R1_TS1_Temperature")
+
+    resp = Server.write_node_value_rank(state.s_pid, node_id, 1)
+    assert resp == :ok
+
+    resp = Server.read_node_value_rank(state.s_pid, node_id)
+    assert resp == {:ok, 1}
+
+    resp = Server.write_node_array_dimensions(state.s_pid, node_id, [4])
+    assert resp == :ok
+
+    resp = Client.read_node_array_dimensions(state.c_pid, node_id)
+    assert resp == {:ok, [4]}
+
+    resp = Client.write_node_array_dimensions(state.c_pid, node_id, [4])
+    assert resp == :ok
+
+    resp = Client.read_node_array_dimensions(state.c_pid, node_id)
+    assert resp == {:ok, [4]}
   end
 end
