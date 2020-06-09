@@ -634,6 +634,17 @@ void encode_xv_type(char *resp, int *resp_index, void *data)
     ei_encode_double(resp, resp_index, ((UA_XVType *)data)->x);
 }
 
+void encode_array_dimensions_struct(char *resp, int *resp_index, void *data, int data_len)
+{
+    ei_encode_list_header(resp, resp_index, data_len);
+
+    for(size_t i = 0; i < data_len; i++) {
+        ei_encode_ulong(resp, resp_index, *((UA_UInt32 *) data + i));
+    }
+    if(data_len)
+        ei_encode_empty_list(resp, resp_index);
+}
+
 void encode_data_response(char *resp, int *resp_index, void *data, int data_type, int data_len)
 {
     switch(data_type)
@@ -748,6 +759,10 @@ void encode_data_response(char *resp, int *resp_index, void *data, int data_type
 
         case 27: //UA_UInt32
             ei_encode_ulong(resp, resp_index, *(UA_UInt32 *)data);
+        break;
+
+        case 28: //array_dimensions
+            encode_array_dimensions_struct(resp, resp_index, data, data_len);
         break;
 
         default:
@@ -1100,7 +1115,6 @@ void send_write_response(UA_Server *server,
         break;
 
         case UA_TYPES_XVTYPE:
-            //errx(EXIT_FAILURE, "checar2");
             send_write_data_response(nodeId, data->value.data, 22, 0);
         break;
 
@@ -1815,6 +1829,65 @@ void handle_write_node_value_rank(void *entity, bool entity_type, const char *re
 }
 
 /* 
+ *  Change 'Array_dimensions' of a node in the server. 
+ */
+void handle_write_node_array_dimensions(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int list_size;
+    int term_type;
+    UA_StatusCode retval;
+    UA_Variant var_array_dimension;
+    UA_Variant_init(&var_array_dimension);
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 3)
+        errx(EXIT_FAILURE, ":handle_write_node_array_dimension requires a 3-tuple, term_size = %d", term_size);
+    
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    unsigned long array_dimension_size;
+    if (ei_decode_ulong(req, req_index, &array_dimension_size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    UA_UInt32 array_dimension[array_dimension_size];
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 || term_size != array_dimension_size)
+        errx(EXIT_FAILURE, ":handle_write_node_array_dimension arity mismatch, list_size = %d, array_d = %ld", term_size, array_dimension_size);
+
+    for (unsigned long i = 0; i < array_dimension_size; i++)
+    {
+        unsigned long dimension;
+        if (ei_decode_ulong(req, req_index, &dimension) < 0) {
+            send_error_response("einval");
+            return;
+        }
+    
+        array_dimension[i] = (UA_UInt32) dimension;
+    }
+
+    UA_Variant_setArrayCopy(&var_array_dimension, array_dimension, array_dimension_size, &UA_TYPES[UA_TYPES_UINT32]);
+
+    
+    if(entity_type)
+        retval = UA_Client_writeArrayDimensionsAttribute((UA_Client *)entity, node_id, array_dimension_size, array_dimension);
+    else
+        retval = UA_Server_writeArrayDimensions((UA_Server *)entity, node_id, var_array_dimension);
+
+    UA_NodeId_clear(&node_id);
+    UA_Variant_clear(&var_array_dimension);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
+/* 
  *  Change 'Access Level' of a node in the server. 
  */
 void handle_write_node_access_level(void *entity, bool entity_type, const char *req, int *req_index)
@@ -1971,6 +2044,44 @@ void handle_write_node_executable(void *entity, bool entity_type, const char *re
 }
 
 /* 
+ *  Change 'event_notifier' of a node in the server. 
+ */
+void handle_write_node_event_notifier(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_StatusCode retval;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":handle_write_node_event_notifier requires a 2-tuple, term_size = %d", term_size);
+    
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    unsigned long event_notifier;
+    if (ei_decode_ulong(req, req_index, &event_notifier) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    UA_Byte ua_event_notifier = (UA_Byte) event_notifier;
+
+    if(entity_type)
+        retval = UA_Client_writeEventNotifierAttribute((UA_Client *)entity, node_id, &ua_event_notifier);
+    else
+        retval = UA_Server_writeEventNotifier((UA_Server *)entity, node_id, ua_event_notifier);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
+/* 
  *  Change 'value' of a node in the server.
  *  BUG String is allocated in memory 
  */
@@ -1978,11 +2089,16 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
 {
     int term_size;
     int term_type;
+    bool is_null = false;
+    bool is_scalar = false;
     UA_NodeId node_id_arg_1;
     UA_NodeId node_id_arg_2;
     UA_ExpandedNodeId expanded_node_id_arg_1;
     UA_QualifiedName qualified_name;
     UA_StatusCode retval = 0;
+
+    UA_Variant value;
+    UA_Variant_init(&value);
 
     char *arg1 = (char *)malloc(0);
     char *arg2 = (char *)malloc(0);
@@ -1993,8 +2109,8 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
     UA_ExpandedNodeId_init(&expanded_node_id_arg_1);
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-        term_size != 3)
-        errx(EXIT_FAILURE, ":handle_write_node_value requires a 3-tuple, term_size = %d", term_size);
+        term_size != 4)
+        errx(EXIT_FAILURE, ":handle_write_node_value requires a 4-tuple, term_size = %d", term_size);
     
     UA_NodeId node_id = assemble_node_id(req, req_index);
 
@@ -2004,8 +2120,44 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         return;
     }
 
-    UA_Variant value;
-    UA_Variant_init(&value);
+    size_t data_index;
+    if (ei_decode_ulong(req, req_index, &data_index) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    if(entity_type)
+        retval = UA_Client_readValueAttribute((UA_Client *)entity, node_id, &value);
+    else
+        retval = UA_Server_readValue((UA_Server *)entity, node_id, &value); 
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        free(arg1);
+        free(arg2);
+        UA_NodeId_clear(&node_id);
+        UA_NodeId_clear(&node_id_arg_1);
+        UA_NodeId_clear(&node_id_arg_2);
+        send_opex_response(retval);
+        return;
+    }
+
+    if(UA_Variant_isEmpty(&value))
+        is_null = true;
+
+    if(UA_Variant_isScalar(&value))
+        is_scalar = true;
+
+    if (!is_scalar && !is_null && (value.arrayLength <= data_index))
+    {
+        free(arg1);
+        free(arg2);
+        UA_NodeId_clear(&node_id);
+        UA_NodeId_clear(&node_id_arg_1);
+        UA_NodeId_clear(&node_id_arg_2);
+        send_opex_response(UA_STATUSCODE_BADTYPEMISMATCH);
+        return;
+    }    
+
     switch (data_type)
     {
         case UA_TYPES_BOOLEAN:
@@ -2016,7 +2168,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_Boolean data = boolean_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_BOOLEAN]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_BOOLEAN]);
+            else
+                *((UA_Boolean *)value.data + data_index) = data;
         }
         break;
 
@@ -2028,7 +2183,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_SByte data = sbyte_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_SBYTE]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_SBYTE]);
+            else
+                *((UA_SByte *)value.data + data_index) = data;
         }
         break;
 
@@ -2039,8 +2197,11 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 send_error_response("einval");
                 return;
             }
-            UA_SByte data = byte_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_BYTE]);
+            UA_Byte data = byte_data;
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_BYTE]);
+            else
+                *((UA_Byte *)value.data + data_index) = data;
         }
         break;
 
@@ -2052,7 +2213,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_Int16 data = int16_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_INT16]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_INT16]);
+            else
+                *((UA_Int16 *)value.data + data_index) = data;
         }
         break;
 
@@ -2064,7 +2228,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_UInt16 data = uint16_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_UINT16]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_UINT16]);
+            else
+                *((UA_UInt16 *)value.data + data_index) = data;
         }
         break;
 
@@ -2076,7 +2243,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_Int32 data = int32_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_INT32]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_INT32]);
+            else
+                *((UA_Int32 *)value.data + data_index) = data;
         }
         break;
 
@@ -2088,7 +2258,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_UInt32 data = uint32_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_UINT32]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_UINT32]);
+            else
+                *((UA_UInt32 *)value.data + data_index) = data;
         }
         break;
 
@@ -2100,7 +2273,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_Int64 data = int64_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_INT64]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_INT64]);
+            else
+                *((UA_Int64 *)value.data + data_index) = data;
         }
         break;
 
@@ -2112,7 +2288,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_UInt64 data = uint64_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_UINT64]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_UINT64]);
+            else
+                *((UA_UInt64 *)value.data + data_index) = data;
         }
         break;
 
@@ -2124,7 +2303,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_Float data = (float) float_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_FLOAT]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_FLOAT]);
+            else
+                *((UA_Float *)value.data + data_index) = data;
         }
         break;
 
@@ -2136,7 +2318,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_Double data = double_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_DOUBLE]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_DOUBLE]);
+            else
+                *((UA_Double *)value.data + data_index) = data;
         }
         break;
 
@@ -2145,6 +2330,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid string (size)");
 
+            free(arg1);
             arg1 = (char *)malloc(term_size + 1);
     
             long binary_len;
@@ -2154,8 +2340,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             arg1[binary_len] = '\0';
 
             UA_String data = UA_STRING(arg1);
-
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_STRING]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_STRING]);
+            else
+                *((UA_String *)value.data + data_index) = data;
         }
         break;
 
@@ -2168,7 +2356,11 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             }
             
             UA_DateTime data = date_time_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_DATETIME]);
+            
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_DATETIME]);
+            else
+                *((UA_DateTime *)value.data + data_index) = data;
         }
         break;
 
@@ -2204,7 +2396,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             guid.data2 = guid_data2;
             guid.data3 = guid_data3;
 
-            UA_Variant_setScalar(&value, &guid, &UA_TYPES[UA_TYPES_GUID]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &guid, &UA_TYPES[UA_TYPES_GUID]);
+            else
+                *((UA_Guid *)value.data + data_index) = guid;
         }
         break;
 
@@ -2213,7 +2408,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid byte_string (size)");
 
-            
+            free(arg1);
             arg1 = (char *)malloc(term_size + 1);
     
             long binary_len;
@@ -2223,8 +2418,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             arg1[binary_len] = '\0';
 
             UA_ByteString data = UA_BYTESTRING(arg1);
-
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_BYTESTRING]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_BYTESTRING]);
+            else
+                *((UA_ByteString *)value.data + data_index) = data;
         }
         break;
 
@@ -2233,6 +2430,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid xml (size)");
 
+            free(arg1);
             arg1 = (char *)malloc(term_size + 1);
     
             long binary_len;
@@ -2242,22 +2440,30 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             arg1[binary_len] = '\0';
 
             UA_XmlElement data = UA_STRING(arg1);
-
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_XMLELEMENT]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_XMLELEMENT]);
+            else
+                *((UA_XmlElement *)value.data + data_index) = data;
         }
         break;
 
         case UA_TYPES_NODEID:
         {
             node_id_arg_1 = assemble_node_id(req, req_index);
-            UA_Variant_setScalar(&value, &node_id_arg_1, &UA_TYPES[UA_TYPES_NODEID]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &node_id_arg_1, &UA_TYPES[UA_TYPES_NODEID]);
+            else
+                *((UA_NodeId *)value.data + data_index) = node_id_arg_1;
         }
         break;
 
         case UA_TYPES_EXPANDEDNODEID:
         {
             expanded_node_id_arg_1 = assemble_expanded_node_id(req, req_index);
-            UA_Variant_setScalar(&value, &expanded_node_id_arg_1, &UA_TYPES[UA_TYPES_EXPANDEDNODEID]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &expanded_node_id_arg_1, &UA_TYPES[UA_TYPES_EXPANDEDNODEID]);
+            else
+                *((UA_ExpandedNodeId *)value.data + data_index) = expanded_node_id_arg_1;
         }
         break;
 
@@ -2269,14 +2475,20 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_StatusCode data = status_code_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_STATUSCODE]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_STATUSCODE]);
+            else
+                *((UA_StatusCode *)value.data + data_index) = data;
         }
         break;
 
         case UA_TYPES_QUALIFIEDNAME:
         {
             qualified_name = assemble_qualified_name(req, req_index);
-            UA_Variant_setScalar(&value, &qualified_name, &UA_TYPES[UA_TYPES_QUALIFIEDNAME]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &qualified_name, &UA_TYPES[UA_TYPES_QUALIFIEDNAME]);
+            else
+                *((UA_QualifiedName *)value.data + data_index) = qualified_name;
         }
         break;
 
@@ -2290,6 +2502,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid locale (size)");
 
+            free(arg1);
             arg1 = (char *)malloc(term_size + 1);
     
             long binary_len;
@@ -2302,6 +2515,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid text (size)");
 
+            free(arg2);
             arg2 = (char *)malloc(term_size + 1);
     
             if (ei_decode_binary(req, req_index, arg2, &binary_len) < 0) 
@@ -2310,8 +2524,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             arg2[binary_len] = '\0';
 
             UA_LocalizedText data = UA_LOCALIZEDTEXT(arg1, arg2);
-
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_LOCALIZEDTEXT]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_LOCALIZEDTEXT]);
+            else
+                *((UA_LocalizedText *)value.data + data_index) = data;
         }
         break;
 
@@ -2334,15 +2550,19 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             UA_SemanticChangeStructureDataType data;
             data.affected = node_id_arg_1;
             data.affectedType = node_id_arg_2;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_SEMANTICCHANGESTRUCTUREDATATYPE]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_SEMANTICCHANGESTRUCTUREDATATYPE]);
+            else
+                *((UA_SemanticChangeStructureDataType *)value.data + data_index) = data;
         }
         break;
 
         case UA_TYPES_TIMESTRING:
         {
-             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+            if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid time_string (size)");
 
+            free(arg1);
             arg1 = (char *)malloc(term_size + 1);
     
             long binary_len;
@@ -2352,7 +2572,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             arg1[binary_len] = '\0';
 
             UA_TimeString data = UA_STRING(arg1);
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_TIMESTRING]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_TIMESTRING]);
+            else
+                *((UA_TimeString *)value.data + data_index) = data;
         }
         break;
 
@@ -2366,7 +2589,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_UadpNetworkMessageContentMask data = content_mask_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_UADPNETWORKMESSAGECONTENTMASK]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_UADPNETWORKMESSAGECONTENTMASK]);
+            else
+                *((UA_UadpNetworkMessageContentMask *)value.data + data_index) = data;
         }
         break;
 
@@ -2393,7 +2619,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             data.value = (float) float_data;
             data.x = double_data;
             
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_XVTYPE]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_XVTYPE]);
+            else
+                *((UA_XVType *)value.data + data_index) = data;
         }
         break;
 
@@ -2406,7 +2635,11 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             }
             UA_ElementOperand data ;
             data.index = element_operand_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_ELEMENTOPERAND]);
+            
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_ELEMENTOPERAND]);
+            else
+                *((UA_ElementOperand *)value.data + data_index) = data;
         }
         break;
 
@@ -2424,8 +2657,8 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         server_is_writing = true;
         retval = UA_Server_writeValue((UA_Server *)entity, node_id, value);
     }
-    
 
+    
     free(arg1);
     free(arg2);
     UA_NodeId_clear(&node_id);
@@ -2447,9 +2680,432 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
 }
 
 /* 
+ *  Creates a blank 'value array' of a node in the server.
+ */
+void handle_write_node_blank_array(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_StatusCode retval = 0;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 5)
+        errx(EXIT_FAILURE, ":handle_write_node_blank_array requires a 5-tuple, term_size = %d", term_size);
+    
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    unsigned long data_type;
+    if (ei_decode_ulong(req, req_index, &data_type) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long array_dimension_size;
+    if (ei_decode_ulong(req, req_index, &array_dimension_size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long array_raw_size;
+    if (ei_decode_ulong(req, req_index, &array_raw_size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    UA_Variant value;
+    UA_Variant_init(&value);
+    switch (data_type)
+    {
+        case UA_TYPES_BOOLEAN:
+        {
+            UA_Boolean data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_Boolean_clear(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_BOOLEAN]);
+        }
+        break;
+
+        case UA_TYPES_SBYTE:
+        {
+            UA_SByte data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_SByte_clear(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_SBYTE]);
+        }
+        break;
+
+        case UA_TYPES_BYTE:
+        {
+            UA_Byte data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_Byte_clear(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_BYTE]);
+        }
+        break;
+
+        case UA_TYPES_INT16:
+        {
+            UA_Int16 data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_Int16_clear(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_INT16]);
+        }
+        break;
+
+        case UA_TYPES_UINT16:
+        {
+            UA_UInt16 data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_UInt16_init(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_UINT16]);
+        }
+        break;
+
+        case UA_TYPES_INT32:
+        {
+            UA_Int32 data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_Int32_clear(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_INT32]);
+        }
+        break;
+
+        case UA_TYPES_UINT32:
+        {
+            UA_UInt32 data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_UInt32_clear(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_UINT32]);
+        }
+        break;
+
+        case UA_TYPES_INT64:
+        {
+            UA_Int64 data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_Int64_clear(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_INT64]);
+        }
+        break;
+
+        case UA_TYPES_UINT64:
+        {
+            UA_UInt64 data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_UInt64_clear(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_UINT64]);
+        }
+        break;
+
+        case UA_TYPES_FLOAT:
+        {
+            UA_Float data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_Float_clear(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_FLOAT]);
+        }
+        break;
+
+        case UA_TYPES_DOUBLE:
+        {
+            UA_Double data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_Double_clear(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_DOUBLE]);
+        }
+        break;
+
+        case UA_TYPES_STRING:
+        {
+            UA_String data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_String_init(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_STRING]);
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_String_clear(&data[i]);
+            }
+        }
+        break;
+
+        case UA_TYPES_DATETIME:
+        {
+            UA_DateTime data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_DateTime_clear(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_DATETIME]);
+        }
+        break;
+
+        case UA_TYPES_GUID:
+        {
+            UA_Guid data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_Guid_clear(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_GUID]);
+        }
+        break;
+
+        case UA_TYPES_BYTESTRING:
+        {
+            UA_ByteString data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_ByteString_init(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_BYTESTRING]);
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_ByteString_clear(&data[i]);
+            }
+        }
+        break;
+
+        case UA_TYPES_XMLELEMENT:
+        {
+            UA_XmlElement data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_XmlElement_init(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_XMLELEMENT]);
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_XmlElement_clear(&data[i]);
+            }
+        }
+        break;
+
+        case UA_TYPES_NODEID:
+        {
+            UA_NodeId data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_NodeId_init(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_NODEID]);
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_NodeId_clear(&data[i]);
+            }
+        }
+        break;
+
+        case UA_TYPES_EXPANDEDNODEID:
+        {
+            UA_ExpandedNodeId data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_ExpandedNodeId_init(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_EXPANDEDNODEID]);
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_ExpandedNodeId_clear(&data[i]);
+            }
+        }
+        break;
+
+        case UA_TYPES_STATUSCODE:
+        {
+            UA_StatusCode data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_StatusCode_clear(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_STATUSCODE]);
+        }
+        break;
+
+        case UA_TYPES_QUALIFIEDNAME:
+        {
+            UA_QualifiedName data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_QualifiedName_init(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_QUALIFIEDNAME]);
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_QualifiedName_clear(&data[i]);
+            }
+        }
+        break;
+
+        case UA_TYPES_LOCALIZEDTEXT:
+        {
+            UA_LocalizedText data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_LocalizedText_init(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_LOCALIZEDTEXT]);
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_LocalizedText_clear(&data[i]);
+            }
+        }
+        break;
+
+        //UA_TYPES_EXTENSIONOBJECT:
+
+        //UA_TYPES_DATAVALUE
+
+        //UA_TYPES_VARIANT
+
+        //UA_TYPES_DIAGNOSTICINFO:
+
+        case UA_TYPES_SEMANTICCHANGESTRUCTUREDATATYPE:
+        {
+            UA_SemanticChangeStructureDataType data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_SemanticChangeStructureDataType_init(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_SEMANTICCHANGESTRUCTUREDATATYPE]);
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_SemanticChangeStructureDataType_clear(&data[i]);
+            }
+        }
+        break;
+
+        case UA_TYPES_TIMESTRING:
+        {
+            UA_TimeString data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_TimeString_init(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_TIMESTRING]);
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_TimeString_clear(&data[i]);
+            }
+        }
+        break;
+
+        //UA_TYPES_VIEWATTRIBUTES
+
+        case UA_TYPES_UADPNETWORKMESSAGECONTENTMASK:
+        {
+            UA_UadpNetworkMessageContentMask data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_UadpNetworkMessageContentMask_clear(&data[i]);
+            }
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_UADPNETWORKMESSAGECONTENTMASK]);
+        }
+        break;
+
+        case UA_TYPES_XVTYPE:
+        {
+            UA_XVType data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_XVType_init(&data[i]);
+            }          
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_XVTYPE]);
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_XVType_clear(&data[i]);
+            }          
+        }
+        break;
+
+        case UA_TYPES_ELEMENTOPERAND:
+        {
+            UA_ElementOperand data[array_raw_size];
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_ElementOperand_init(&data[i]);
+            }          
+            UA_Variant_setArrayCopy(&value, data, array_raw_size, &UA_TYPES[UA_TYPES_ELEMENTOPERAND]);
+            for(size_t i = 0; i < array_raw_size; i++)
+            {
+                UA_ElementOperand_clear(&data[i]);
+            }
+        }
+        break;
+
+        default:
+            errx(EXIT_FAILURE, ":handle_write_node_value invalid data_type = %ld", data_type);
+        break;
+    }
+    
+
+
+    value.arrayDimensions = (UA_UInt32 *)UA_Array_new(array_dimension_size, &UA_TYPES[UA_TYPES_UINT32]);
+    value.arrayDimensionsSize = array_dimension_size;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 || term_size != array_dimension_size)
+        errx(EXIT_FAILURE, ":handle_write_node_array_dimension arity mismatch, list_size = %d, array_d = %ld", term_size, array_dimension_size);
+
+    for (unsigned long i = 0; i < array_dimension_size; i++)
+    {
+        unsigned long dimension;
+        if (ei_decode_ulong(req, req_index, &dimension) < 0) {
+            send_error_response("einval");
+            return;
+        }
+    
+         value.arrayDimensions[i] = (UA_UInt32) dimension;
+    }
+
+    
+    if(entity_type)
+    {
+        retval = UA_Client_writeValueAttribute((UA_Client *)entity, node_id, &value);
+    }
+    else
+    {
+        server_is_writing = true;
+        retval = UA_Server_writeValue((UA_Server *)entity, node_id, value);
+    }
+    
+    UA_Variant_clear(&value);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
+
+/* 
  *  Reads 'Node ID' Attribute from a node. 
  */
-void handle_read_node_id(void *entity, bool entity_type, const char *req, int *req_index)
+void handle_read_node_node_id(void *entity, bool entity_type, const char *req, int *req_index)
 {
     UA_StatusCode retval;
     UA_NodeId *node_id_out;
@@ -2471,6 +3127,70 @@ void handle_read_node_id(void *entity, bool entity_type, const char *req, int *r
     send_data_response(node_id_out, 12, 0);
 
     UA_NodeId_clear(node_id_out);
+}
+
+/* 
+ *  Reads 'Node Class' Attribute from a node. 
+ */
+void handle_read_node_node_class(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    UA_StatusCode retval;
+    UA_NodeClass *node_class;
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    if(entity_type)
+        retval = UA_Client_readNodeClassAttribute((UA_Client *)entity, node_id, node_class);
+    else
+        retval = UA_Server_readNodeClass((UA_Server *)entity, node_id, node_class);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        UA_NodeClass_clear(node_class);
+        send_opex_response(retval);
+        return;
+    }
+
+    switch(*node_class)
+    {
+        case UA_NODECLASS_UNSPECIFIED:
+            send_data_response("Unspecified", 3, 0);
+        break;
+
+        case UA_NODECLASS_OBJECT:
+            send_data_response("Object", 3, 0);
+        break;
+
+        case UA_NODECLASS_VARIABLE:
+            send_data_response("Variable", 3, 0);
+        break;
+
+        case UA_NODECLASS_METHOD:
+            send_data_response("Method", 3, 0);
+        break;
+
+        case UA_NODECLASS_OBJECTTYPE:
+            send_data_response("ObjectType", 3, 0);
+        break;
+
+        case UA_NODECLASS_VARIABLETYPE:
+            send_data_response("VariableType", 3, 0);
+        break;
+
+        case UA_NODECLASS_REFERENCETYPE:
+            send_data_response("ReferenceType", 3, 0);
+        break;
+
+        case UA_NODECLASS_DATATYPE:
+            send_data_response("DataType", 3, 0);
+        break;
+
+        case UA_NODECLASS_VIEW:
+            send_data_response("View", 3, 0);
+        break;
+    }
+
+    UA_NodeClass_clear(node_class);
 }
 
 /* 
@@ -2611,6 +3331,30 @@ void handle_read_node_is_abstract(void *entity, bool entity_type, const char *re
 }
 
 /* 
+ *  Reads 'symmetric' Attribute from a node. 
+ */
+void handle_read_node_symmetric(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    UA_StatusCode retval;
+    UA_Boolean symmetric;
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    if(entity_type)
+        retval = UA_Client_readSymmetricAttribute((UA_Client *)entity, node_id, &symmetric);
+    else
+        retval = UA_Server_readSymmetric((UA_Server *)entity, node_id, &symmetric);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_data_response(&symmetric, 0, 0);
+}
+
+/* 
  *  Reads 'Inverse Name' Attribute from a node. 
  */
 void handle_read_node_inverse_name(void *entity, bool entity_type, const char *req, int *req_index)
@@ -2637,6 +3381,30 @@ void handle_read_node_inverse_name(void *entity, bool entity_type, const char *r
     send_data_response(node_inverse_name, 14, 0);
 
     UA_LocalizedText_clear(node_inverse_name);
+}
+
+/* 
+ *  Reads 'contains_no_loops' Attribute from a node. 
+ */
+void handle_read_node_contains_no_loops(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    UA_StatusCode retval;
+    UA_Boolean contains_no_loops;
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    if(entity_type)
+        retval = UA_Client_readContainsNoLoopsAttribute((UA_Client *)entity, node_id, &contains_no_loops);
+    else
+        retval = UA_Server_readContainsNoLoop((UA_Server *)entity, node_id, &contains_no_loops);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_data_response(&contains_no_loops, 0, 0);
 }
 
 /* 
@@ -2691,6 +3459,49 @@ void handle_read_node_value_rank(void *entity, bool entity_type, const char *req
     send_data_response(node_value_rank, 2, 0);
 
     UA_UInt32_clear(node_value_rank);
+}
+
+/* 
+ *  Reads 'array_dimensions' Attribute from a node. 
+ */
+void handle_read_node_array_dimensions(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    UA_StatusCode retval;
+    size_t array_dimensions_size;
+    UA_UInt32 *array_dimensions;
+    UA_Variant variant_array_dimensions;
+    UA_Variant_init(&variant_array_dimensions);
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+    
+
+    if(entity_type)
+        retval = UA_Client_readArrayDimensionsAttribute((UA_Client *)entity, node_id, &array_dimensions_size, &array_dimensions);
+    else
+        retval = UA_Server_readArrayDimensions((UA_Server *)entity, node_id, &variant_array_dimensions);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        if (entity_type)
+        {
+            UA_UInt32_clear(array_dimensions);
+        }
+        UA_Variant_clear(&variant_array_dimensions);
+        send_opex_response(retval);
+        return;
+    }
+
+    if(entity_type)
+    {
+        send_data_response(array_dimensions, 28, (int) array_dimensions_size);    
+        UA_UInt32_clear(array_dimensions);
+    }
+    else
+    {
+        send_data_response(variant_array_dimensions.data, 28, (int) variant_array_dimensions.arrayLength);
+    }
+
+    UA_Variant_clear(&variant_array_dimensions);
 }
 
 /* 
@@ -2802,15 +3613,50 @@ void handle_read_node_executable(void *entity, bool entity_type, const char *req
 }
 
 /* 
+ *  Reads 'event_notifier' Attribute from a node. 
+ */
+void handle_read_node_event_notifier(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    UA_StatusCode retval;
+    UA_Byte event_notifier;
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    if(entity_type)
+        retval = UA_Client_readEventNotifierAttribute((UA_Client *)entity, node_id, &event_notifier);
+    else
+        retval = UA_Server_readEventNotifier((UA_Server *)entity, node_id, &event_notifier);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_data_response(&event_notifier, 24, 0);
+}
+
+/* 
  *  Read 'value' of a node in the server.
  */
 void handle_read_node_value(void *entity, bool entity_type, const char *req, int *req_index)
 {
+    int term_size;
     UA_Variant *value = UA_Variant_new();
+    UA_Variant_init(value);
     UA_StatusCode retval;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":handle_read_node_value requires a 2-tuple, term_size = %d", term_size);
+
     UA_NodeId node_id = assemble_node_id(req, req_index);
 
-    UA_Variant_init(value);
+    unsigned long data_index;
+    if (ei_decode_ulong(req, req_index, &data_index) < 0) {
+        send_error_response("einval");
+        return;
+    }
    
     if(entity_type)
         retval = UA_Client_readValueAttribute((UA_Client *)entity, node_id, value);
@@ -2821,58 +3667,73 @@ void handle_read_node_value(void *entity, bool entity_type, const char *req, int
 
     if(retval != UA_STATUSCODE_GOOD) {
         UA_Variant_clear(value);
+        UA_Variant_delete(value);
         send_opex_response(retval);
         return;
     }
 
     if(UA_Variant_isEmpty(value)) {
         UA_Variant_clear(value);
+        UA_Variant_delete(value);
         send_error_response("nil");
         return;
     }
 
+    if(UA_Variant_isScalar(value))
+    {
+        data_index = 0;
+    }
+
+    if(!UA_Variant_isScalar(value) && value->arrayLength <= data_index)
+    {
+        UA_Variant_clear(value);
+        UA_Variant_delete(value);
+        send_opex_response(UA_STATUSCODE_BADTYPEMISMATCH);
+        return;   
+    }
+
     if(value->type == &UA_TYPES[UA_TYPES_BOOLEAN])
-        send_data_response(value->data, 0, 0);
+        send_data_response(value->data + data_index, 0, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_SBYTE])
-        send_data_response(value->data, 1, 0);
+        send_data_response(value->data + data_index, 1, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_BYTE])
-        send_data_response(value->data, 2, 0);
+        send_data_response(value->data + data_index, 2, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_INT16])
-        send_data_response(value->data, 1, 0);
+        send_data_response(value->data + data_index, 1, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_UINT16])
-        send_data_response(value->data, 2, 0);
+        send_data_response(value->data + data_index, 2, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_INT32])
-        send_data_response(value->data, 1, 0);
+        send_data_response(value->data + data_index, 1, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_UINT32])
-        send_data_response(value->data, 2, 0);
+        send_data_response(value->data + data_index, 2, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_INT64])
-        send_data_response(value->data, 15, 0);
+        send_data_response(value->data + data_index, 15, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_UINT64])
-        send_data_response(value->data, 16, 0);
+        send_data_response(value->data + data_index, 16, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_FLOAT])
-        send_data_response(value->data, 17, 0);
+        send_data_response(value->data + data_index, 17, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_DOUBLE])
-        send_data_response(value->data, 4, 0);
+        send_data_response(value->data + data_index, 4, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_STRING])
-        send_data_response((*(UA_String *)value->data).data, 5, (*(UA_String *)value->data).length);
+        send_data_response((*((UA_String *)value->data + data_index)).data, 5, (*((UA_String *)value->data + data_index)).length);
     else if(value->type == &UA_TYPES[UA_TYPES_DATETIME])
-        send_data_response(value->data, 15, 0);
+        send_data_response(value->data + data_index, 15, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_GUID])
-        send_data_response(value->data, 18, 0);
+        send_data_response(value->data + data_index, 18, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_BYTESTRING])
-        send_data_response((*(UA_ByteString *)value->data).data, 5, (*(UA_ByteString *)value->data).length);
+        send_data_response((*((UA_ByteString *)value->data + data_index)).data, 5, (*((UA_ByteString *)value->data + data_index)).length);
     else if(value->type == &UA_TYPES[UA_TYPES_XMLELEMENT])
-        send_data_response((*(UA_XmlElement *)value->data).data, 5, (*(UA_XmlElement *)value->data).length);
+        send_data_response((*((UA_XmlElement *)value->data + data_index)).data, 5, (*((UA_XmlElement *)value->data + data_index)).length);
     else if(value->type == &UA_TYPES[UA_TYPES_NODEID])
-        send_data_response(value->data, 12, 0);
+        send_data_response(value->data + data_index, 12, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_EXPANDEDNODEID])
-        send_data_response(value->data, 19, 0);
+        send_data_response(value->data + data_index, 19, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_STATUSCODE])
-        send_data_response(value->data, 20, 0);
+        send_data_response(value->data + data_index, 20, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_QUALIFIEDNAME])
-        send_data_response(value->data, 13, 0);
+        send_data_response(value->data + data_index, 13, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_LOCALIZEDTEXT])
-        send_data_response(value->data, 14, 0);
+        send_data_response(value->data + data_index, 14, 0);
 
     // TODO: UA_TYPES_EXTENSIONOBJECT
     
@@ -2883,7 +3744,7 @@ void handle_read_node_value(void *entity, bool entity_type, const char *req, int
     // TODO: UA_TYPES_DIAGNOSTICINFO
 
     else if(value->type == &UA_TYPES[UA_TYPES_SEMANTICCHANGESTRUCTUREDATATYPE])
-        send_data_response(value->data, 21, 0);
+        send_data_response(value->data + data_index, 21, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_TIMESTRING])
         send_data_response((*(UA_TimeString *)value->data).data, 5, (*(UA_TimeString *)value->data).length);
 
@@ -2891,15 +3752,16 @@ void handle_read_node_value(void *entity, bool entity_type, const char *req, int
 
     // TODO: UA_TYPES_UADPNETWORKMESSAGECONTENTMASK
     else if(value->type == &UA_TYPES[UA_TYPES_UADPNETWORKMESSAGECONTENTMASK])
-        send_data_response(value->data, 2, 0);
+        send_data_response(value->data + data_index, 2, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_XVTYPE])
-        send_data_response(value->data, 22, 0);
+        send_data_response(value->data + data_index, 22, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_ELEMENTOPERAND])
-        send_data_response(value->data, 2, 0);
+        send_data_response(value->data + data_index, 2, 0);
     else 
         send_error_response("eagain");
 
     UA_Variant_clear(value);
+    UA_Variant_delete(value);
 }
 
 /* 
@@ -2934,12 +3796,14 @@ void handle_read_node_value_by_data_type(void *entity, bool entity_type, const c
 
     if(retval != UA_STATUSCODE_GOOD) {
         UA_Variant_clear(value);
+        UA_Variant_delete(value);
         send_opex_response(retval);
         return;
     }
 
     if(UA_Variant_isEmpty(value) && value->type == &UA_TYPES[data_type]) {
         UA_Variant_clear(value);
+        UA_Variant_delete(value);
         send_error_response("nil");
         return;
     }

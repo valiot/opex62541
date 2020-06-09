@@ -558,6 +558,315 @@ void handle_add_reference(void *entity, bool entity_type, const char *req, int *
     send_ok_response();
 }
 
+/***************************************/
+/* Reading and Writing Node Attributes */
+/***************************************/
+
+/* 
+ *  Change 'data type' of a node in the server. 
+ */
+void handle_write_node_node_id(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_StatusCode retval;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":handle_write_node_node_id requires a 3-tuple, term_size = %d", term_size);
+    
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+    UA_NodeId new_node_id = assemble_node_id(req, req_index);
+
+    retval = UA_Client_writeNodeIdAttribute(client, node_id, &new_node_id);
+
+    UA_NodeId_clear(&node_id);
+    UA_NodeId_clear(&new_node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
+/* 
+ *  Change 'node class' attribute of a node in the server. 
+ */
+void handle_write_node_node_class(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_StatusCode retval;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":handle_write_node_node_class requires a 3-tuple, term_size = %d", term_size);
+    
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+    unsigned long node_class;
+    
+    if (ei_decode_ulong(req, req_index, &node_class) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    retval = UA_Client_writeNodeClassAttribute(client, node_id, (UA_NodeClass *) &node_class);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
+/* 
+ *  Change 'user_write_mask' attribute of a node in the server. 
+ */
+void handle_write_node_user_write_mask(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_StatusCode retval;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":handle_write_node_user_write_mask requires a 3-tuple, term_size = %d", term_size);
+    
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+    unsigned long user_write_mask;
+    
+    if (ei_decode_ulong(req, req_index, &user_write_mask) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    UA_UInt32 ua_user_write_mask = (UA_UInt32) user_write_mask;
+
+    retval = UA_Client_writeUserWriteMaskAttribute(client, node_id, &ua_user_write_mask);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
+/* 
+ *  Change 'symmetric' of a node in the server. 
+ */
+void handle_write_node_symmetric(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_StatusCode retval;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":handle_write_node_symmetric requires a 2-tuple, term_size = %d", term_size);
+    
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    // write_mask
+    int symmetric;
+    if (ei_decode_boolean(req, req_index, &symmetric) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    UA_Boolean symmetric_bool = symmetric;
+    
+    retval = UA_Client_writeSymmetricAttribute(client, node_id, &symmetric_bool);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
+/* 
+ *  Change 'contains_no_loops' of a node in the server. 
+ */
+void handle_write_node_contains_no_loops(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_StatusCode retval;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":handle_write_node_contains_no_loops requires a 2-tuple, term_size = %d", term_size);
+    
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    int contains_no_loops;
+    if (ei_decode_boolean(req, req_index, &contains_no_loops) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    UA_Boolean contains_no_loops_bool = contains_no_loops;
+    
+    retval = UA_Client_writeContainsNoLoopsAttribute(client, node_id, &contains_no_loops_bool);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
+/* 
+ *  Change 'user_access_level' of a node in the server. 
+ */
+void handle_write_node_user_access_level(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_StatusCode retval;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":handle_write_node_user_access_level requires a 2-tuple, term_size = %d", term_size);
+    
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    unsigned long user_access_level;
+    if (ei_decode_ulong(req, req_index, &user_access_level) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    UA_Byte ua_user_access_level = (UA_Byte) user_access_level;
+
+    retval = UA_Client_writeAccessLevelAttribute(client, node_id, &ua_user_access_level);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
+/* 
+ *  Change 'user_executable' of a node in the server. 
+ */
+void handle_write_node_user_executable(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_StatusCode retval;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":handle_write_node_user_executable requires a 2-tuple, term_size = %d", term_size);
+    
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    int user_executable;
+    if (ei_decode_boolean(req, req_index, &user_executable) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    UA_Boolean user_executable_bool = user_executable;
+    
+    retval = UA_Client_writeUserExecutableAttribute(client, node_id, &user_executable_bool);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
+
+/* 
+ *  Reads 'user_write_mask' attribute of a node in the server. 
+ */
+void handle_read_node_user_write_mask(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_StatusCode retval;
+    UA_UInt32 user_write_mask;
+
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    retval = UA_Client_readUserWriteMaskAttribute(client, node_id, &user_write_mask);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_data_response(&user_write_mask, 27, 0);
+}
+
+/* 
+ *  Reads 'user_access_level' Attribute from a node. 
+ */
+void handle_read_node_user_access_level(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    UA_StatusCode retval;
+    UA_Byte user_access_level;
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    retval = UA_Client_readUserAccessLevelAttribute(client, node_id, &user_access_level);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_data_response(&user_access_level, 24, 0);
+}
+
+/* 
+ *  Reads 'user_executable' Attribute from a node. 
+ */
+void handle_read_node_user_executable(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    UA_StatusCode retval;
+    UA_Boolean user_executable;
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+
+    retval = UA_Client_readUserExecutableAttribute(client, node_id, &user_executable);
+
+    UA_NodeId_clear(&node_id);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_data_response(&user_executable, 0, 0);
+}
+
+
 /***********************************************/
 /* Subscriptions and Monitored Items functions */
 /***********************************************/
@@ -720,31 +1029,49 @@ static struct request_handler request_handlers[] = {
     {"write_node_value", handle_write_node_value},
     {"read_node_value", handle_read_node_value},
     {"read_node_value_by_data_type", handle_read_node_value_by_data_type},
+    {"write_node_node_id", handle_write_node_node_id},
+    {"write_node_node_class", handle_write_node_node_class},
     {"write_node_browse_name", handle_write_node_browse_name},
     {"write_node_display_name", handle_write_node_display_name},
     {"write_node_description", handle_write_node_description},
     {"write_node_write_mask", handle_write_node_write_mask},
+    {"write_node_user_write_mask", handle_write_node_user_write_mask},
     {"write_node_is_abstract", handle_write_node_is_abstract},
+    {"write_node_symmetric", handle_write_node_symmetric},
     {"write_node_inverse_name", handle_write_node_inverse_name},
+    {"write_node_contains_no_loops", handle_write_node_contains_no_loops},
     {"write_node_data_type", handle_write_node_data_type},
     {"write_node_value_rank", handle_write_node_value_rank},
+    {"write_node_array_dimensions", handle_write_node_array_dimensions},
     {"write_node_access_level", handle_write_node_access_level},
+    {"write_node_user_access_level", handle_write_node_user_access_level},
+    {"write_node_event_notifier", handle_write_node_event_notifier},
     {"write_node_minimum_sampling_interval", handle_write_node_minimum_sampling_interval},
     {"write_node_historizing", handle_write_node_historizing},
     {"write_node_executable", handle_write_node_executable},
-    {"read_node_id", handle_read_node_id},
+    {"write_node_user_executable", handle_write_node_user_executable},
+    {"write_node_blank_array", handle_write_node_blank_array},
+    {"read_node_node_id", handle_read_node_node_id},
+    {"read_node_node_class", handle_read_node_node_class},
     {"read_node_browse_name", handle_read_node_browse_name},
     {"read_node_display_name", handle_read_node_display_name},
     {"read_node_description", handle_read_node_description},
     {"read_node_write_mask", handle_read_node_write_mask},
+    {"read_node_user_write_mask", handle_read_node_user_write_mask},
     {"read_node_is_abstract", handle_read_node_is_abstract},
+    {"read_node_symmetric", handle_read_node_symmetric},
     {"read_node_inverse_name", handle_read_node_inverse_name},
+    {"read_node_contains_no_loops", handle_read_node_contains_no_loops},
     {"read_node_data_type", handle_read_node_data_type},
     {"read_node_value_rank", handle_read_node_value_rank},
+    {"read_node_array_dimensions", handle_read_node_array_dimensions},
     {"read_node_access_level", handle_read_node_access_level},
+    {"read_node_user_access_level", handle_read_node_user_access_level},
     {"read_node_minimum_sampling_interval", handle_read_node_minimum_sampling_interval},
+    {"read_node_event_notifier", handle_read_node_event_notifier},
     {"read_node_historizing", handle_read_node_historizing},
     {"read_node_executable", handle_read_node_executable},
+    {"read_node_user_executable", handle_read_node_user_executable},
     // lifecycle functions
     {"get_client_state", handle_get_client_state},     
     {"set_client_config", handle_set_client_config},     

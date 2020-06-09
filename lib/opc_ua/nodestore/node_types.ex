@@ -90,7 +90,7 @@ defmodule OpcUA.VariableNode do
 
   @enforce_keys [:args]
 
-  defstruct basic_nodes_attrs() ++ [:data_type, :value_rank, :value, :access_level, :minimum_sampling_interval, :historizing]
+  defstruct basic_nodes_attrs() ++ [:data_type, :value_rank, :array_dimensions, :array, :value, :access_level, :minimum_sampling_interval, :historizing]
 
   @doc """
 
