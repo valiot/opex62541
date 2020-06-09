@@ -59,15 +59,15 @@ defmodule ClientArraysTest do
     %{c_pid: c_pid, s_pid: pid, ns_index: ns_index}
   end
 
-  # test "write/read array dimension node", state do
-  #   node_id = NodeId.new(ns_index: state.ns_index, identifier_type: "string", identifier: "R1_TS1_Temperature")
+  test "write/read array dimension node", state do
+    node_id = NodeId.new(ns_index: state.ns_index, identifier_type: "string", identifier: "R1_TS1_Temperature")
 
-  #   resp = Client.write_node_array_dimensions(state.c_pid, node_id, [4])
-  #   assert resp == :ok
+    resp = Client.write_node_array_dimensions(state.c_pid, node_id, [4])
+    assert resp == :ok
 
-  #   resp = Client.read_node_array_dimensions(state.c_pid, node_id)
-  #   assert resp == {:ok, [4]}
-  # end
+    resp = Client.read_node_array_dimensions(state.c_pid, node_id)
+    assert resp == {:ok, [4]}
+  end
 
   test "write/read array node by index", state do
     node_id = NodeId.new(ns_index: state.ns_index, identifier_type: "string", identifier: "R1_TS1_Temperature")
