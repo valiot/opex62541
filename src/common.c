@@ -2089,11 +2089,16 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
 {
     int term_size;
     int term_type;
+    bool is_null = false;
+    bool is_scalar = false;
     UA_NodeId node_id_arg_1;
     UA_NodeId node_id_arg_2;
     UA_ExpandedNodeId expanded_node_id_arg_1;
     UA_QualifiedName qualified_name;
     UA_StatusCode retval = 0;
+
+    UA_Variant value;
+    UA_Variant_init(&value);
 
     char *arg1 = (char *)malloc(0);
     char *arg2 = (char *)malloc(0);
@@ -2104,8 +2109,8 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
     UA_ExpandedNodeId_init(&expanded_node_id_arg_1);
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-        term_size != 3)
-        errx(EXIT_FAILURE, ":handle_write_node_value requires a 3-tuple, term_size = %d", term_size);
+        term_size != 4)
+        errx(EXIT_FAILURE, ":handle_write_node_value requires a 4-tuple, term_size = %d", term_size);
     
     UA_NodeId node_id = assemble_node_id(req, req_index);
 
@@ -2115,8 +2120,44 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         return;
     }
 
-    UA_Variant value;
-    UA_Variant_init(&value);
+    size_t data_index;
+    if (ei_decode_ulong(req, req_index, &data_index) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    if(entity_type)
+        retval = UA_Client_readValueAttribute((UA_Client *)entity, node_id, &value);
+    else
+        retval = UA_Server_readValue((UA_Server *)entity, node_id, &value); 
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        free(arg1);
+        free(arg2);
+        UA_NodeId_clear(&node_id);
+        UA_NodeId_clear(&node_id_arg_1);
+        UA_NodeId_clear(&node_id_arg_2);
+        send_opex_response(retval);
+        return;
+    }
+
+    if(UA_Variant_isEmpty(&value))
+        is_null = true;
+
+    if(UA_Variant_isScalar(&value))
+        is_scalar = true;
+
+    if (!is_scalar && !is_null && (value.arrayLength <= data_index))
+    {
+        free(arg1);
+        free(arg2);
+        UA_NodeId_clear(&node_id);
+        UA_NodeId_clear(&node_id_arg_1);
+        UA_NodeId_clear(&node_id_arg_2);
+        send_opex_response(UA_STATUSCODE_BADTYPEMISMATCH);
+        return;
+    }    
+
     switch (data_type)
     {
         case UA_TYPES_BOOLEAN:
@@ -2127,7 +2168,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_Boolean data = boolean_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_BOOLEAN]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_BOOLEAN]);
+            else
+                *((UA_Boolean *)value.data + data_index) = data;
         }
         break;
 
@@ -2139,7 +2183,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_SByte data = sbyte_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_SBYTE]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_SBYTE]);
+            else
+                *((UA_SByte *)value.data + data_index) = data;
         }
         break;
 
@@ -2151,7 +2198,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_Byte data = byte_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_BYTE]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_BYTE]);
+            else
+                *((UA_Byte *)value.data + data_index) = data;
         }
         break;
 
@@ -2163,7 +2213,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_Int16 data = int16_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_INT16]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_INT16]);
+            else
+                *((UA_Int16 *)value.data + data_index) = data;
         }
         break;
 
@@ -2175,7 +2228,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_UInt16 data = uint16_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_UINT16]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_UINT16]);
+            else
+                *((UA_UInt16 *)value.data + data_index) = data;
         }
         break;
 
@@ -2187,7 +2243,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_Int32 data = int32_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_INT32]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_INT32]);
+            else
+                *((UA_Int32 *)value.data + data_index) = data;
         }
         break;
 
@@ -2199,7 +2258,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_UInt32 data = uint32_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_UINT32]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_UINT32]);
+            else
+                *((UA_UInt32 *)value.data + data_index) = data;
         }
         break;
 
@@ -2211,7 +2273,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_Int64 data = int64_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_INT64]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_INT64]);
+            else
+                *((UA_Int64 *)value.data + data_index) = data;
         }
         break;
 
@@ -2223,7 +2288,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_UInt64 data = uint64_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_UINT64]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_UINT64]);
+            else
+                *((UA_UInt64 *)value.data + data_index) = data;
         }
         break;
 
@@ -2235,7 +2303,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_Float data = (float) float_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_FLOAT]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_FLOAT]);
+            else
+                *((UA_Float *)value.data + data_index) = data;
         }
         break;
 
@@ -2247,7 +2318,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_Double data = double_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_DOUBLE]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_DOUBLE]);
+            else
+                *((UA_Double *)value.data + data_index) = data;
         }
         break;
 
@@ -2266,8 +2340,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             arg1[binary_len] = '\0';
 
             UA_String data = UA_STRING(arg1);
-
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_STRING]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_STRING]);
+            else
+                *((UA_String *)value.data + data_index) = data;
         }
         break;
 
@@ -2280,7 +2356,11 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             }
             
             UA_DateTime data = date_time_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_DATETIME]);
+            
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_DATETIME]);
+            else
+                *((UA_DateTime *)value.data + data_index) = data;
         }
         break;
 
@@ -2316,7 +2396,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             guid.data2 = guid_data2;
             guid.data3 = guid_data3;
 
-            UA_Variant_setScalar(&value, &guid, &UA_TYPES[UA_TYPES_GUID]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &guid, &UA_TYPES[UA_TYPES_GUID]);
+            else
+                *((UA_Guid *)value.data + data_index) = guid;
         }
         break;
 
@@ -2335,8 +2418,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             arg1[binary_len] = '\0';
 
             UA_ByteString data = UA_BYTESTRING(arg1);
-
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_BYTESTRING]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_BYTESTRING]);
+            else
+                *((UA_ByteString *)value.data + data_index) = data;
         }
         break;
 
@@ -2355,22 +2440,30 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             arg1[binary_len] = '\0';
 
             UA_XmlElement data = UA_STRING(arg1);
-
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_XMLELEMENT]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_XMLELEMENT]);
+            else
+                *((UA_XmlElement *)value.data + data_index) = data;
         }
         break;
 
         case UA_TYPES_NODEID:
         {
             node_id_arg_1 = assemble_node_id(req, req_index);
-            UA_Variant_setScalar(&value, &node_id_arg_1, &UA_TYPES[UA_TYPES_NODEID]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &node_id_arg_1, &UA_TYPES[UA_TYPES_NODEID]);
+            else
+                *((UA_NodeId *)value.data + data_index) = node_id_arg_1;
         }
         break;
 
         case UA_TYPES_EXPANDEDNODEID:
         {
             expanded_node_id_arg_1 = assemble_expanded_node_id(req, req_index);
-            UA_Variant_setScalar(&value, &expanded_node_id_arg_1, &UA_TYPES[UA_TYPES_EXPANDEDNODEID]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &expanded_node_id_arg_1, &UA_TYPES[UA_TYPES_EXPANDEDNODEID]);
+            else
+                *((UA_ExpandedNodeId *)value.data + data_index) = expanded_node_id_arg_1;
         }
         break;
 
@@ -2382,14 +2475,20 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_StatusCode data = status_code_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_STATUSCODE]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_STATUSCODE]);
+            else
+                *((UA_StatusCode *)value.data + data_index) = data;
         }
         break;
 
         case UA_TYPES_QUALIFIEDNAME:
         {
             qualified_name = assemble_qualified_name(req, req_index);
-            UA_Variant_setScalar(&value, &qualified_name, &UA_TYPES[UA_TYPES_QUALIFIEDNAME]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &qualified_name, &UA_TYPES[UA_TYPES_QUALIFIEDNAME]);
+            else
+                *((UA_QualifiedName *)value.data + data_index) = qualified_name;
         }
         break;
 
@@ -2425,8 +2524,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             arg2[binary_len] = '\0';
 
             UA_LocalizedText data = UA_LOCALIZEDTEXT(arg1, arg2);
-
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_LOCALIZEDTEXT]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_LOCALIZEDTEXT]);
+            else
+                *((UA_LocalizedText *)value.data + data_index) = data;
         }
         break;
 
@@ -2449,7 +2550,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             UA_SemanticChangeStructureDataType data;
             data.affected = node_id_arg_1;
             data.affectedType = node_id_arg_2;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_SEMANTICCHANGESTRUCTUREDATATYPE]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_SEMANTICCHANGESTRUCTUREDATATYPE]);
+            else
+                *((UA_SemanticChangeStructureDataType *)value.data + data_index) = data;
         }
         break;
 
@@ -2468,7 +2572,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             arg1[binary_len] = '\0';
 
             UA_TimeString data = UA_STRING(arg1);
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_TIMESTRING]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_TIMESTRING]);
+            else
+                *((UA_TimeString *)value.data + data_index) = data;
         }
         break;
 
@@ -2482,7 +2589,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
                 return;
             }
             UA_UadpNetworkMessageContentMask data = content_mask_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_UADPNETWORKMESSAGECONTENTMASK]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_UADPNETWORKMESSAGECONTENTMASK]);
+            else
+                *((UA_UadpNetworkMessageContentMask *)value.data + data_index) = data;
         }
         break;
 
@@ -2509,7 +2619,10 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             data.value = (float) float_data;
             data.x = double_data;
             
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_XVTYPE]);
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_XVTYPE]);
+            else
+                *((UA_XVType *)value.data + data_index) = data;
         }
         break;
 
@@ -2522,7 +2635,11 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             }
             UA_ElementOperand data ;
             data.index = element_operand_data;
-            UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_ELEMENTOPERAND]);
+            
+            if (is_scalar || is_null)
+                UA_Variant_setScalar(&value, &data, &UA_TYPES[UA_TYPES_ELEMENTOPERAND]);
+            else
+                *((UA_ElementOperand *)value.data + data_index) = data;
         }
         break;
 
@@ -2540,8 +2657,8 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         server_is_writing = true;
         retval = UA_Server_writeValue((UA_Server *)entity, node_id, value);
     }
-    
 
+    
     free(arg1);
     free(arg2);
     UA_NodeId_clear(&node_id);
@@ -3524,11 +3641,22 @@ void handle_read_node_event_notifier(void *entity, bool entity_type, const char 
  */
 void handle_read_node_value(void *entity, bool entity_type, const char *req, int *req_index)
 {
+    int term_size;
     UA_Variant *value = UA_Variant_new();
+    UA_Variant_init(value);
     UA_StatusCode retval;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":handle_read_node_value requires a 2-tuple, term_size = %d", term_size);
+
     UA_NodeId node_id = assemble_node_id(req, req_index);
 
-    UA_Variant_init(value);
+    unsigned long data_index;
+    if (ei_decode_ulong(req, req_index, &data_index) < 0) {
+        send_error_response("einval");
+        return;
+    }
    
     if(entity_type)
         retval = UA_Client_readValueAttribute((UA_Client *)entity, node_id, value);
@@ -3551,48 +3679,61 @@ void handle_read_node_value(void *entity, bool entity_type, const char *req, int
         return;
     }
 
+    if(UA_Variant_isScalar(value))
+    {
+        data_index = 0;
+    }
+
+    if(!UA_Variant_isScalar(value) && value->arrayLength <= data_index)
+    {
+        UA_Variant_clear(value);
+        UA_Variant_delete(value);
+        send_opex_response(UA_STATUSCODE_BADTYPEMISMATCH);
+        return;   
+    }
+
     if(value->type == &UA_TYPES[UA_TYPES_BOOLEAN])
-        send_data_response(value->data, 0, 0);
+        send_data_response(value->data + data_index, 0, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_SBYTE])
-        send_data_response(value->data, 1, 0);
+        send_data_response(value->data + data_index, 1, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_BYTE])
-        send_data_response(value->data, 2, 0);
+        send_data_response(value->data + data_index, 2, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_INT16])
-        send_data_response(value->data, 1, 0);
+        send_data_response(value->data + data_index, 1, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_UINT16])
-        send_data_response(value->data, 2, 0);
+        send_data_response(value->data + data_index, 2, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_INT32])
-        send_data_response(value->data, 1, 0);
+        send_data_response(value->data + data_index, 1, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_UINT32])
-        send_data_response(value->data, 2, 0);
+        send_data_response(value->data + data_index, 2, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_INT64])
-        send_data_response(value->data, 15, 0);
+        send_data_response(value->data + data_index, 15, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_UINT64])
-        send_data_response(value->data, 16, 0);
+        send_data_response(value->data + data_index, 16, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_FLOAT])
-        send_data_response(value->data, 17, 0);
+        send_data_response(value->data + data_index, 17, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_DOUBLE])
-        send_data_response(value->data, 4, 0);
+        send_data_response(value->data + data_index, 4, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_STRING])
-        send_data_response((*(UA_String *)value->data).data, 5, (*(UA_String *)value->data).length);
+        send_data_response((*((UA_String *)value->data + data_index)).data, 5, (*((UA_String *)value->data + data_index)).length);
     else if(value->type == &UA_TYPES[UA_TYPES_DATETIME])
-        send_data_response(value->data, 15, 0);
+        send_data_response(value->data + data_index, 15, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_GUID])
-        send_data_response(value->data, 18, 0);
+        send_data_response(value->data + data_index, 18, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_BYTESTRING])
-        send_data_response((*(UA_ByteString *)value->data).data, 5, (*(UA_ByteString *)value->data).length);
+        send_data_response((*((UA_ByteString *)value->data + data_index)).data, 5, (*((UA_ByteString *)value->data + data_index)).length);
     else if(value->type == &UA_TYPES[UA_TYPES_XMLELEMENT])
-        send_data_response((*(UA_XmlElement *)value->data).data, 5, (*(UA_XmlElement *)value->data).length);
+        send_data_response((*((UA_XmlElement *)value->data + data_index)).data, 5, (*((UA_XmlElement *)value->data + data_index)).length);
     else if(value->type == &UA_TYPES[UA_TYPES_NODEID])
-        send_data_response(value->data, 12, 0);
+        send_data_response(value->data + data_index, 12, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_EXPANDEDNODEID])
-        send_data_response(value->data, 19, 0);
+        send_data_response(value->data + data_index, 19, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_STATUSCODE])
-        send_data_response(value->data, 20, 0);
+        send_data_response(value->data + data_index, 20, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_QUALIFIEDNAME])
-        send_data_response(value->data, 13, 0);
+        send_data_response(value->data + data_index, 13, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_LOCALIZEDTEXT])
-        send_data_response(value->data, 14, 0);
+        send_data_response(value->data + data_index, 14, 0);
 
     // TODO: UA_TYPES_EXTENSIONOBJECT
     
@@ -3603,7 +3744,7 @@ void handle_read_node_value(void *entity, bool entity_type, const char *req, int
     // TODO: UA_TYPES_DIAGNOSTICINFO
 
     else if(value->type == &UA_TYPES[UA_TYPES_SEMANTICCHANGESTRUCTUREDATATYPE])
-        send_data_response(value->data, 21, 0);
+        send_data_response(value->data + data_index, 21, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_TIMESTRING])
         send_data_response((*(UA_TimeString *)value->data).data, 5, (*(UA_TimeString *)value->data).length);
 
@@ -3611,11 +3752,11 @@ void handle_read_node_value(void *entity, bool entity_type, const char *req, int
 
     // TODO: UA_TYPES_UADPNETWORKMESSAGECONTENTMASK
     else if(value->type == &UA_TYPES[UA_TYPES_UADPNETWORKMESSAGECONTENTMASK])
-        send_data_response(value->data, 2, 0);
+        send_data_response(value->data + data_index, 2, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_XVTYPE])
-        send_data_response(value->data, 22, 0);
+        send_data_response(value->data + data_index, 22, 0);
     else if(value->type == &UA_TYPES[UA_TYPES_ELEMENTOPERAND])
-        send_data_response(value->data, 2, 0);
+        send_data_response(value->data + data_index, 2, 0);
     else 
         send_error_response("eagain");
 
@@ -3789,5 +3930,4 @@ void handle_read_node_value_by_data_type(void *entity, bool entity_type, const c
     }
 
     UA_Variant_clear(value);
-    UA_Variant_delete(value);
 }

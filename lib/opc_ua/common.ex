@@ -177,8 +177,8 @@ defmodule OpcUA.Common do
       """
       @spec write_node_value(GenServer.server(), %NodeId{}, integer(), term()) ::
               :ok | {:error, binary()} | {:error, :einval}
-      def write_node_value(pid, %NodeId{} = node_id, data_type, value) do
-        GenServer.call(pid, {:write, {:value, node_id, {data_type, value}}})
+      def write_node_value(pid, %NodeId{} = node_id, data_type, value, index \\ 0) do
+        GenServer.call(pid, {:write, {:value, node_id, {data_type, value, index}}})
       end
 
       @doc """
@@ -359,11 +359,12 @@ defmodule OpcUA.Common do
 
       @doc """
       Reads 'value' attribute of a node in the server.
+      Note: If the value is an array you can search a scalar using `index` parameter.
       """
-      @spec read_node_value(GenServer.server(), %NodeId{}) ::
+      @spec read_node_value(GenServer.server(), %NodeId{}, integer()) ::
               {:ok, term()} | {:error, binary()} | {:error, :einval}
-      def read_node_value(pid, node_id) do
-        GenServer.call(pid, {:read, {:value, node_id}})
+      def read_node_value(pid, node_id, index \\ 0) do
+        GenServer.call(pid, {:read, {:value, {node_id, index}}})
       end
 
       @doc """
@@ -490,7 +491,13 @@ defmodule OpcUA.Common do
       end
 
       def handle_call({:write, {:value, node_id, {data_type, raw_value}}}, caller_info, state) do
-        c_args = {to_c(node_id), data_type, value_to_c(data_type, raw_value)}
+        c_args = {to_c(node_id), data_type, 0, value_to_c(data_type, raw_value)}
+        call_port(state, :write_node_value, caller_info, c_args)
+        {:noreply, state}
+      end
+
+      def handle_call({:write, {:value, node_id, {data_type, raw_value, index}}}, caller_info, state) do
+        c_args = {to_c(node_id), data_type, index, value_to_c(data_type, raw_value)}
         call_port(state, :write_node_value, caller_info, c_args)
         {:noreply, state}
       end
@@ -619,8 +626,8 @@ defmodule OpcUA.Common do
         {:noreply, state}
       end
 
-      def handle_call({:read, {:value, node_id}}, caller_info, state) do
-        c_args = to_c(node_id)
+      def handle_call({:read, {:value, {node_id, index}}}, caller_info, state) do
+        c_args = {to_c(node_id), index}
         call_port(state, :read_node_value, caller_info, c_args)
         {:noreply, state}
       end
