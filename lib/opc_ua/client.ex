@@ -128,6 +128,7 @@ defmodule OpcUA.Client do
     quote location: :keep, bind_quoted: [opts: opts] do
       use GenServer, Keyword.drop(opts, [:configuration])
       @behaviour OpcUA.Client
+      @mix_env Mix.env()
 
       alias __MODULE__
 
@@ -149,7 +150,7 @@ defmodule OpcUA.Client do
         configuration = apply(__MODULE__, :configuration, [user_initial_params])
         monitored_items = apply(__MODULE__, :monitored_items, [user_initial_params])
 
-        OpcUA.Client.set_config(c_pid)
+        #OpcUA.Client.set_config(c_pid)
 
         # configutation = [config: list(), connection: list()]
         set_client_config(c_pid, configuration, :config)
@@ -253,7 +254,12 @@ defmodule OpcUA.Client do
         config_params = Keyword.get(configuration, type, [])
 
         Enum.each(config_params, fn config_param ->
-          GenServer.call(c_pid, {type, config_param})
+          if(@mix_env != :test) do
+            GenServer.call(c_pid, {type, config_param})
+          else
+            # Valgrind
+            GenServer.call(c_pid, {type, config_param}, :infinity)
+          end
         end)
       end
 
@@ -340,7 +346,12 @@ defmodule OpcUA.Client do
   """
   @spec connect_by_url(GenServer.server(), list()) :: :ok | {:error, term} | {:error, :einval}
   def connect_by_url(pid, args) when is_list(args) do
-    GenServer.call(pid, {:conn, {:by_url, args}})
+    if(@mix_env != :test) do
+      GenServer.call(pid, {:conn, {:by_url, args}})
+    else
+      # Valgrind
+      GenServer.call(pid, {:conn, {:by_url, args}}, :infinity)
+    end
   end
 
   @doc """
@@ -353,7 +364,12 @@ defmodule OpcUA.Client do
   @spec connect_by_username(GenServer.server(), list()) ::
           :ok | {:error, term} | {:error, :einval}
   def connect_by_username(pid, args) when is_list(args) do
-    GenServer.call(pid, {:conn, {:by_username, args}})
+    if(@mix_env != :test) do
+      GenServer.call(pid, {:conn, {:by_username, args}})
+    else
+      # Valgrind
+      GenServer.call(pid, {:conn, {:by_username, args}}, :infinity)
+    end
   end
 
   @doc """
@@ -575,32 +591,7 @@ defmodule OpcUA.Client do
 
     executable = lib_dir <> "/opc_ua_client"
 
-    port =
-      Port.open({:spawn_executable, to_charlist(executable)}, [
-        {:args, []},
-        {:packet, 2},
-        :use_stdio,
-        :binary,
-        :exit_status
-      ])
-
-    # # Valgrind
-    # port =
-    #   Port.open({:spawn_executable, to_charlist("/usr/bin/valgrind.bin")}, [
-    #     {:args,
-    #      [
-    #        "-q",
-    #        "--undef-value-errors=no",
-    #        "--leak-check=full",
-    #        "--show-leak-kinds=all",
-    #        # "--track-origins=yes",
-    #        executable
-    #      ]},
-    #     {:packet, 2},
-    #     :use_stdio,
-    #     :binary,
-    #     :exit_status
-    #   ])
+    port = open_port(executable, use_valgrind?())
 
     state = %State{port: port, controlling_process: controlling_process}
     {:ok, state}

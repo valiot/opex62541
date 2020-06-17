@@ -102,7 +102,13 @@ defmodule ServerTerraformTest do
     {:ok, _pid} = MyServer.start_link({self(), 103})
 
     {:ok, c_pid} = Client.start_link()
-    :ok = Client.set_config(c_pid)
+
+    config = %{
+      "requestedSessionTimeout" => 1200000,
+      "secureChannelLifeTime" => 600000,
+      "timeout" => 50000
+    }
+    :ok = Client.set_config(c_pid, config)
 
     %{c_pid: c_pid}
   end
@@ -156,5 +162,7 @@ defmodule ServerTerraformTest do
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, true}
     assert_receive({node_id, true}, 1000)
+
+    assert :ok == Client.disconnect(c_pid)
   end
 end

@@ -95,6 +95,7 @@ defmodule OpcUA.Server do
     quote location: :keep, bind_quoted: [opts: opts] do
       use GenServer, Keyword.drop(opts, [:configuration])
       @behaviour OpcUA.Server
+      @mix_env Mix.env()
 
       alias __MODULE__
 
@@ -247,7 +248,12 @@ defmodule OpcUA.Server do
   """
   @spec set_default_config(GenServer.server()) :: :ok | {:error, binary()} | {:error, :einval}
   def set_default_config(pid) do
-    GenServer.call(pid, {:config, {:set_default_server_config, nil}})
+    if(@mix_env != :test) do
+      GenServer.call(pid, {:config, {:set_default_server_config, nil}})
+    else
+      # Valgrind
+      GenServer.call(pid, {:config, {:set_default_server_config, nil}}, :infinity)
+    end
   end
 
   @doc """
@@ -263,7 +269,12 @@ defmodule OpcUA.Server do
   """
   @spec set_port(GenServer.server(), integer()) :: :ok | {:error, binary()} | {:error, :einval}
   def set_port(pid, port) when is_integer(port) do
-    GenServer.call(pid, {:config, {:port, port}})
+    if(@mix_env != :test) do
+      GenServer.call(pid, {:config, {:port, port}})
+    else
+      # Valgrind
+      GenServer.call(pid, {:config, {:port, port}}, :infinity)
+    end
   end
 
   @doc """
@@ -322,7 +333,12 @@ defmodule OpcUA.Server do
   """
   @spec discovery_register(GenServer.server(), list()) :: :ok | {:error, binary()} | {:error, :einval}
   def discovery_register(pid, args) when is_list(args) do
-    GenServer.call(pid, {:discovery, {:discovery_register, args}})
+    if(@mix_env != :test) do
+      GenServer.call(pid, {:discovery, {:discovery_register, args}})
+    else
+      # Valgrinnd
+      GenServer.call(pid, {:discovery, {:discovery_register, args}}, :infinity)
+    end
   end
 
   @doc """
@@ -509,7 +525,7 @@ defmodule OpcUA.Server do
 
   @doc false
   def test(pid) do
-    GenServer.call(pid, {:test, nil})
+    GenServer.call(pid, {:test, nil}, :infinity)
   end
 
   # Handlers
@@ -523,24 +539,7 @@ defmodule OpcUA.Server do
 
     executable = lib_dir <> "/opc_ua_server"
 
-    port =
-      Port.open({:spawn_executable, to_charlist(executable)}, [
-        {:args, []},
-        {:packet, 2},
-        :use_stdio,
-        :binary,
-        :exit_status
-      ])
-
-    #Valgrind
-    # port =
-    #   Port.open({:spawn_executable, to_charlist("/usr/bin/valgrind.bin")}, [
-    #     {:args, ["-q", "--leak-check=full", "--show-leak-kinds=all", "--track-origins=yes", "--show-reachable=no", executable]},
-    #     {:packet, 2},
-    #     :use_stdio,
-    #     :binary,
-    #     :exit_status
-    #   ])
+    port = open_port(executable, use_valgrind?())
 
     state = %State{port: port, controlling_process: controlling_process}
     {:ok, state}

@@ -9,7 +9,7 @@ defmodule ServerRefactorTest do
   end
 
   test "test", state do
-    :ok = Server.test(state.pid)
+    assert :ok == Server.test(state.pid)
   end
 
   test "Set LD_LIBRARY_PATH" do

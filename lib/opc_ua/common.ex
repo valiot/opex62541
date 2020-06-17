@@ -14,6 +14,8 @@ defmodule OpcUA.Common do
 
       @c_timeout 5000
 
+      @mix_env Mix.env()
+
       defmodule State do
         @moduledoc false
 
@@ -364,7 +366,12 @@ defmodule OpcUA.Common do
       @spec read_node_value(GenServer.server(), %NodeId{}, integer()) ::
               {:ok, term()} | {:error, binary()} | {:error, :einval}
       def read_node_value(pid, node_id, index \\ 0) do
-        GenServer.call(pid, {:read, {:value, {node_id, index}}})
+        if(@mix_env != :test) do
+          GenServer.call(pid, {:read, {:value, {node_id, index}}})
+        else
+          # Valgrind
+          GenServer.call(pid, {:read, {:value, {node_id, index}}}, :infinity)
+        end
       end
 
       @doc """
@@ -846,6 +853,38 @@ defmodule OpcUA.Common do
         response = parse_value(value_response)
         GenServer.reply(caller_metadata, response)
         state
+      end
+
+      defp use_valgrind?(), do: System.get_env("USE_VALGRIND", "false")
+
+      defp open_port(executable, "false") do
+        Port.open({:spawn_executable, to_charlist(executable)}, [
+          {:args, []},
+          {:packet, 2},
+          :use_stdio,
+          :binary,
+          :exit_status
+        ])
+      end
+
+      defp open_port(executable, valgrind_env) do
+        Logger.warn("(#{__MODULE__}) Valgrind Activated: #{inspect valgrind_env}")
+        Port.open({:spawn_executable, to_charlist("/usr/bin/valgrind.bin")}, [
+          {:args,
+           [
+             "-q",
+             "--undef-value-errors=no",
+             "--leak-check=full",
+             "--show-leak-kinds=all",
+             #"--verbose",
+             #"--track-origins=yes",
+             executable
+           ]},
+          {:packet, 2},
+          :use_stdio,
+          :binary,
+          :exit_status
+        ])
       end
 
       defp call_port(state, command, caller, arguments) do

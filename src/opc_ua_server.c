@@ -10,6 +10,14 @@
 #include "erlcmd.h"
 #include "common.h"
 
+typedef struct Users_list{
+    size_t list_size;
+    char **username;
+    char **password;
+}User_list;
+
+User_list users_list = {.list_size = 0};
+
 pthread_t server_tid;
 pthread_attr_t server_attr;
 UA_Boolean running = true;
@@ -51,6 +59,43 @@ dataChangeNotificationCallback(UA_Server *server, UA_UInt32 monitoredItemId,
                                void *monitoredItemContext, const UA_NodeId *nodeId,
                                void *nodeContext, UA_UInt32 attributeId,
                                const UA_DataValue *value) {
+}
+
+void set_users_list_size(int size)
+{
+    users_list.list_size = size;
+    users_list.username = (char **)calloc(size, sizeof(char *));
+    users_list.password = (char **)calloc(size, sizeof(char *));
+}
+
+void delete_users_list()
+{
+    if(users_list.list_size == 0)
+        return;
+
+    for(size_t i = 0; i < users_list.list_size; i++) 
+    {
+        free(users_list.username[i]);
+        free(users_list.password[i]);
+    }
+    
+    users_list.list_size = 0;
+    free(users_list.username);
+    free(users_list.password);
+}
+
+void delete_discovery_params()
+{
+    UA_ServerConfig *config = UA_Server_getConfig(server);
+
+    if(config->applicationDescription.applicationUri.data)
+        UA_String_clear(&config->applicationDescription.applicationUri);
+    
+    if(config->discovery.mdns.mdnsServerName.data)
+        UA_String_clear(&config->discovery.mdns.mdnsServerName);
+
+    if(discoveryClient)
+        UA_Client_delete(discoveryClient);
 }
 
 /***************************************/
@@ -136,36 +181,39 @@ static void handle_set_users_and_passwords(void *entity, bool entity_type, const
         errx(EXIT_FAILURE, ":handle_set_users_and_passwords has an empty list");
 
     UA_UsernamePasswordLogin logins[list_arity];
-    
+
+    delete_users_list();
+    set_users_list_size(list_arity);
+
     for(size_t i = 0; i < list_arity; i++) {
         if(ei_decode_tuple_header(req, req_index, &tuple_arity) < 0 || tuple_arity != 2)
             errx(EXIT_FAILURE, ":handle_set_users_and_passwords requires a 2-tuple, term_size = %d", tuple_arity);
 
         if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
-            errx(EXIT_FAILURE, "Invalid hostname (size)");
+            errx(EXIT_FAILURE, "Invalid username (size)");
 
-        char *username;
-        username = (char *)malloc(term_size + 1);
+        users_list.username[i] = (char *)malloc(term_size + 1);
         long binary_len;
-        if (ei_decode_binary(req, req_index, username, &binary_len) < 0) 
-            errx(EXIT_FAILURE, "Invalid hostname");
-        username[binary_len] = '\0';
+        if (ei_decode_binary(req, req_index, users_list.username[i], &binary_len) < 0) 
+            errx(EXIT_FAILURE, "Invalid username");
+        users_list.username[i][binary_len] = '\0';
 
         if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
-            errx(EXIT_FAILURE, "Invalid hostname (size)");
+            errx(EXIT_FAILURE, "Invalid password (size)");
 
-        char *password;
-        password = (char *)malloc(term_size + 1);
-        if (ei_decode_binary(req, req_index, password, &binary_len) < 0) 
+        users_list.password[i] = (char *)malloc(term_size + 1);
+        if (ei_decode_binary(req, req_index, users_list.password[i], &binary_len) < 0) 
             errx(EXIT_FAILURE, "Invalid hostname");
-        password[binary_len] = '\0';
+        users_list.password[i][binary_len] = '\0';
 
-        logins[i].username = UA_STRING(username);
-        logins[i].password = UA_STRING(password);
+        logins[i].username = UA_STRING(users_list.username[i]);
+        logins[i].password = UA_STRING(users_list.password[i]);
     }
 
     UA_ServerConfig *config = UA_Server_getConfig(server);
-    //config->accessControl.clear(&config->accessControl);
+    config->accessControl.deleteMembers(&config->accessControl);
+    /* Disable anonymous logins, enable two user/password logins */
+    // config->accessControl.clear(&config->accessControl);
     UA_StatusCode retval = UA_AccessControl_default(config, false, &config->securityPolicies[config->securityPoliciesSize-1].policyUri, list_arity, logins);
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
@@ -287,7 +335,10 @@ void handle_set_lds_config(void *entity, bool entity_type, const char *req, int 
 
     // This is an LDS server only. Set the application type to DISCOVERYSERVER.
     config->applicationDescription.applicationType = UA_APPLICATIONTYPE_DISCOVERYSERVER;
-    UA_String_clear(&config->applicationDescription.applicationUri);
+    
+    if(config->applicationDescription.applicationUri.data)
+        UA_String_clear(&config->applicationDescription.applicationUri);
+    
     config->applicationDescription.applicationUri = application_uri;
 
     // corrupted size vs. prev_size
@@ -349,7 +400,9 @@ void handle_discovery_register(void *entity, bool entity_type, const char *req, 
         errx(EXIT_FAILURE, "Invalid application_uri");
     application_uri.data[binary_len] = '\0';
 
-    UA_String_clear(&config->applicationDescription.applicationUri);
+    if(config->applicationDescription.applicationUri.data)
+        UA_String_clear(&config->applicationDescription.applicationUri);
+    
     config->applicationDescription.applicationUri = application_uri;
 
     // server_name
@@ -363,13 +416,17 @@ void handle_discovery_register(void *entity, bool entity_type, const char *req, 
         errx(EXIT_FAILURE, "Invalid server_name");
     server_name.data[binary_len] = '\0';
 
+    if(config->discovery.mdns.mdnsServerName.data)
+        UA_String_clear(&config->discovery.mdns.mdnsServerName);
+    
     config->discovery.mdns.mdnsServerName = server_name;
 
     // endpoint
     if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
             errx(EXIT_FAILURE, "Invalid endpoint (type)");
 
-    char *endpoint = (char *)malloc(term_size + 1);
+    //char *endpoint = (char *)malloc(term_size + 1);
+    char endpoint[term_size + 1];
     if (ei_decode_binary(req, req_index, endpoint, &binary_len) < 0) 
         errx(EXIT_FAILURE, "Invalid endpoint");
     endpoint[binary_len] = '\0';
@@ -418,7 +475,7 @@ void handle_discovery_unregister(void *entity, bool entity_type, const char *req
     UA_StatusCode retval = UA_Server_unregister_discovery(server, discoveryClient);
 
     UA_Client_disconnect(discoveryClient);
-    UA_Client_delete(discoveryClient);
+    //UA_Client_delete(discoveryClient);
 
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
@@ -644,5 +701,9 @@ int main()
     /* Disconnects the client internally */
     free(handler);
     running = false;
+    delete_users_list();
+    delete_discovery_params();
+    // Release threads memory
+    pthread_join(server_tid, NULL);
     UA_Server_delete(server); 
 }

@@ -429,10 +429,13 @@ static void handle_find_servers_on_network(void *entity, bool entity_type, const
     
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
+        UA_Array_delete(serverOnNetwork, serverOnNetworkSize, &UA_TYPES[UA_TYPES_SERVERONNETWORK]);
         return;
     }
     
     send_data_response(serverOnNetwork, 8, serverOnNetworkSize);
+
+    UA_Array_delete(serverOnNetwork, serverOnNetworkSize, &UA_TYPES[UA_TYPES_SERVERONNETWORK]);
 }
 
 /* Gets a list of all registered servers at the given server.

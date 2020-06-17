@@ -1,5 +1,5 @@
 defmodule ClientArraysTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
 
   alias OpcUA.{NodeId, Server, QualifiedName, Client}
 
@@ -67,9 +67,15 @@ defmodule ClientArraysTest do
 
     resp = Client.read_node_array_dimensions(state.c_pid, node_id)
     assert resp == {:ok, [4]}
+
+    resp = Client.write_node_array_dimensions(state.c_pid, node_id, [4])
+    assert resp == :ok
+
+    resp = Client.read_node_array_dimensions(state.c_pid, node_id)
+    assert resp == {:ok, [4]}
   end
 
-  test "write/read array node by index", state do
+  test "write/read array node by index (string)", state do
     node_id = NodeId.new(ns_index: state.ns_index, identifier_type: "string", identifier: "R1_TS1_Temperature")
 
     resp = Client.read_node_value(state.c_pid, node_id, 0)
@@ -113,6 +119,56 @@ defmodule ClientArraysTest do
 
     resp = Client.read_node_value(state.c_pid, node_id, 3)
     assert resp == {:ok, "alde103_4"}
+
+    resp = Client.read_node_value(state.c_pid, node_id, 4)
+    assert resp == {:error, "BadTypeMismatch"}
+  end
+
+  test "write/read array node by index (double)", state do
+    node_id = NodeId.new(ns_index: state.ns_index, identifier_type: "string", identifier: "R1_TS1_Temperature")
+    :ok = Server.write_node_blank_array(state.s_pid, node_id, 10, [4])
+
+    resp = Client.read_node_value(state.c_pid, node_id, 0)
+    assert resp == {:ok, 0.0}
+
+    resp = Client.read_node_value(state.c_pid, node_id, 1)
+    assert resp == {:ok, 0.0}
+
+    resp = Client.read_node_value(state.c_pid, node_id, 2)
+    assert resp == {:ok, 0.0}
+
+    resp = Client.read_node_value(state.c_pid, node_id, 3)
+    assert resp == {:ok, 0.0}
+
+    resp = Client.read_node_value(state.c_pid, node_id, 4)
+    assert resp == {:error, "BadTypeMismatch"}
+
+    resp = Client.write_node_value(state.c_pid, node_id, 10, 103.0, 0)
+    assert resp == :ok
+
+    resp = Client.write_node_value(state.c_pid, node_id, 10, 103103.0, 1)
+    assert resp == :ok
+
+    resp = Client.write_node_value(state.c_pid, node_id, 10, 103103103.0, 2)
+    assert resp == :ok
+
+    resp = Client.write_node_value(state.c_pid, node_id, 10, 103103.103, 3)
+    assert resp == :ok
+
+    resp = Client.write_node_value(state.c_pid, node_id, 10, 103103.0, 4)
+    assert resp == {:error, "BadTypeMismatch"}
+
+    resp = Client.read_node_value(state.c_pid, node_id, 0)
+    assert resp == {:ok, 103.0}
+
+    resp = Client.read_node_value(state.c_pid, node_id, 1)
+    assert resp == {:ok, 103103.0}
+
+    resp = Client.read_node_value(state.c_pid, node_id, 2)
+    assert resp == {:ok, 103103103.0}
+
+    resp = Client.read_node_value(state.c_pid, node_id, 3)
+    assert resp == {:ok, 103103.103}
 
     resp = Client.read_node_value(state.c_pid, node_id, 4)
     assert resp == {:error, "BadTypeMismatch"}
