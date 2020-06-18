@@ -375,6 +375,21 @@ defmodule OpcUA.Common do
       end
 
       @doc """
+      Reads 'value' attribute of a node in the server.
+      Note: If the value is an array you can search a scalar using `index` parameter.
+      """
+      @spec read_node_value_by_index(GenServer.server(), %NodeId{}, integer()) ::
+              {:ok, term()} | {:error, binary()} | {:error, :einval}
+      def read_node_value_by_index(pid, node_id, index \\ 0) do
+        if(@mix_env != :test) do
+          GenServer.call(pid, {:read, {:value_by_index, {node_id, index}}})
+        else
+          # Valgrind
+          GenServer.call(pid, {:read, {:value_by_index, {node_id, index}}}, :infinity)
+        end
+      end
+
+      @doc """
       Reads 'Value' attribute (matching data type) of a node in the server.
       """
       @spec read_node_value_by_data_type(GenServer.server(), %NodeId{}, integer()) ::
@@ -639,6 +654,12 @@ defmodule OpcUA.Common do
         {:noreply, state}
       end
 
+      def handle_call({:read, {:value_by_index, {node_id, index}}}, caller_info, state) do
+        c_args = {to_c(node_id), index}
+        call_port(state, :read_node_value_by_index, caller_info, c_args)
+        {:noreply, state}
+      end
+
       def handle_call({:read, {:value_by_data_type, {node_id, data_type}}}, caller_info, state) do
         c_args = {to_c(node_id), data_type}
         call_port(state, :read_node_value_by_data_type, caller_info, c_args)
@@ -846,6 +867,12 @@ defmodule OpcUA.Common do
         state
       end
 
+      defp handle_c_response({:read_node_value_by_index, caller_metadata, value_response}, state) do
+        response = parse_value(value_response)
+        GenServer.reply(caller_metadata, response)
+        state
+      end
+
       defp handle_c_response(
              {:read_node_value_by_data_type, caller_metadata, value_response},
              state
@@ -948,6 +975,9 @@ defmodule OpcUA.Common do
       defp parse_value({:ok, {ns_index, name}}) when is_integer(ns_index),
         do: {:ok, QualifiedName.new(ns_index: ns_index, name: name)}
 
+      defp parse_value({:ok, array}) when is_list(array),
+        do: {:ok, Enum.map(array, fn(data) -> parse_c_value(data) end)}
+
       defp parse_value(response), do: response
 
       defp parse_c_value({ns_index, type, name, name_space_uri, server_index}),
@@ -969,6 +999,9 @@ defmodule OpcUA.Common do
 
       defp parse_c_value({ns_index, name}) when is_integer(ns_index),
         do: QualifiedName.new(ns_index: ns_index, name: name)
+
+      defp parse_c_value(array) when is_list(array),
+        do: Enum.map(array, fn(data) -> parse_c_value(data) end)
 
       defp parse_c_value(response), do: response
 

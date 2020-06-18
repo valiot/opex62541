@@ -24,6 +24,7 @@
 #include <erl_interface.h>
 
 //#define DEBUG
+#define ERLCMD_BUF_SIZE 32768
 
 #ifdef DEBUG
 FILE *log_location;
@@ -46,7 +47,6 @@ FILE *log_location;
 
 #define ONE_YEAR_MILLIS (1000ULL * 60 * 60 * 24 * 365)
 uint64_t current_time();
-
 #endif // UTIL_H
 
 static erlang_pid *caller_pid;
@@ -67,7 +67,7 @@ void encode_array_dimensions_struct(char *resp, int *resp_index, void *data, int
 void encode_server_config(char *resp, int *resp_index, void *data);
 void send_subscription_timeout_response(void *data, int data_type, int data_len);
 void send_subscription_deleted_response(void *data, int data_type, int data_len);
-void send_monitored_item_response(void *subscription_id, void *monitored_id, void *data, int data_type, int data_len);
+void send_monitored_item_response(void *subscription_id, void *monitored_id, void *data, int data_type);
 void send_monitored_item_delete_response(void *subscription_id, void *monitored_id);
 void send_data_response(void *data, int data_type, int data_len);
 void send_error_response(const char *reason);
@@ -127,4 +127,5 @@ void handle_read_node_historizing(void *entity, bool entity_type, const char *re
 void handle_read_node_executable(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_read_node_event_notifier(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_read_node_value(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_read_node_value_by_index(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_read_node_value_by_data_type(void *entity, bool entity_type, const char *req, int *req_index);
