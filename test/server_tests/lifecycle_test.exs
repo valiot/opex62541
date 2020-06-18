@@ -51,7 +51,6 @@ defmodule ServerLifecycleTest do
     assert server_config["hostname"] == "alde103"
   end
 
-
   test "Set port nomber", state do
     response = Server.set_default_config(state.pid)
     assert response == :ok
@@ -68,11 +67,14 @@ defmodule ServerLifecycleTest do
     assert response == :ok
   end
 
-  test "start_server", state do
+  test "Start/stop server", state do
     response = Server.set_default_config(state.pid)
     assert response == :ok
 
     response = Server.start(state.pid)
+    assert response == :ok
+
+    response = Server.stop_server(state.pid)
     assert response == :ok
   end
 end

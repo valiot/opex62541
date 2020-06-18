@@ -86,7 +86,13 @@ defmodule ClientTerraformTest do
   {:ok, localhost} = :inet.gethostname()
 
   @configuration_client [
-    config: [],
+    config: [
+      set_config: %{
+        "requestedSessionTimeout" => 1200000,
+        "secureChannelLifeTime" => 600000,
+        "timeout" => 50000
+      }
+    ],
     conn: [
       by_username: [
         url: "opc.tcp://#{localhost}:4041/",
@@ -139,7 +145,7 @@ defmodule ClientTerraformTest do
       state
     end
 
-    def read_node_value(pid, node), do: GenServer.call(pid, {:read, node})
+    def read_node_value(pid, node), do: GenServer.call(pid, {:read, node}, :infinity)
 
     def get_client(pid), do: GenServer.call(pid, {:get_client, nil})
 

@@ -73,7 +73,14 @@ defmodule ServerWriteEventTest do
     {:ok, my_pid} = MyServer.start_link({self(), 103})
 
     {:ok, c_pid} = Client.start_link()
-    :ok = Client.set_config(c_pid)
+
+    config = %{
+      "requestedSessionTimeout" => 1200000,
+      "secureChannelLifeTime" => 600000,
+      "timeout" => 50000
+    }
+
+    :ok = Client.set_config(c_pid, config)
     :ok = Client.connect_by_url(c_pid, url: "opc.tcp://alde-Satellite-S845:4840/")
 
     %{c_pid: c_pid, my_pid: my_pid}

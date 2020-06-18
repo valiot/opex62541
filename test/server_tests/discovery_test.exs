@@ -3,6 +3,12 @@ defmodule ServerDiscoveryTest do
 
   alias OpcUA.{Server, Client}
 
+  # Valgrind memory leaks detected
+  # UA_Server_addPeriodicServerRegisterCallback (open62541.c:46592)
+  # UA_Server_addPeriodicServerRegisterCallback (open62541.c:46578)
+  # UA_Server_addPeriodicServerRegisterCallback (open62541.c:46613)
+  # These memory leaks are managed by open62541 lib and there are freed by UA_Server_addPeriodicServerRegisterCallback with the right arguments.
+
   test "Configure an LDS Server" do
     {:ok, lds_pid} = Server.start_link()
 
@@ -31,6 +37,16 @@ defmodule ServerDiscoveryTest do
 
     assert :ok == Server.start(s_pid)
     # Registration time
+    Process.sleep(1500)
+    assert :ok == Server.discovery_unregister(s_pid)
+
+    assert :ok ==
+      Server.discovery_register(s_pid,
+        application_uri: "urn:opex62541.test.local_register_server",
+        server_name: "TestRegister",
+        endpoint: "opc.tcp://localhost:4840"
+      )
+
     Process.sleep(1500)
     assert :ok == Server.discovery_unregister(s_pid)
   end

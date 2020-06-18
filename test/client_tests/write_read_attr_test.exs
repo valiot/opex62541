@@ -226,6 +226,9 @@ defmodule CClientWriteAttrTest do
   test "Write and Read Value Attributes", %{c_pid: c_pid, ns_index: ns_index} do
     node_id = NodeId.new(ns_index: ns_index, identifier_type: "string", identifier: "R1_TS1_Temperature")
 
+    c_response = Client.read_node_value(c_pid, node_id)
+    assert c_response == {:ok, nil}
+
     assert :ok == Client.write_node_value(c_pid, node_id, 0, true)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, true}

@@ -28,127 +28,8 @@ static void deleteSubscriptionCallback(UA_Client *client, UA_UInt32 subscription
 
 static void dataChangeNotificationCallback(UA_Client *client, UA_UInt32 subscription_id, void *subContext, UA_UInt32 monitored_id, void *monContext, UA_DataValue *data) 
 {
-    switch(data->value.type->typeIndex)
-    {
-        case UA_TYPES_BOOLEAN:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 0, 0);
-        break;
-
-        case UA_TYPES_SBYTE:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 23, 0);
-        break;
-
-        case UA_TYPES_BYTE:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 24, 0);
-        break;
-
-        case UA_TYPES_INT16:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 25, 0);
-        break;
-        
-        case UA_TYPES_UINT16:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 26, 0);
-        break;
-
-        case UA_TYPES_INT32:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 1, 0);
-        break;
-
-        case UA_TYPES_UINT32:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 2, 0);
-        break;
-
-        case UA_TYPES_INT64:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 15, 0);
-        break;
-
-        case UA_TYPES_UINT64:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 16, 0);
-        break;
-
-        case UA_TYPES_FLOAT:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 17, 0);
-        break;
-
-        case UA_TYPES_DOUBLE:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 4, 0);
-        break;
-
-        case UA_TYPES_STRING:
-            send_monitored_item_response(&subscription_id, &monitored_id, (*(UA_String *)data->value.data).data, 5, (*(UA_String *)data->value.data).length);
-        break;
-
-        case UA_TYPES_DATETIME:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 15, 0);
-        break;
-
-        case UA_TYPES_GUID:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 18, 0);
-        break;
-
-        case UA_TYPES_BYTESTRING:
-            send_monitored_item_response(&subscription_id, &monitored_id, (*(UA_ByteString *)data->value.data).data, 5, (*(UA_ByteString *)data->value.data).length);
-        break;
-
-        case UA_TYPES_XMLELEMENT:
-            send_monitored_item_response(&subscription_id, &monitored_id, (*(UA_XmlElement *)data->value.data).data, 5, (*(UA_XmlElement *)data->value.data).length);
-        break;
-
-        case UA_TYPES_NODEID:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 12, 0);
-        break;
-
-        case UA_TYPES_EXPANDEDNODEID:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 19, 0);
-        break;
-
-        case UA_TYPES_STATUSCODE:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 20, 0);
-        break;
-
-        case UA_TYPES_QUALIFIEDNAME:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 13, 0);
-        break;
-
-        case UA_TYPES_LOCALIZEDTEXT:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 14, 0);
-        break;
-
-        // TODO: UA_TYPES_EXTENSIONOBJECT
-    
-        // TODO: UA_TYPES_DATAVALUE
-
-        // TODO: UA_TYPES_VARIANT
-
-        // TODO: UA_TYPES_DIAGNOSTICINFO
-
-        case UA_TYPES_SEMANTICCHANGESTRUCTUREDATATYPE:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 21, 0);
-        break;
-
-        case UA_TYPES_TIMESTRING:
-            send_monitored_item_response(&subscription_id, &monitored_id, (*(UA_TimeString *)data->value.data).data, 5, (*(UA_TimeString *)data->value.data).length);
-        break;
-
-        // TODO: UA_TYPES_VIEWATTRIBUTES
-
-        case UA_TYPES_UADPNETWORKMESSAGECONTENTMASK:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 2, 0);
-        break;
-
-        case UA_TYPES_XVTYPE:
-
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 22, 0);
-        break;
-
-        case UA_TYPES_ELEMENTOPERAND:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 27, 0);
-        break;
-
-        default:
-            send_monitored_item_response(&subscription_id, &monitored_id, data->value.data, 2, -1);
-        break;
-    }
+    UA_Variant variant = data->value;
+    send_monitored_item_response(&subscription_id, &monitored_id, &variant, 29);
 }
 
 static void deleteMonitoredItemCallback(UA_Client *client, UA_UInt32 subscription_id, void *subContext, UA_UInt32 monitored_id, void *monContext)
@@ -429,10 +310,13 @@ static void handle_find_servers_on_network(void *entity, bool entity_type, const
     
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
+        UA_Array_delete(serverOnNetwork, serverOnNetworkSize, &UA_TYPES[UA_TYPES_SERVERONNETWORK]);
         return;
     }
     
     send_data_response(serverOnNetwork, 8, serverOnNetworkSize);
+
+    UA_Array_delete(serverOnNetwork, serverOnNetworkSize, &UA_TYPES[UA_TYPES_SERVERONNETWORK]);
 }
 
 /* Gets a list of all registered servers at the given server.
@@ -1028,6 +912,7 @@ static struct request_handler request_handlers[] = {
     // TODO: Add UA_Server_writeArrayDimensions, inverse name (read) 
     {"write_node_value", handle_write_node_value},
     {"read_node_value", handle_read_node_value},
+    {"read_node_value_by_index", handle_read_node_value_by_index},
     {"read_node_value_by_data_type", handle_read_node_value_by_data_type},
     {"write_node_node_id", handle_write_node_node_id},
     {"write_node_node_class", handle_write_node_node_class},

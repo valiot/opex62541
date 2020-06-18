@@ -124,7 +124,7 @@ if(NOT MANUAL_BUILD)
         set(BASE_FLAGS "${BASE_RELEASE_FLAGS}")
     endif()
 
-    set(BASE_C_FLAGS "${BASE_FLAGS} -std=c99 -lpthread")
+    set(BASE_C_FLAGS "-g -Wall -Wextra ${BASE_FLAGS} -std=c99 -lpthread")
     set(BASE_CXX_FLAGS "${BASE_FLAGS}")
 
     set (opex62541_PROGRAMS opc_ua_server opc_ua_client client_example server_example)
