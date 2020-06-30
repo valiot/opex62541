@@ -24,6 +24,7 @@ UA_Boolean running = true;
 
 UA_Server *server;
 UA_Client *discoveryClient;
+unsigned long port_number;
 
 static UA_Boolean
 allowAddNode(UA_Server *server, UA_AccessControl *ac,
@@ -151,11 +152,10 @@ static void handle_set_hostname(void *entity, bool entity_type, const char *req,
 */
 static void handle_set_port(void *entity, bool entity_type, const char *req, int *req_index)
 {
-    unsigned long port_number;
     if (ei_decode_ulong(req, req_index, &port_number) < 0) {
         send_error_response("einval");
         return;
-    }    
+    }
 
     UA_StatusCode retval = UA_ServerConfig_setMinimal(UA_Server_getConfig(server), (UA_Int16) port_number, NULL);
     if(retval != UA_STATUSCODE_GOOD) {
@@ -240,6 +240,12 @@ static void handle_stop_server(void *entity, bool entity_type, const char *req, 
     running = false;
     send_ok_response();
 }
+
+/**************/
+/* Encryption */
+/**************/
+
+
 
 /******************************/
 /* Node Addition and Deletion */
@@ -548,7 +554,6 @@ void handle_delete_monitored_item(void *entity, bool entity_type, const char *re
 
     send_ok_response();
 }
-
 
 /*******************************/
 /* Elixir -> C Message Handler */
