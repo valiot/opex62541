@@ -24,7 +24,7 @@ UA_Boolean running = true;
 
 UA_Server *server;
 UA_Client *discoveryClient;
-unsigned long port_number;
+unsigned long port_number = 4840;
 
 static UA_Boolean
 allowAddNode(UA_Server *server, UA_AccessControl *ac,
@@ -112,11 +112,55 @@ static void handle_get_server_config(void *entity, bool entity_type, const char 
 }
 
 /* 
-*   sets the server open62541 defaults configuration. 
+*   Sets the server open62541 defaults configuration. 
 */
 static void handle_set_default_server_config(void *entity, bool entity_type, const char *req, int *req_index)
 {
     UA_ServerConfig_setDefault(UA_Server_getConfig(server));
+    send_ok_response();
+}
+
+/* 
+*   Creates a new server config with no network layer and no endpoints.
+*/
+static void handle_set_basics(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    UA_ServerConfig_setBasics(UA_Server_getConfig(server));
+    send_ok_response();
+}
+
+/* 
+ *   Adds a TCP network layer with custom buffer sizes.
+ */
+static void handle_set_network_tcp_layer(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    long binary_len;
+
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_ATOM_EXT)
+    {
+        if (ei_decode_ulong(req, req_index, &port_number) < 0) {
+            send_error_response("einval");
+            return;
+        }
+    }
+    else
+    {
+        char nil[4];
+        if (ei_decode_atom(req, req_index, nil) < 0)
+            errx(EXIT_FAILURE, "expecting command atom");
+    }
+
+    UA_ServerConfig *config = UA_Server_getConfig(server);
+
+    UA_StatusCode retval = UA_ServerConfig_addNetworkLayerTCP(config, (UA_Int16) port_number, 0, 0);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }    
+
     send_ok_response();
 }
 
@@ -228,6 +272,22 @@ static void handle_set_users_and_passwords(void *entity, bool entity_type, const
     send_ok_response();
 }
 
+/* 
+ *   Adds endpoints for all configured security policies in each mode.
+ */
+static void handle_add_all_endpoints(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    UA_ServerConfig *config = UA_Server_getConfig(server);
+    UA_StatusCode retval = UA_ServerConfig_addAllEndpoints(config);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }    
+
+    send_ok_response();
+}
+
 static void handle_start_server(void *entity, bool entity_type, const char *req, int *req_index)
 {
     running = true;
@@ -245,7 +305,365 @@ static void handle_stop_server(void *entity, bool entity_type, const char *req, 
 /* Encryption */
 /**************/
 
+/* 
+ *   Creates a server configuration with all security policies for the given certificates.
+ */
+static void handle_set_config_with_security_policies(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    char *arg1;
+    char *arg2;
+    long binary_len;
 
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 || term_size != 3)
+        errx(EXIT_FAILURE, ":handle_set_config_with_security_policies requires a 3-tuple, term_size = %d", term_size);
+
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_ATOM_EXT)
+    {
+        if (ei_decode_ulong(req, req_index, &port_number) < 0) {
+            send_error_response("einval");
+            return;
+        }
+    }
+    else
+    {
+        char nil[4];
+        if (ei_decode_atom(req, req_index, nil) < 0)
+            errx(EXIT_FAILURE, "expecting command atom");
+    }
+
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid certificate (size)");
+
+    arg1 = (char *)malloc(term_size + 1);
+
+    if (ei_decode_binary(req, req_index, arg1, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid certificate");
+
+    arg1[binary_len] = '\0';
+
+    UA_ByteString certificate;
+    certificate.data = arg1;
+    certificate.length = binary_len;
+
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid private_key (size)");
+
+    arg2 = (char *)malloc(term_size + 1);
+
+    if (ei_decode_binary(req, req_index, arg2, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid private_key");
+
+    arg2[binary_len] = '\0';
+
+    UA_ByteString private_key;
+    private_key.data = arg2;
+    private_key.length = binary_len;
+
+    /* Load the trustlist */
+    size_t trust_list_size = 0;
+    UA_ByteString *trust_list = NULL;
+
+    /* Loading of a issuer list, not used in this application */
+    size_t issuer_list_size = 0;
+    UA_ByteString *issuer_list = NULL;
+
+    /* Loading of a revocation list currently unsupported */
+    size_t revocation_list_size = 0;
+    UA_ByteString *revocation_list = NULL;
+
+    UA_ServerConfig *config = UA_Server_getConfig(server);
+
+    UA_StatusCode retval =
+        UA_ServerConfig_setDefaultWithSecurityPolicies(config, (UA_Int16) port_number,
+                                                       &certificate, &private_key,
+                                                       trust_list, trust_list_size,
+                                                       issuer_list, issuer_list_size,
+                                                       revocation_list, revocation_list_size);
+
+    UA_ByteString_clear(&certificate);
+    UA_ByteString_clear(&private_key);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }    
+
+    send_ok_response();
+}
+
+/* 
+ *   Adds the security policy ``SecurityPolicy#None`` to the server with certs.
+ */
+static void handle_add_security_policy_none(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    char *arg1;
+    long binary_len;
+    
+
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid certificate (size)");
+
+    arg1 = (char *)malloc(term_size + 1);
+
+    if (ei_decode_binary(req, req_index, arg1, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid certificate");
+
+    arg1[binary_len] = '\0';
+
+    UA_ByteString certificate;
+    certificate.data = arg1;
+    certificate.length = binary_len;
+
+    UA_ServerConfig *config = UA_Server_getConfig(server);
+
+    UA_StatusCode retval =
+        UA_ServerConfig_addSecurityPolicyNone(config, &certificate);
+
+    UA_ByteString_clear(&certificate);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }    
+
+    send_ok_response();
+}
+
+/* 
+ *   Adds the security policy ``SecurityPolicy#Basic128Rsa15`` to the server with certicate.
+ */
+static void handle_add_security_policy_basic128rsa15(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    char *arg1;
+    char *arg2;
+    long binary_len;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 || term_size != 2)
+        errx(EXIT_FAILURE, ":handle_add_security_policy_basic128rsa15 requires a 2-tuple, term_size = %d", term_size);
+
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid certificate (size)");
+
+    arg1 = (char *)malloc(term_size + 1);
+
+    if (ei_decode_binary(req, req_index, arg1, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid certificate");
+
+    arg1[binary_len] = '\0';
+
+    UA_ByteString certificate;
+    certificate.data = arg1;
+    certificate.length = binary_len;
+
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid private_key (size)");
+
+    arg2 = (char *)malloc(term_size + 1);
+
+    if (ei_decode_binary(req, req_index, arg2, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid private_key");
+
+    arg2[binary_len] = '\0';
+
+    UA_ByteString private_key;
+    private_key.data = arg2;
+    private_key.length = binary_len;
+
+    UA_ServerConfig *config = UA_Server_getConfig(server);
+
+    UA_StatusCode retval =
+        UA_ServerConfig_addSecurityPolicyBasic128Rsa15(config, &certificate, &private_key);
+
+    UA_ByteString_clear(&certificate);
+    UA_ByteString_clear(&private_key);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }    
+
+    send_ok_response();
+}
+
+/* 
+ *   Adds the security policy ``SecurityPolicy#Basic256`` to the server with certicate.
+ */
+static void handle_add_security_policy_basic256(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    char *arg1;
+    char *arg2;
+    long binary_len;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 || term_size != 2)
+        errx(EXIT_FAILURE, ":handle_add_security_policy_basic256 requires a 2-tuple, term_size = %d", term_size);
+
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid certificate (size)");
+
+    arg1 = (char *)malloc(term_size + 1);
+
+    if (ei_decode_binary(req, req_index, arg1, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid certificate");
+
+    arg1[binary_len] = '\0';
+
+    UA_ByteString certificate;
+    certificate.data = arg1;
+    certificate.length = binary_len;
+
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid private_key (size)");
+
+    arg2 = (char *)malloc(term_size + 1);
+
+    if (ei_decode_binary(req, req_index, arg2, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid private_key");
+
+    arg2[binary_len] = '\0';
+
+    UA_ByteString private_key;
+    private_key.data = arg2;
+    private_key.length = binary_len;
+
+    UA_ServerConfig *config = UA_Server_getConfig(server);
+
+    UA_StatusCode retval =
+        UA_ServerConfig_addSecurityPolicyBasic256(config, &certificate, &private_key);
+
+    UA_ByteString_clear(&certificate);
+    UA_ByteString_clear(&private_key);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }    
+
+    send_ok_response();
+}
+
+/* 
+ *   Adds the security policy ``SecurityPolicy#Basic256Sha256`` to the server with certicate.
+ */
+static void handle_add_security_policy_basic256sha256(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    char *arg1;
+    char *arg2;
+    long binary_len;
+    
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 || term_size != 2)
+        errx(EXIT_FAILURE, ":handle_add_security_policy_basic256sha256 requires a 2-tuple, term_size = %d", term_size);
+
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid certificate (size)");
+
+    arg1 = (char *)malloc(term_size + 1);
+
+    if (ei_decode_binary(req, req_index, arg1, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid certificate");
+
+    arg1[binary_len] = '\0';
+
+    UA_ByteString certificate;
+    certificate.data = arg1;
+    certificate.length = binary_len;
+
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid private_key (size)");
+
+    arg2 = (char *)malloc(term_size + 1);
+
+    if (ei_decode_binary(req, req_index, arg2, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid private_key");
+
+    arg2[binary_len] = '\0';
+
+    UA_ByteString private_key;
+    private_key.data = arg2;
+    private_key.length = binary_len;
+
+    UA_ServerConfig *config = UA_Server_getConfig(server);
+
+    UA_StatusCode retval =
+        UA_ServerConfig_addSecurityPolicyBasic256Sha256(config, &certificate, &private_key);
+
+    UA_ByteString_clear(&certificate);
+    UA_ByteString_clear(&private_key);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }    
+
+    send_ok_response();
+}
+
+/* 
+ *   Adds all supported security policies and sets up certificate validation procedures.
+ */
+static void handle_add_all_security_policies(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    char *arg1;
+    char *arg2;
+    long binary_len;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 || term_size != 2)
+        errx(EXIT_FAILURE, ":handle_add_all_security_policies requires a 2-tuple, term_size = %d", term_size);
+    
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid certificate (size)");
+
+    arg1 = (char *)malloc(term_size + 1);
+
+    if (ei_decode_binary(req, req_index, arg1, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid certificate");
+
+    arg1[binary_len] = '\0';
+
+    UA_ByteString certificate;
+    certificate.data = arg1;
+    certificate.length = binary_len;
+
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid private_key (size)");
+
+    arg2 = (char *)malloc(term_size + 1);
+
+    if (ei_decode_binary(req, req_index, arg2, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid private_key");
+
+    arg2[binary_len] = '\0';
+
+    UA_ByteString private_key;
+    private_key.data = arg2;
+    private_key.length = binary_len;
+
+    UA_ServerConfig *config = UA_Server_getConfig(server);
+
+    UA_StatusCode retval =
+        UA_ServerConfig_addAllSecurityPolicies(config, &certificate, &private_key);
+
+    UA_ByteString_clear(&certificate);
+    UA_ByteString_clear(&private_key);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }    
+
+    send_ok_response();
+}
 
 /******************************/
 /* Node Addition and Deletion */
@@ -623,11 +1041,21 @@ static struct request_handler request_handlers[] = {
     // configuration & lifecycle functions
     {"get_server_config", handle_get_server_config},
     {"set_default_server_config", handle_set_default_server_config},
+    {"set_basics", handle_set_basics},
+    {"set_network_tcp_layer", handle_set_network_tcp_layer},
     {"set_hostname", handle_set_hostname},
     {"set_port", handle_set_port},
     {"set_users", handle_set_users_and_passwords},
+    {"add_all_endpoints", handle_add_all_endpoints},
     {"start_server", handle_start_server},
     {"stop_server", handle_stop_server},
+    // Encryption
+    {"set_config_with_security_policies", handle_set_config_with_security_policies},
+    {"add_security_policy_none", handle_add_security_policy_none},
+    {"add_security_policy_basic128rsa15", handle_add_security_policy_basic128rsa15},
+    {"add_security_policy_basic256", handle_add_security_policy_basic256},
+    {"add_security_policy_basic256sha256", handle_add_security_policy_basic256sha256},
+    {"add_all_security_policies", handle_add_all_security_policies},
     // Discovery
     {"set_lds_config", handle_set_lds_config},
     {"discovery_register", handle_discovery_register},
