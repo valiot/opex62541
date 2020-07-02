@@ -1,4 +1,4 @@
-defmodule CClientWriteAttrTest do
+defmodule ClientWriteAttrTest do
   use ExUnit.Case, async: false
 
   alias OpcUA.{Client, ExpandedNodeId, NodeId, Server, QualifiedName}
@@ -406,4 +406,3 @@ defmodule CClientWriteAttrTest do
     assert c_response == {:ok, {103.0999984741211, 103.0}}
   end
 end
-

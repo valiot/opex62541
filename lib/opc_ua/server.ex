@@ -1217,8 +1217,4 @@ defmodule OpcUA.Server do
     GenServer.reply(caller_metadata, data)
     state
   end
-
-  defp get_binary_data(binary) when is_binary(binary), do: binary
-  defp get_binary_data(function) when is_function(function), do: function.()
-  defp get_binary_data(_non_binary_or_function), do: nil
 end

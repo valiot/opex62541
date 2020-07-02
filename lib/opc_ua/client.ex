@@ -322,6 +322,24 @@ defmodule OpcUA.Client do
   end
 
   @doc """
+    Sets the OPC UA Client configuration with all security policies for the given certificates.
+    The following must be filled:
+      * `:private_key` -> binary() or function().
+      * `:certificate` -> binary() or function().
+      * `:security_mode` -> interger().
+    NOTE: [none: 1, sign: 2, sign_and_encrypt: 3]
+  """
+  @spec set_config_with_certs(GenServer.server(), list()) :: :ok | {:error, term} | {:error, :einval}
+  def set_config_with_certs(pid, args) when is_list(args) do
+    if(@mix_env != :test) do
+      GenServer.call(pid, {:config, {:set_config_with_certs, args}})
+    else
+      # Valgrind
+      GenServer.call(pid, {:config, {:set_config_with_certs, args}}, :infinity)
+    end
+  end
+
+  @doc """
     Gets the OPC UA Client current Configuration.
   """
   @spec get_config(GenServer.server()) :: {:ok, map()} | {:error, term} | {:error, :einval}
@@ -628,6 +646,26 @@ defmodule OpcUA.Client do
     {:noreply, state}
   end
 
+  # Encryption
+
+  def handle_call({:config, {:set_config_with_certs, args}}, caller_info, state) do
+    with  cert <- Keyword.fetch!(args, :certificate),
+          pkey <- Keyword.fetch!(args, :private_key),
+          security_mode <- Keyword.get(args, :security_mode, 1),
+          certificate <- get_binary_data(cert),
+          private_key <- get_binary_data(pkey),
+          true <- is_binary(certificate),
+          true <- is_binary(private_key),
+          true <- security_mode in [1, 2, 3] do
+      c_args = {security_mode, certificate, private_key}
+      call_port(state, :set_config_with_security_policies, caller_info, c_args)
+      {:noreply, state}
+    else
+      _ ->
+        {:reply, {:error, :einval} ,state}
+    end
+  end
+
   # Connect to a Server Handlers
 
   def handle_call({:conn, {:by_url, args}}, caller_info, state) do
@@ -844,6 +882,13 @@ defmodule OpcUA.Client do
 
   defp handle_c_response({:reset_client, caller_metadata, c_response}, state) do
     GenServer.reply(caller_metadata, c_response)
+    state
+  end
+
+  # Encryption Handlers
+
+  defp handle_c_response({:set_config_with_security_policies, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
     state
   end
 

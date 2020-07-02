@@ -1,4 +1,4 @@
-defmodule EncryptionTest do
+defmodule ServerEncryptionTest do
   use ExUnit.Case
 
   alias OpcUA.Server

@@ -281,6 +281,95 @@ static void handle_disconnect_client(void *entity, bool entity_type, const char 
     send_ok_response();
 }
 
+/**************/
+/* Encryption */
+/**************/
+
+/* 
+ *   Creates a client configuration with all security policies for the given certificates.
+ */
+static void handle_set_config_with_security_policies(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    char *arg1;
+    char *arg2;
+    long binary_len;
+    unsigned long security_mode = 1;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 || term_size != 3)
+        errx(EXIT_FAILURE, ":handle_set_config_with_security_policies requires a 3-tuple, term_size = %d", term_size);
+
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_ATOM_EXT)
+    {
+        if (ei_decode_ulong(req, req_index, &security_mode) < 0) {
+            send_error_response("einval");
+            return;
+        }
+    }
+    else
+    {
+        char nil[4];
+        if (ei_decode_atom(req, req_index, nil) < 0)
+            errx(EXIT_FAILURE, "expecting command atom");
+    }
+
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid certificate (size)");
+
+    arg1 = (char *)malloc(term_size + 1);
+
+    if (ei_decode_binary(req, req_index, arg1, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid certificate");
+
+    arg1[binary_len] = '\0';
+
+    UA_ByteString certificate;
+    certificate.data = arg1;
+    certificate.length = binary_len;
+
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid private_key (size)");
+
+    arg2 = (char *)malloc(term_size + 1);
+
+    if (ei_decode_binary(req, req_index, arg2, &binary_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid private_key");
+
+    arg2[binary_len] = '\0';
+
+    UA_ByteString private_key;
+    private_key.data = arg2;
+    private_key.length = binary_len;
+
+    /* Load the trustlist */
+    size_t trust_list_size = 0;
+    UA_ByteString *trust_list = NULL;
+
+    /* Loading of a revocation list currently unsupported */
+    size_t revocation_list_size = 0;
+    UA_ByteString *revocation_list = NULL;
+
+    UA_ClientConfig *config = UA_Client_getConfig(client);
+
+    config->securityMode = (UA_MessageSecurityMode) security_mode;
+
+    UA_StatusCode retval =
+        UA_ClientConfig_setDefaultEncryption(config, certificate, private_key,
+                                             trust_list, trust_list_size,
+                                             revocation_list, revocation_list_size);
+
+    UA_ByteString_clear(&certificate);
+    UA_ByteString_clear(&private_key);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }    
+
+    send_ok_response();
+}
+
 /***********************/
 /* Discovery Functions */
 /***********************/
@@ -962,6 +1051,8 @@ static struct request_handler request_handlers[] = {
     {"set_client_config", handle_set_client_config},     
     {"get_client_config", handle_get_client_config},     
     {"reset_client", handle_reset_client},
+    // encryption functions
+    {"set_config_with_security_policies", handle_set_config_with_security_policies},
     // connections functions
     {"connect_client_by_url", handle_connect_client_by_url},
     {"connect_client_by_username", handle_connect_client_by_username},     

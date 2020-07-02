@@ -1,4 +1,4 @@
-defmodule CClientDiscoveryTest do
+defmodule ClientDiscoveryTest do
   use ExUnit.Case
 
   alias OpcUA.{Client, Server}
