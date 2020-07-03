@@ -1030,6 +1030,10 @@ defmodule OpcUA.Common do
         do: Enum.reduce(array_dimensions, 1, fn(x, acc) -> x * acc end)
 
       defp write_ld_library_path(true, priv_dir), do: priv_dir
+
+      defp get_binary_data(binary) when is_binary(binary), do: binary
+      defp get_binary_data(function) when is_function(function), do: function.()
+      defp get_binary_data(_non_binary_or_function), do: nil
     end
   end
 end

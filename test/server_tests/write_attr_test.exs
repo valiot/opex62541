@@ -1,4 +1,4 @@
-defmodule WriteAttrTest do
+defmodule ServerWriteAttrTest do
   use ExUnit.Case
 
   alias OpcUA.{NodeId, Server, QualifiedName}

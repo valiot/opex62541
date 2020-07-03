@@ -257,6 +257,32 @@ defmodule OpcUA.Server do
   end
 
   @doc """
+  Sets a default Server Config with no network layer and no endpoints.
+  """
+  @spec set_basics(GenServer.server()) :: :ok | {:error, binary()} | {:error, :einval}
+  def set_basics(pid) do
+    if(@mix_env != :test) do
+      GenServer.call(pid, {:config, {:set_basics, nil}})
+    else
+      # Valgrind
+      GenServer.call(pid, {:config, {:set_basics, nil}}, :infinity)
+    end
+  end
+
+  @doc """
+  Sets a port number for the Server.
+  """
+  @spec set_network_tcp_layer(GenServer.server(), integer()) :: :ok | {:error, binary()} | {:error, :einval}
+  def set_network_tcp_layer(pid, port) when is_integer(port) do
+    if(@mix_env != :test) do
+      GenServer.call(pid, {:config, {:network_tcp_layer, port}})
+    else
+      # Valgrind
+      GenServer.call(pid, {:config, {:network_tcp_layer, port}}, :infinity)
+    end
+  end
+
+  @doc """
   Sets the host name for the Server.
   """
   @spec set_hostname(GenServer.server(), binary()) :: :ok | {:error, binary()} | {:error, :einval}
@@ -287,6 +313,19 @@ defmodule OpcUA.Server do
   end
 
   @doc """
+  Adds endpoints for all configured security policies in each mode.
+  """
+  @spec add_all_endpoints(GenServer.server()) :: :ok | {:error, binary()} | {:error, :einval}
+  def add_all_endpoints(pid) do
+    if(@mix_env != :test) do
+      GenServer.call(pid, {:config, {:add_all_endpoints, nil}})
+    else
+      # Valgrind
+      GenServer.call(pid, {:config, {:add_all_endpoints, nil}}, :infinity)
+    end
+  end
+
+  @doc """
   Start OPC UA Server.
   """
   @spec start(GenServer.server()) :: :ok | {:error, binary()} | {:error, :einval}
@@ -300,6 +339,104 @@ defmodule OpcUA.Server do
   @spec stop_server(GenServer.server()) :: :ok | {:error, binary()} | {:error, :einval}
   def stop_server(pid) do
     GenServer.call(pid, {:stop_server, nil})
+  end
+
+  # Encryption
+
+  @doc """
+  Creates a server configuration with all security policies for the given certificates.
+  The following must be filled:
+    * `:private_key` -> binary() or function().
+    * `:certificate` -> binary() or function().
+    * `:port` -> interger().
+  """
+  @spec set_default_config_with_certs(GenServer.server(), list()) :: :ok | {:error, binary()} | {:error, :einval}
+  def set_default_config_with_certs(pid, args) when is_list(args) do
+    if(@mix_env != :test) do
+      GenServer.call(pid, {:config, {:all_policies, args}})
+    else
+      # Valgrind
+      GenServer.call(pid, {:config, {:all_policies, args}}, :infinity)
+    end
+  end
+
+  @doc """
+  Adds the security policy ``SecurityPolicy#None`` to the server with certicate (no endpoint).
+  The following must be filled:
+    * `:certificate` -> binary() or function().
+  """
+  @spec add_none_policy(GenServer.server(), list()) :: :ok | {:error, binary()} | {:error, :einval}
+  def add_none_policy(pid, args) when is_list(args) do
+    if(@mix_env != :test) do
+      GenServer.call(pid, {:config, {:none_policy, args}})
+    else
+      # Valgrind
+      GenServer.call(pid, {:config, {:none_policy, args}}, :infinity)
+    end
+  end
+
+  @doc """
+  Adds the security policy ``SecurityPolicy#Basic128Rsa15`` to the server with certicate (no endpoint).
+  The following must be filled:
+    * `:private_key` -> binary() or function().
+    * `:certificate` -> binary() or function().
+  """
+  @spec add_basic128rsa15_policy(GenServer.server(), list()) :: :ok | {:error, binary()} | {:error, :einval}
+  def add_basic128rsa15_policy(pid, args) when is_list(args) do
+    if(@mix_env != :test) do
+      GenServer.call(pid, {:config, {:basic128rsa15_policy, args}})
+    else
+      # Valgrind
+      GenServer.call(pid, {:config, {:basic128rsa15_policy, args}}, :infinity)
+    end
+  end
+
+  @doc """
+  Adds the security policy ``SecurityPolicy#Basic256`` to the server with certicate (no endpoint).
+  The following must be filled:
+    * `:private_key` -> binary() or function().
+    * `:certificate` -> binary() or function().
+  """
+  @spec add_basic256_policy(GenServer.server(), list()) :: :ok | {:error, binary()} | {:error, :einval}
+  def add_basic256_policy(pid, args) when is_list(args) do
+    if(@mix_env != :test) do
+      GenServer.call(pid, {:config, {:basic256_policy, args}})
+    else
+      # Valgrind
+      GenServer.call(pid, {:config, {:basic256_policy, args}}, :infinity)
+    end
+  end
+
+  @doc """
+  Adds the security policy ``SecurityPolicy#Basic256Sha256`` to the server with certicate (no endpoint).
+  The following must be filled:
+    * `:private_key` -> binary() or function().
+    * `:certificate` -> binary() or function().
+  """
+  @spec add_basic256sha256_policy(GenServer.server(), list()) :: :ok | {:error, binary()} | {:error, :einval}
+  def add_basic256sha256_policy(pid, args) when is_list(args) do
+    if(@mix_env != :test) do
+      GenServer.call(pid, {:config, {:basic256sha256_policy, args}})
+    else
+      # Valgrind
+      GenServer.call(pid, {:config, {:basic256sha256_policy, args}}, :infinity)
+    end
+  end
+
+  @doc """
+  Adds all supported security policies and sets up certificate validation procedures (no endpoint).
+  The following must be filled:
+    * `:private_key` -> binary() or function().
+    * `:certificate` -> binary() or function().
+  """
+  @spec add_all_policies(GenServer.server(), list()) :: :ok | {:error, binary()} | {:error, :einval}
+  def add_all_policies(pid, args) when is_list(args) do
+    if(@mix_env != :test) do
+      GenServer.call(pid, {:config, {:all_policies_no_endpoint, args}})
+    else
+      # Valgrind
+      GenServer.call(pid, {:config, {:all_policies_no_endpoint, args}}, :infinity)
+    end
   end
 
   # Discovery functions
@@ -557,6 +694,16 @@ defmodule OpcUA.Server do
     {:noreply, state}
   end
 
+  def handle_call({:config, {:set_basics, nil}}, caller_info, state) do
+    call_port(state, :set_basics, caller_info, nil)
+    {:noreply, state}
+  end
+
+  def handle_call({:config, {:network_tcp_layer, port}}, caller_info, state) do
+    call_port(state, :set_network_tcp_layer, caller_info, port)
+    {:noreply, state}
+  end
+
   def handle_call({:config, {:hostname, hostname}}, caller_info, state) do
     call_port(state, :set_hostname, caller_info, hostname)
     {:noreply, state}
@@ -572,6 +719,11 @@ defmodule OpcUA.Server do
     {:noreply, state}
   end
 
+  def handle_call({:config, {:add_all_endpoints, nil}}, caller_info, state) do
+    call_port(state, :add_all_endpoints, caller_info, nil)
+    {:noreply, state}
+  end
+
   def handle_call({:start_server, nil}, caller_info, state) do
     call_port(state, :start_server, caller_info, nil)
     {:noreply, state}
@@ -580,6 +732,102 @@ defmodule OpcUA.Server do
   def handle_call({:stop_server, nil}, caller_info, state) do
     call_port(state, :stop_server, caller_info, nil)
     {:noreply, state}
+  end
+
+  # Encryption.
+
+  def handle_call({:config, {:all_policies, args}}, caller_info, state) do
+    with  cert <- Keyword.fetch!(args, :certificate),
+          pkey <- Keyword.fetch!(args, :private_key),
+          port <- Keyword.get(args, :port, nil),
+          certificate <- get_binary_data(cert),
+          private_key <- get_binary_data(pkey),
+          true <- is_binary(certificate),
+          true <- is_binary(private_key),
+          true <- is_integer(port) || is_nil(port) do
+      c_args = {port, certificate, private_key}
+      call_port(state, :set_config_with_security_policies, caller_info, c_args)
+      {:noreply, state}
+    else
+      _ ->
+        {:reply, {:error, :einval} ,state}
+    end
+  end
+
+  def handle_call({:config, {:none_policy, args}}, caller_info, state) do
+    with  cert <- Keyword.fetch!(args, :certificate),
+          certificate <- get_binary_data(cert),
+          true <- is_binary(certificate) do
+      call_port(state, :add_security_policy_none, caller_info, certificate)
+      {:noreply, state}
+    else
+      _ ->
+        {:reply, {:error, :einval} ,state}
+    end
+  end
+
+  def handle_call({:config, {:basic128rsa15_policy, args}}, caller_info, state) do
+    with  cert <- Keyword.fetch!(args, :certificate),
+          pkey <- Keyword.fetch!(args, :private_key),
+          certificate <- get_binary_data(cert),
+          private_key <- get_binary_data(pkey),
+          true <- is_binary(certificate),
+          true <- is_binary(private_key) do
+      c_args = {certificate, private_key}
+      call_port(state, :add_security_policy_basic128rsa15, caller_info, c_args)
+      {:noreply, state}
+    else
+      _ ->
+        {:reply, {:error, :einval} ,state}
+    end
+  end
+
+  def handle_call({:config, {:basic256_policy, args}}, caller_info, state) do
+    with  cert <- Keyword.fetch!(args, :certificate),
+          pkey <- Keyword.fetch!(args, :private_key),
+          certificate <- get_binary_data(cert),
+          private_key <- get_binary_data(pkey),
+          true <- is_binary(certificate),
+          true <- is_binary(private_key) do
+      c_args = {certificate, private_key}
+      call_port(state, :add_security_policy_basic256, caller_info, c_args)
+      {:noreply, state}
+    else
+      _ ->
+        {:reply, {:error, :einval} ,state}
+    end
+  end
+
+  def handle_call({:config, {:basic256sha256_policy, args}}, caller_info, state) do
+    with  cert <- Keyword.fetch!(args, :certificate),
+          pkey <- Keyword.fetch!(args, :private_key),
+          certificate <- get_binary_data(cert),
+          private_key <- get_binary_data(pkey),
+          true <- is_binary(certificate),
+          true <- is_binary(private_key) do
+      c_args = {certificate, private_key}
+      call_port(state, :add_security_policy_basic256sha256, caller_info, c_args)
+      {:noreply, state}
+    else
+      _ ->
+        {:reply, {:error, :einval} ,state}
+    end
+  end
+
+  def handle_call({:config, {:all_policies_no_endpoint, args}}, caller_info, state) do
+    with  cert <- Keyword.fetch!(args, :certificate),
+          pkey <- Keyword.fetch!(args, :private_key),
+          certificate <- get_binary_data(cert),
+          private_key <- get_binary_data(pkey),
+          true <- is_binary(certificate),
+          true <- is_binary(private_key) do
+      c_args = {certificate, private_key}
+      call_port(state, :add_all_security_policies, caller_info, c_args)
+      {:noreply, state}
+    else
+      _ ->
+        {:reply, {:error, :einval} ,state}
+    end
   end
 
   # Discovery Functions.
@@ -812,6 +1060,16 @@ defmodule OpcUA.Server do
     state
   end
 
+  defp handle_c_response({:set_basics, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:set_network_tcp_layer, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
   defp handle_c_response({:set_hostname, caller_metadata, data}, state) do
     GenServer.reply(caller_metadata, data)
     state
@@ -827,12 +1085,49 @@ defmodule OpcUA.Server do
     state
   end
 
+  defp handle_c_response({:add_all_endpoints, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
   defp handle_c_response({:start_server, caller_metadata, data}, state) do
     GenServer.reply(caller_metadata, data)
     state
   end
 
   defp handle_c_response({:stop_server, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  # C Encryption function.
+
+  defp handle_c_response({:set_config_with_security_policies, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:add_security_policy_none, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:add_security_policy_basic128rsa15, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:add_security_policy_basic256, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:add_security_policy_basic256sha256, caller_metadata, data}, state) do
+    GenServer.reply(caller_metadata, data)
+    state
+  end
+
+  defp handle_c_response({:add_all_security_policies, caller_metadata, data}, state) do
     GenServer.reply(caller_metadata, data)
     state
   end

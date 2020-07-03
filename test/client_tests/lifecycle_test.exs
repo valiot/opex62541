@@ -1,4 +1,4 @@
-defmodule CClientLifecycleTest do
+defmodule ClientLifecycleTest do
   use ExUnit.Case
 
   #alias OpcUA.{NodeId, Server, QualifiedName}
@@ -47,4 +47,3 @@ defmodule CClientLifecycleTest do
     assert c_response == :ok
   end
 end
-
