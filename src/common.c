@@ -1,7 +1,4 @@
 #include "common.h"
-#include "open62541.h"
-#include "erlcmd.h"
-#include <erl_interface.h>
 #include <string.h>
 #ifdef __APPLE__
 #include <mach/clock.h>

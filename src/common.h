@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "open62541.h"
-#include <erl_interface.h>
+#include "erlcmd.h"
 
 //#define DEBUG
 #define ERLCMD_BUF_SIZE 32768
