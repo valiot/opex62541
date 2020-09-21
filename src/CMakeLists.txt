@@ -38,6 +38,34 @@ else("$ENV{OPEN62541_DOWNLOAD_VERSION}" STREQUAL "")
     set(DOWNLOAD_VERSION $ENV{OPEN62541_DOWNLOAD_VERSION})    
 endif("$ENV{OPEN62541_DOWNLOAD_VERSION}" STREQUAL "")
 
+string(REGEX REPLACE "-O([123s]|(fast)|( )|($))" " " CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+
+# OPEX62541 SOURCE CODE BUILD
+# C compiler specific settings
+if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
+    # using Clang
+    set(BASE_RELEASE_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+    set(BASE_DEBUG_FLAGS "${CMAKE_C_FLAGS}  -std=c99")
+elseif (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    # using GCC
+    set(BASE_RELEASE_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+    set(BASE_DEBUG_FLAGS "${CMAKE_C_FLAGS}  -std=c99")
+elseif (CMAKE_C_COMPILER_ID STREQUAL "Intel")
+    # using Intel C/C++
+    MESSAGE("Intel C compiler not supported!")
+endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(BASE_FLAGS "${BASE_DEBUG_FLAGS}")
+else()
+    set(BASE_FLAGS "${BASE_RELEASE_FLAGS}")
+endif()
+
+string(REGEX REPLACE "-O([123s]|(fast)|( )|($))" " " BASE_FLAGS ${BASE_FLAGS})
+
+set(BASE_C_FLAGS "-g -Wall -Wextra ${BASE_FLAGS} -lpthread")
+set(BASE_CXX_FLAGS "${BASE_FLAGS}")
+
 # BUILDING OPEN62541
 
 if(NOT MANUAL_BUILD)
@@ -108,30 +136,6 @@ if(NOT MANUAL_BUILD)
 
     file(GLOB STATIC_LIBS "$ENV{ERL_EI_LIBDIR}/*.a")
 
-    # OPEX62541 SOURCE CODE BUILD
-    # C compiler specific settings
-    if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
-        # using Clang
-        set(BASE_RELEASE_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-        set(BASE_DEBUG_FLAGS "${CMAKE_C_FLAGS}  -std=c99")
-    elseif (CMAKE_C_COMPILER_ID STREQUAL "GNU")
-        # using GCC
-        set(BASE_RELEASE_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-        set(BASE_DEBUG_FLAGS "${CMAKE_C_FLAGS}  -std=c99")
-    elseif (CMAKE_C_COMPILER_ID STREQUAL "Intel")
-        # using Intel C/C++
-        MESSAGE("Intel C compiler not supported!")
-    endif()
-
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(BASE_FLAGS "${BASE_DEBUG_FLAGS}")
-    else()
-        set(BASE_FLAGS "${BASE_RELEASE_FLAGS}")
-    endif()
-
-    set(BASE_C_FLAGS "-g -Wall -Wextra ${BASE_FLAGS} -std=c99 -lpthread")
-    set(BASE_CXX_FLAGS "${BASE_FLAGS}")
-
     set (opex62541_PROGRAMS opc_ua_server opc_ua_client client_example server_example)
 
     foreach(opex62541_PROGRAM ${opex62541_PROGRAMS})
@@ -177,30 +181,6 @@ else(NOT MANUAL_BUILD)
 
     file(GLOB STATIC_LIBS "$ENV{ERL_EI_LIBDIR}/*.a")
 
-    # OPEX62541 SOURCE CODE BUILD
-    # C compiler specific settings
-    if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
-        # using Clang
-        set(BASE_RELEASE_FLAGS "${CMAKE_C_FLAGS} -std=c99 -lpthread")
-        set(BASE_DEBUG_FLAGS "${CMAKE_C_FLAGS}  -std=c99 -lpthread")
-    elseif (CMAKE_C_COMPILER_ID STREQUAL "GNU")
-        # using GCC
-        set(BASE_RELEASE_FLAGS "${CMAKE_C_FLAGS} -std=c99 -lpthread")
-        set(BASE_DEBUG_FLAGS "${CMAKE_C_FLAGS}  -std=c99 -lpthread")
-    elseif (CMAKE_C_COMPILER_ID STREQUAL "Intel")
-        # using Intel C/C++
-        MESSAGE("Intel C compiler not supported!")
-    endif()
-
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(BASE_FLAGS "${BASE_DEBUG_FLAGS}")
-    else()
-        set(BASE_FLAGS "${BASE_RELEASE_FLAGS}")
-    endif()
-
-    set(BASE_C_FLAGS "${BASE_FLAGS} -std=c99 -lpthread")
-    set(BASE_CXX_FLAGS "${BASE_FLAGS}")
-
     set (opex62541_PROGRAMS opc_ua_server opc_ua_client client_example server_example)
 
     include_directories(${install_dir})
@@ -215,4 +195,4 @@ else(NOT MANUAL_BUILD)
 
 endif(NOT MANUAL_BUILD)
 
-message(STATUS "Debugs ${DOWNLOAD_URL} ${DOWNLOAD_PATH} $ENV{ERL_EI_INCLUDE_DIR} MBEDTLS_FOLDER_LIBRARY=${MBEDTLS_FOLDER_LIBRARY} MBEDTLS_FOLDER_INCLUDE=${MBEDTLS_FOLDER_INCLUDE}")
+message(STATUS "Debugs CMAKE_C_FAGS=${CMAKE_C_FLAGS}; BASE_C_FLAGS=${BASE_C_FLAGS}; MBEDTLS_FOLDER_LIBRARY=${MBEDTLS_FOLDER_LIBRARY} MBEDTLS_FOLDER_INCLUDE=${MBEDTLS_FOLDER_INCLUDE}")
