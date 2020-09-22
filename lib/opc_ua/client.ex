@@ -347,14 +347,6 @@ defmodule OpcUA.Client do
     GenServer.call(pid, {:config, {:get_config, nil}})
   end
 
-  @doc """
-    Resets the OPC UA Client.
-  """
-  @spec reset(GenServer.server()) :: :ok | {:error, term} | {:error, :einval}
-  def reset(pid) do
-    GenServer.call(pid, {:config, {:reset_client, nil}})
-  end
-
   # Connection functions
 
   @doc """
@@ -388,16 +380,6 @@ defmodule OpcUA.Client do
       # Valgrind
       GenServer.call(pid, {:conn, {:by_username, args}}, :infinity)
     end
-  end
-
-  @doc """
-    Connects the OPC UA Client by a url without a session.
-    The following must be filled:
-    * `:url` -> binary().
-  """
-  @spec connect_no_session(GenServer.server(), list()) :: :ok | {:error, term} | {:error, :einval}
-  def connect_no_session(pid, args) when is_list(args) do
-    GenServer.call(pid, {:conn, {:no_session, args}})
   end
 
   @doc """
@@ -641,11 +623,6 @@ defmodule OpcUA.Client do
     {:noreply, state}
   end
 
-  def handle_call({:config, {:reset_client, nil}}, caller_info, state) do
-    call_port(state, :reset_client, caller_info, nil)
-    {:noreply, state}
-  end
-
   # Encryption
 
   def handle_call({:config, {:set_config_with_certs, args}}, caller_info, state) do
@@ -681,12 +658,6 @@ defmodule OpcUA.Client do
 
     c_args = {url, username, password}
     call_port(state, :connect_client_by_username, caller_info, c_args)
-    {:noreply, state}
-  end
-
-  def handle_call({:conn, {:no_session, args}}, caller_info, state) do
-    url = Keyword.fetch!(args, :url)
-    call_port(state, :connect_client_no_session, caller_info, url)
     {:noreply, state}
   end
 

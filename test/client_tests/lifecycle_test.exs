@@ -41,9 +41,4 @@ defmodule ClientLifecycleTest do
     c_response = Client.get_config(state.pid)
     assert c_response == {:ok, config}
   end
-
-  test "Reset client", state do
-    c_response = Client.reset(state.pid)
-    assert c_response == :ok
-  end
 end

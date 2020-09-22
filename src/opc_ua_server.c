@@ -92,8 +92,8 @@ void delete_discovery_params()
     if(config->applicationDescription.applicationUri.data)
         UA_String_clear(&config->applicationDescription.applicationUri);
     
-    if(config->discovery.mdns.mdnsServerName.data)
-        UA_String_clear(&config->discovery.mdns.mdnsServerName);
+    if(config->mdnsConfig.mdnsServerName.data)
+        UA_String_clear(&config->mdnsConfig.mdnsServerName);
 
     if(discoveryClient)
         UA_Client_delete(discoveryClient);
@@ -255,7 +255,7 @@ static void handle_set_users_and_passwords(void *entity, bool entity_type, const
     }
 
     UA_ServerConfig *config = UA_Server_getConfig(server);
-    config->accessControl.deleteMembers(&config->accessControl);
+    config->accessControl.clear(&config->accessControl);
     /* Disable anonymous logins, enable two user/password logins */
     // config->accessControl.clear(&config->accessControl);
     UA_StatusCode retval = UA_AccessControl_default(config, false, &config->securityPolicies[config->securityPoliciesSize-1].policyUri, list_arity, logins);
@@ -766,14 +766,14 @@ void handle_set_lds_config(void *entity, bool entity_type, const char *req, int 
     config->applicationDescription.applicationUri = application_uri;
 
     // corrupted size vs. prev_size
-    config->discovery.mdns.serverCapabilitiesSize = 1;
+    config->mdnsConfig.serverCapabilitiesSize = 1;
     UA_String *caps = (UA_String *) UA_Array_new(1, &UA_TYPES[UA_TYPES_STRING]);
     caps[0] = UA_String_fromChars("LDS");
-    config->discovery.mdns.serverCapabilities = caps;
+    config->mdnsConfig.serverCapabilities = caps;
 
     // Enable the mDNS announce and response functionality
-    config->discovery.mdnsEnable = true;
-    config->discovery.mdns.mdnsServerName = UA_String_fromChars("LDS");
+    config->mdnsEnabled = true;
+    config->mdnsConfig.mdnsServerName = UA_String_fromChars("LDS");
 
     if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_ATOM_EXT)
     {
@@ -782,14 +782,14 @@ void handle_set_lds_config(void *entity, bool entity_type, const char *req, int 
             send_error_response("einval");
             return;
         }
-        config->discovery.cleanupTimeout = timeout;
+        config->discoveryCleanupTimeout = timeout;
     }
     else
     {
         char nil[4];
         if (ei_decode_atom(req, req_index, nil) < 0)
         errx(EXIT_FAILURE, "expecting command atom");
-        config->discovery.cleanupTimeout = 60*60;
+        config->discoveryCleanupTimeout = 60*60;
     }
 
     send_ok_response();
@@ -840,10 +840,10 @@ void handle_discovery_register(void *entity, bool entity_type, const char *req, 
         errx(EXIT_FAILURE, "Invalid server_name");
     server_name.data[binary_len] = '\0';
 
-    if(config->discovery.mdns.mdnsServerName.data)
-        UA_String_clear(&config->discovery.mdns.mdnsServerName);
+    if(config->mdnsConfig.mdnsServerName.data)
+        UA_String_clear(&config->mdnsConfig.mdnsServerName);
     
-    config->discovery.mdns.mdnsServerName = server_name;
+    config->mdnsConfig.mdnsServerName = server_name;
 
     // endpoint
     if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)

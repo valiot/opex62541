@@ -136,10 +136,10 @@ if(NOT MANUAL_BUILD)
 
     file(GLOB STATIC_LIBS "$ENV{ERL_EI_LIBDIR}/*.a")
 
-    set (opex62541_PROGRAMS opc_ua_server opc_ua_client client_example server_example)
+    set (opex62541_PROGRAMS opc_ua_client opc_ua_server)
 
     foreach(opex62541_PROGRAM ${opex62541_PROGRAMS})
-        add_executable( ${opex62541_PROGRAM} "${CMAKE_SOURCE_DIR}/${opex62541_PROGRAM}.c" "${CMAKE_SOURCE_DIR}/erlcmd.c" "${CMAKE_SOURCE_DIR}/common.c" )
+        add_executable( ${opex62541_PROGRAM} "${CMAKE_SOURCE_DIR}/${opex62541_PROGRAM}.c" "${CMAKE_SOURCE_DIR}/erlcmd.c" "${CMAKE_SOURCE_DIR}/common.c")
         target_link_libraries(${opex62541_PROGRAM} ${STATIC_LIBS})
         target_link_libraries(${opex62541_PROGRAM} ${CMAKE_THREAD_LIBS_INIT})
         target_link_libraries(${opex62541_PROGRAM} ${install_dir}/libopen62541.so)
@@ -154,7 +154,7 @@ else(NOT MANUAL_BUILD)
     if($ENV{OPEN62541_BUILD_ARGS})
     set(OPEN62541_BUILD_ARGS $ENV{OPEN62541_BUILD_ARGS})
     else($ENV{OPEN62541_BUILD_ARGS})
-    set(OPEN62541_BUILD_ARGS -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUA_NAMESPACE_ZERO=FULL -DUA_LOGLEVEL=601 -DUA_ENABLE_DISCOVERY_MULTICAST=ON -DUA_ENABLE_AMALGAMATION=ON -DUA_ENABLE_ENCRYPTION=ON)
+    set(OPEN62541_BUILD_ARGS -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUA_NAMESPACE_ZERO=FULL -DUA_LOGLEVEL=601 -DUA_ENABLE_DISCOVERY_MULTICAST=ON -DUA_ENABLE_AMALGAMATION=ON -DUA_ENABLE_ENCRYPTION=ON -DUA_ENABLE_DISCOVERY=ON)
     endif($ENV{OPEN62541_BUILD_ARGS})
     
     include(ExternalProject)
@@ -181,7 +181,7 @@ else(NOT MANUAL_BUILD)
 
     file(GLOB STATIC_LIBS "$ENV{ERL_EI_LIBDIR}/*.a")
 
-    set (opex62541_PROGRAMS opc_ua_server opc_ua_client client_example server_example)
+    set (opex62541_PROGRAMS opc_ua_server opc_ua_client)
 
     include_directories(${install_dir})
 

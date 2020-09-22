@@ -483,7 +483,7 @@ void encode_server_config(char *resp, int *resp_index, void *data)
 {   
     ei_encode_map_header(resp, resp_index, 4);
     ei_encode_binary(resp, resp_index, "n_threads", 9);
-    ei_encode_long(resp, resp_index,((UA_ServerConfig *)data)->nThreads);
+    ei_encode_long(resp, resp_index,0);
     ei_encode_binary(resp, resp_index, "hostname", 8);
     if (((UA_ServerConfig *)data)->customHostname.length)
         ei_encode_binary(resp, resp_index,((UA_ServerConfig *)data)->customHostname.data, ((UA_ServerConfig *)data)->customHostname.length);
@@ -3466,7 +3466,7 @@ void handle_read_node_contains_no_loops(void *entity, bool entity_type, const ch
     if(entity_type)
         retval = UA_Client_readContainsNoLoopsAttribute((UA_Client *)entity, node_id, &contains_no_loops);
     else
-        retval = UA_Server_readContainsNoLoop((UA_Server *)entity, node_id, &contains_no_loops);
+        retval = UA_Server_readContainsNoLoops((UA_Server *)entity, node_id, &contains_no_loops);
 
     UA_NodeId_clear(&node_id);
 

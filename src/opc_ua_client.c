@@ -117,47 +117,89 @@ static void handle_get_client_config(void *entity, bool entity_type, const char 
 */
 static void handle_get_client_state(void *entity, bool entity_type, const char *req, int *req_index)
 {
-    UA_ClientState state = UA_Client_getState(client);
+    UA_StatusCode connectStatus;
+    UA_Client_getState(client, NULL, NULL, &connectStatus);
+    send_data_response(&connectStatus, 20, 0);
+}
 
-    switch(state)
+/*
+ * Gets the current client secure channel state. 
+*/
+static void handle_get_client_secure_channel_state(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    UA_SecureChannelState channelState;
+    UA_Client_getState(client, &channelState, NULL, NULL);
+
+    switch(channelState)
     {
-        case UA_CLIENTSTATE_DISCONNECTED:
-            send_data_response("Disconnected", 3, 0);
+        case UA_SECURECHANNELSTATE_CLOSED:
+            send_data_response("Closed", 3, 0);
         break;
 
-        case UA_CLIENTSTATE_WAITING_FOR_ACK:
-            send_data_response("Wating for ACK", 3, 0);
+        case UA_SECURECHANNELSTATE_HEL_SENT:
+            send_data_response("HEL Sent", 3, 0);
         break;
 
-        case UA_CLIENTSTATE_CONNECTED:
-            send_data_response("Connected", 3, 0);
+        case UA_SECURECHANNELSTATE_HEL_RECEIVED:
+            send_data_response("HEL Received", 3, 0);
         break;
 
-        case UA_CLIENTSTATE_SECURECHANNEL:
-            send_data_response("Secure Channel", 3, 0);
+        case UA_SECURECHANNELSTATE_ACK_SENT:
+            send_data_response("ACK Sent", 3, 0);
         break;
 
-        case UA_CLIENTSTATE_SESSION:
-            send_data_response("Session", 3, 0);
+        case UA_SECURECHANNELSTATE_ACK_RECEIVED:
+            send_data_response("ACK Received", 3, 0);
         break;
 
-        case UA_CLIENTSTATE_SESSION_DISCONNECTED:
-            send_data_response("Session disconnected", 3, 0);
+        case UA_SECURECHANNELSTATE_OPN_SENT:
+            send_data_response("Open Sent", 3, 0);
         break;
 
-        case UA_CLIENTSTATE_SESSION_RENEWED:
-            send_data_response("Session renewed", 3, 0);
+        case UA_SECURECHANNELSTATE_OPEN:
+            send_data_response("Open", 3, 0);
+        break;
+
+        case UA_SECURECHANNELSTATE_CLOSING:
+            send_data_response("Closing", 3, 0);
         break;
     }
 }
 
-/* 
-*   Resets a client. 
+/*
+ * Gets the current client session state. 
 */
-static void handle_reset_client(void *entity, bool entity_type, const char *req, int *req_index)
+static void handle_get_client_session_state(void *entity, bool entity_type, const char *req, int *req_index)
 {
-    UA_Client_reset(client);
-    send_ok_response();
+    UA_SessionState sessionState;
+    UA_Client_getState(client, NULL, &sessionState, NULL);
+
+    switch(sessionState)
+    {
+        case UA_SESSIONSTATE_CLOSED:
+            send_data_response("Closed", 3, 0);
+        break;
+
+        case UA_SESSIONSTATE_CREATE_REQUESTED:
+            send_data_response("Create Requested", 3, 0);
+        break;
+
+        case UA_SESSIONSTATE_CREATED:
+            send_data_response("Created", 3, 0);
+        break;
+
+        case UA_SESSIONSTATE_ACTIVATE_REQUESTED:
+            send_data_response("Activate Requested", 3, 0);
+        break;
+
+        case UA_SESSIONSTATE_ACTIVATED:
+            send_data_response("Actived", 3, 0);
+        break;
+
+        case UA_SESSIONSTATE_CLOSING:
+            send_data_response("Closing", 3, 0);
+        break;
+    }
 }
 
 /************************/
@@ -231,33 +273,7 @@ static void handle_connect_client_by_username(void *entity, bool entity_type, co
         errx(EXIT_FAILURE, "Invalid password");
     password[binary_len] = '\0';
 
-    UA_StatusCode retval = UA_Client_connect_username(client, url, username, password);
-    if(retval != UA_STATUSCODE_GOOD) {
-        send_opex_response(retval);
-        return;
-    }
-    
-    send_ok_response();
-}
-
-/* Connect to the server without creating a session.
- *
- * @return Indicates whether the operation succeeded or returns an error code */
-static void handle_connect_client_no_session(void *entity, bool entity_type, const char *req, int *req_index)
-{
-    int term_size;
-    int term_type;
-    long binary_len = 0; 
-
-    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
-        errx(EXIT_FAILURE, "Invalid url (size)");
-
-    char url[term_size + 1];
-    if (ei_decode_binary(req, req_index, url, &binary_len) < 0) 
-        errx(EXIT_FAILURE, "Invalid url");
-    url[binary_len] = '\0';
-    
-    UA_StatusCode retval = UA_Client_connect_noSession(client, url);
+    UA_StatusCode retval = UA_Client_connectUsername(client, url, username, password);
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -1049,14 +1065,12 @@ static struct request_handler request_handlers[] = {
     // lifecycle functions
     {"get_client_state", handle_get_client_state},     
     {"set_client_config", handle_set_client_config},     
-    {"get_client_config", handle_get_client_config},     
-    {"reset_client", handle_reset_client},
+    {"get_client_config", handle_get_client_config},
     // encryption functions
     {"set_config_with_security_policies", handle_set_config_with_security_policies},
     // connections functions
     {"connect_client_by_url", handle_connect_client_by_url},
     {"connect_client_by_username", handle_connect_client_by_username},     
-    {"connect_client_no_session", handle_connect_client_no_session},     
     {"disconnect_client", handle_disconnect_client}, 
     // discovery functions
     {"find_servers_on_network", handle_find_servers_on_network},
@@ -1121,6 +1135,8 @@ static void handle_elixir_request(const char *req, void *cookie)
 int main()
 {
     client = UA_Client_new();
+    UA_SessionState sessionState;
+    UA_StatusCode connectStatus;
 
     struct erlcmd *handler = malloc(sizeof(struct erlcmd));
     erlcmd_init(handler, handle_elixir_request, NULL);
@@ -1148,7 +1164,9 @@ int main()
                 break;
         }
 
-        if(UA_Client_getState(client) >= UA_CLIENTSTATE_CONNECTED)
+        UA_Client_getState(client, NULL, &sessionState, &connectStatus);
+
+        if(sessionState == UA_SESSIONSTATE_ACTIVATED && connectStatus == UA_STATUSCODE_GOOD)
         {
             UA_Client_run_iterate(client, 0);
         }
