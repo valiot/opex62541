@@ -11,8 +11,19 @@ defmodule ClientLifecycleTest do
 
   test "Get client state", state do
     c_response = Client.get_state(state.pid)
-    assert c_response == {:ok, "Disconnected"}
+    assert c_response == {:ok, "Good"}
   end
+
+  test "Get secure channel state", state do
+    c_response = Client.get_secure_channel_state(state.pid)
+    assert c_response == {:ok, "Closed"}
+  end
+
+  test "Get session state", state do
+    c_response = Client.get_session_state(state.pid)
+    assert c_response == {:ok, "Closed"}
+  end
+
 
   test "Set/Get client config", state do
     config = %{

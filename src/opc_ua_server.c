@@ -29,22 +29,34 @@ unsigned long port_number = 4840;
 static UA_Boolean
 allowAddNode(UA_Server *server, UA_AccessControl *ac,
              const UA_NodeId *sessionId, void *sessionContext,
-             const UA_AddNodesItem *item)  {return UA_FALSE;}
+             const UA_AddNodesItem *item) {
+    printf("Called allowAddNode\n");
+    return UA_TRUE;
+}
 
 static UA_Boolean
 allowAddReference(UA_Server *server, UA_AccessControl *ac,
                   const UA_NodeId *sessionId, void *sessionContext,
-                  const UA_AddReferencesItem *item) {return UA_FALSE;}
+                  const UA_AddReferencesItem *item) {
+    printf("Called allowAddReference\n");
+    return UA_TRUE;
+}
 
 static UA_Boolean
 allowDeleteNode(UA_Server *server, UA_AccessControl *ac,
                 const UA_NodeId *sessionId, void *sessionContext,
-                const UA_DeleteNodesItem *item) {return UA_FALSE;} // Do not allow deletion from client
+                const UA_DeleteNodesItem *item) {
+    printf("Called allowDeleteNode\n");
+    return UA_FALSE; // Do not allow deletion from client
+}
 
 static UA_Boolean
 allowDeleteReference(UA_Server *server, UA_AccessControl *ac,
                      const UA_NodeId *sessionId, void *sessionContext,
-                     const UA_DeleteReferencesItem *item) {return UA_FALSE;}
+                     const UA_DeleteReferencesItem *item) {
+    printf("Called allowDeleteReference\n");
+    return UA_TRUE;
+}
 
 void* server_runner(void* arg)
 {
@@ -255,9 +267,8 @@ static void handle_set_users_and_passwords(void *entity, bool entity_type, const
     }
 
     UA_ServerConfig *config = UA_Server_getConfig(server);
-    config->accessControl.clear(&config->accessControl);
     /* Disable anonymous logins, enable two user/password logins */
-    // config->accessControl.clear(&config->accessControl);
+     config->accessControl.clear(&config->accessControl);
     UA_StatusCode retval = UA_AccessControl_default(config, false, &config->securityPolicies[config->securityPoliciesSize-1].policyUri, list_arity, logins);
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);

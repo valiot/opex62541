@@ -53,7 +53,7 @@ defmodule ServerTerraformTest do
       ],
       write_mask: 0x3BFFFF,
       access_level: 3,
-      browse_name: QualifiedName.new(ns_index: 2, name: "Var_N"),
+      #browse_name: QualifiedName.new(ns_index: 2, name: "Var_N"),
       display_name: {"en-US", "var"},
       description: {"en-US", "variable"},
       data_type: NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 63),
@@ -79,6 +79,7 @@ defmodule ServerTerraformTest do
   defmodule MyServer do
     use OpcUA.Server
     alias OpcUA.Server
+    require Logger
 
     # Use the `init` function to configure your server.
     def init({parent_pid, 103}, s_pid) do
@@ -119,12 +120,14 @@ defmodule ServerTerraformTest do
     user = "alde103"
     password = "secret"
 
+    Process.sleep(500)
+
     assert :ok == Client.connect_by_username(c_pid, url: url, user: user, password: password)
 
     node_id =  NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10001)
 
     c_response = Client.read_node_browse_name(c_pid, node_id)
-    assert c_response == {:ok, %QualifiedName{name: "Var_N", ns_index: 2}}
+    assert c_response == {:ok, %QualifiedName{name: "Var", ns_index: 1}}
 
     c_response = Client.read_node_display_name(c_pid, node_id)
     assert c_response == {:ok, {"en-US", "var"}}

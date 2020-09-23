@@ -64,7 +64,7 @@ defmodule ServerWriteAttrTest do
     node_id = NodeId.new(ns_index: state.ns_index, identifier_type: "string", identifier: "R1_TS1_Temperature")
     name = QualifiedName.new(ns_index: state.ns_index, name: "Var_N")
     resp = Server.write_node_browse_name(state.pid, node_id, name)
-    assert resp == :ok
+    assert resp == {:error, "BadWriteNotSupported"}
 
     resp = Server.write_node_display_name(state.pid, node_id, "en-US", "variable")
     assert resp == :ok
@@ -177,10 +177,10 @@ defmodule ServerWriteAttrTest do
     resp = Server.write_node_value(state.pid, node_id, 28, 321321)
     assert resp == :ok
 
-    resp = Server.write_node_value(state.pid, node_id, 29, {103.1, 103.0})
+    resp = Server.write_node_value(state.pid, node_id, 30, {103.1, 103.0})
     assert resp == :ok
 
-    resp = Server.write_node_value(state.pid, node_id, 30, 21321)
+    resp = Server.write_node_value(state.pid, node_id, 31, 21321)
     assert resp == :ok
   end
 end

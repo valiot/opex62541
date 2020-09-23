@@ -165,10 +165,10 @@ defmodule ServerArrayTest do
     resp = Server.write_node_blank_array(state.pid, node_id, 28, [2, 2])
     assert resp == :ok
 
-    resp = Server.write_node_blank_array(state.pid, node_id, 29, [2, 2])
+    resp = Server.write_node_blank_array(state.pid, node_id, 30, [2, 2])
     assert resp == :ok
 
-    resp = Server.write_node_blank_array(state.pid, node_id, 30, [2, 2])
+    resp = Server.write_node_blank_array(state.pid, node_id, 31, [2, 2])
     assert resp == :ok
   end
 end

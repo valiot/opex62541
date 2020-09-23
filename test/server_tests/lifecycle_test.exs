@@ -29,8 +29,7 @@ defmodule ServerLifecycleTest do
             "http://opcfoundation.org/UA-Profile/Transport/uatcp-uasc-uabinary"
         }
       ],
-      "hostname" => "localhost",
-      "n_threads" => 1
+      "hostname" => "localhost"
     }
 
     response = Server.set_default_config(state.pid)

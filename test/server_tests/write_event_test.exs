@@ -80,6 +80,8 @@ defmodule ServerWriteEventTest do
       "timeout" => 50000
     }
 
+    Process.sleep(1000)
+
     :ok = Client.set_config(c_pid, config)
     :ok = Client.connect_by_url(c_pid, url: "opc.tcp://alde-Satellite-S845:4840/")
 

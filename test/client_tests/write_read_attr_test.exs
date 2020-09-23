@@ -169,9 +169,9 @@ defmodule ClientWriteAttrTest do
     assert c_response == {:error, "BadNodeClassInvalid"}
 
     new_browse_name = QualifiedName.new(ns_index: ns_index, name: "Var_N")
-    assert :ok == Client.write_node_browse_name(c_pid, node_id, new_browse_name)
+    assert {:error, "BadWriteNotSupported"} == Client.write_node_browse_name(c_pid, node_id, new_browse_name)
     c_response = Client.read_node_browse_name(c_pid, node_id)
-    assert c_response == {:ok, %QualifiedName{name: "Var_N", ns_index: 2}}
+    assert c_response == {:ok, %QualifiedName{name: "Var", ns_index: 1}}
 
     assert :ok == Client.write_node_display_name(c_pid, node_id, "en-US", "var")
     c_response = Client.read_node_display_name(c_pid, node_id)
@@ -377,13 +377,13 @@ defmodule ClientWriteAttrTest do
     # Server sending to elixir app callback
     assert_receive({node_id, 0x7fffffff}, 1000)
 
-    assert :ok == Client.write_node_value(c_pid, node_id, 29, {103.1, 103.0})
+    assert :ok == Client.write_node_value(c_pid, node_id, 30, {103.1, 103.0})
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, {103.0999984741211, 103.0}}
     # Server sending to elixir app callback
     assert_receive({node_id, {103.0999984741211, 103.0}}, 1000)
 
-    assert :ok == Client.write_node_value(c_pid, node_id, 30, 0x7fffffff)
+    assert :ok == Client.write_node_value(c_pid, node_id, 31, 0x7fffffff)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, 0x7fffffff}
     # Server sending to elixir app callback
@@ -401,8 +401,8 @@ defmodule ClientWriteAttrTest do
     c_response = Client.read_node_value_by_data_type(c_pid, node_id, 1)
     assert c_response == {:ok, 21}
 
-    assert :ok == Client.write_node_value(c_pid, node_id, 29, {103.1, 103.0})
-    c_response = Client.read_node_value_by_data_type(c_pid, node_id, 29)
+    assert :ok == Client.write_node_value(c_pid, node_id, 30, {103.1, 103.0})
+    c_response = Client.read_node_value_by_data_type(c_pid, node_id, 30)
     assert c_response == {:ok, {103.0999984741211, 103.0}}
   end
 end

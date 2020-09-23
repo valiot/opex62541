@@ -1015,7 +1015,7 @@ defmodule OpcUA.Server do
   end
 
   def handle_info({_port, {:exit_status, code}}, state) do
-    Logger.warn("(#{__MODULE__}) Error code: #{inspect(code)}.")
+    Logger.warn("(#{__MODULE__}) Error code: #{inspect({code, self()})}.")
     # retrying delay
     Process.sleep(@c_timeout)
     {:stop, :restart, state}

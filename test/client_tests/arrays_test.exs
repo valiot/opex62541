@@ -4,6 +4,7 @@ defmodule ClientArraysTest do
   alias OpcUA.{NodeId, Server, QualifiedName, Client}
 
   setup do
+    Process.sleep(300)
     {:ok, pid} = OpcUA.Server.start_link()
     Server.set_default_config(pid)
     {:ok, ns_index} = OpcUA.Server.add_namespace(pid, "Room")
@@ -51,6 +52,8 @@ defmodule ClientArraysTest do
     :ok = Server.write_node_blank_array(pid, requested_new_node_id, 11, [4])
 
     :ok = Server.start(pid)
+
+    Process.sleep(100)
 
     {:ok, c_pid} = Client.start_link()
     :ok = Client.set_config(c_pid)

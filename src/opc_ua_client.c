@@ -1063,9 +1063,11 @@ static struct request_handler request_handlers[] = {
     {"read_node_executable", handle_read_node_executable},
     {"read_node_user_executable", handle_read_node_user_executable},
     // lifecycle functions
-    {"get_client_state", handle_get_client_state},     
+    {"get_client_state", handle_get_client_state},
     {"set_client_config", handle_set_client_config},     
-    {"get_client_config", handle_get_client_config},
+    {"get_client_config", handle_get_client_config},     
+    {"get_secure_channel_state", handle_get_client_secure_channel_state},
+    {"get_session_state", handle_get_client_session_state},
     // encryption functions
     {"set_config_with_security_policies", handle_set_config_with_security_policies},
     // connections functions

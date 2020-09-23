@@ -150,7 +150,7 @@ defmodule OpcUA.Client do
         configuration = apply(__MODULE__, :configuration, [user_initial_params])
         monitored_items = apply(__MODULE__, :monitored_items, [user_initial_params])
 
-        #OpcUA.Client.set_config(c_pid)
+        OpcUA.Client.set_config(c_pid)
 
         # configutation = [config: list(), connection: list()]
         set_client_config(c_pid, configuration, :config)
@@ -312,6 +312,23 @@ defmodule OpcUA.Client do
   def get_state(pid) do
     GenServer.call(pid, {:config, {:get_state, nil}})
   end
+
+  @doc """
+    Gets the secure channel state of the OPC UA Client.
+  """
+  @spec get_secure_channel_state(GenServer.server()) :: {:ok, binary()} | {:error, term} | {:error, :einval}
+  def get_secure_channel_state(pid) do
+    GenServer.call(pid, {:config, {:get_secure_channel_state, nil}})
+  end
+
+  @doc """
+    Gets the session state of the OPC UA Client.
+  """
+  @spec get_session_state(GenServer.server()) :: {:ok, binary()} | {:error, term} | {:error, :einval}
+  def get_session_state(pid) do
+    GenServer.call(pid, {:config, {:get_session_state, nil}})
+  end
+
 
   @doc """
     Sets the OPC UA Client configuration.
@@ -604,6 +621,16 @@ defmodule OpcUA.Client do
     {:noreply, state}
   end
 
+  def handle_call({:config, {:get_secure_channel_state, nil}}, caller_info, state) do
+    call_port(state, :get_secure_channel_state, caller_info, nil)
+    {:noreply, state}
+  end
+
+  def handle_call({:config, {:get_session_state, nil}}, caller_info, state) do
+    call_port(state, :get_session_state, caller_info, nil)
+    {:noreply, state}
+  end
+
   def handle_call({:config, {:set_config, args}}, caller_info, state) do
     c_args =
       Enum.reduce(args, %{}, fn {key, value}, acc ->
@@ -841,17 +868,24 @@ defmodule OpcUA.Client do
     state
   end
 
+  defp handle_c_response({:get_secure_channel_state, caller_metadata, client_state}, state) do
+    str_client_state = charlist_to_string(client_state)
+    GenServer.reply(caller_metadata, str_client_state)
+    state
+  end
+
+  defp handle_c_response({:get_session_state, caller_metadata, client_state}, state) do
+    str_client_state = charlist_to_string(client_state)
+    GenServer.reply(caller_metadata, str_client_state)
+    state
+  end
+
   defp handle_c_response({:set_client_config, caller_metadata, c_response}, state) do
     GenServer.reply(caller_metadata, c_response)
     state
   end
 
   defp handle_c_response({:get_client_config, caller_metadata, c_response}, state) do
-    GenServer.reply(caller_metadata, c_response)
-    state
-  end
-
-  defp handle_c_response({:reset_client, caller_metadata, c_response}, state) do
     GenServer.reply(caller_metadata, c_response)
     state
   end

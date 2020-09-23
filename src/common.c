@@ -481,9 +481,8 @@ void encode_endpoint_description_struct(char *resp, int *resp_index, void *data,
 
 void encode_server_config(char *resp, int *resp_index, void *data)
 {   
-    ei_encode_map_header(resp, resp_index, 4);
-    ei_encode_binary(resp, resp_index, "n_threads", 9);
-    ei_encode_long(resp, resp_index,0);
+    ei_encode_map_header(resp, resp_index, 3);
+
     ei_encode_binary(resp, resp_index, "hostname", 8);
     if (((UA_ServerConfig *)data)->customHostname.length)
         ei_encode_binary(resp, resp_index,((UA_ServerConfig *)data)->customHostname.data, ((UA_ServerConfig *)data)->customHostname.length);
@@ -2655,6 +2654,8 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
+        //define UA_TYPES_CURRENCYUNITTYPE
+
         case UA_TYPES_XVTYPE:
         {
             if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
@@ -4038,6 +4039,7 @@ void handle_read_node_value_by_data_type(void *entity, bool entity_type, const c
         break;
     
         default:
+            errx(EXIT_FAILURE, ":handle_read_node_value_by_data_type requires a 2-tuple, term_size = %d", data_type);
             send_error_response("eagain");
         break;
     }

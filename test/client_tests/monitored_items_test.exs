@@ -4,6 +4,7 @@ defmodule ClientMonitoredItemsTest do
   alias OpcUA.{NodeId, Server, QualifiedName, Client}
 
   setup do
+    Process.sleep(750)
     {:ok, pid} = OpcUA.Server.start_link()
     Server.set_default_config(pid)
     {:ok, ns_index} = OpcUA.Server.add_namespace(pid, "Room")
@@ -70,15 +71,17 @@ defmodule ClientMonitoredItemsTest do
 
     :ok = Server.start(pid)
 
+    Process.sleep(250)
+
     {:ok, c_pid} = Client.start_link()
     :ok = Client.set_config(c_pid)
-    :ok = Client.connect_by_url(c_pid, url: "opc.tcp://localhost:4840/")
+
 
     %{c_pid: c_pid, ns_index: ns_index}
   end
 
   test "Add & delete a Subscription & Monitored Item", state do
-
+    :ok = Client.connect_by_url(state.c_pid, url: "opc.tcp://localhost:4840/")
     node_id_1 = NodeId.new(ns_index: state.ns_index, identifier_type: "string", identifier: "R1_TS1_Temperature")
     node_id_2 = NodeId.new(ns_index: state.ns_index, identifier_type: "string", identifier: "R1_TS1_Volts")
 

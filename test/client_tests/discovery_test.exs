@@ -15,7 +15,7 @@ defmodule ClientDiscoveryTest do
     %{c_pid: c_pid, s_pid: s_pid}
   end
 
-  test "Get Endpoint", %{c_pid: c_pid} do
+  test "Client Discovery functions", %{c_pid: c_pid} do
     desired =
       {:ok,
        [
@@ -33,9 +33,7 @@ defmodule ClientDiscoveryTest do
 
     c_response = Client.get_endpoints(c_pid, url)
     assert c_response == desired
-  end
 
-  test "Find Server", %{c_pid: c_pid} do
     desired =
       {:ok,
        [
@@ -53,9 +51,7 @@ defmodule ClientDiscoveryTest do
 
     c_response = Client.find_servers(c_pid, url)
     assert c_response == desired
-  end
 
-  test "Find Server on Network", %{c_pid: c_pid} do
     _desired =
       {:ok,
        [
@@ -79,5 +75,4 @@ defmodule ClientDiscoveryTest do
     #TODO: Add Server discovery
     assert c_response == {:error, "BadNotImplemented"}
   end
-
 end

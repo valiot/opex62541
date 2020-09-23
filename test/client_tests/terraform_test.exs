@@ -187,6 +187,7 @@ defmodule ClientTerraformTest do
     Application.put_env(:my_client, :monitored_items, @monitored_items)
 
     {:ok, _pid} = MyServer.start_link({self(), 103})
+    Process.sleep(1000)
     {:ok, c_pid} = MyClient.start_link({self(), 103})
 
     %{c_pid: c_pid}
@@ -201,7 +202,7 @@ defmodule ClientTerraformTest do
 
     assert :ok == Client.write_node_value(pid, node_id, 10, 103103.0)
 
-    Process.sleep(200)
+    Process.sleep(1000)
 
     assert :ok == Client.delete_monitored_item(pid, monitored_item_id: 1, subscription_id: 1)
 

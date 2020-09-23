@@ -9,47 +9,6 @@ defmodule ServerDiscoveryTest do
   # UA_Server_addPeriodicServerRegisterCallback (open62541.c:46613)
   # These memory leaks are managed by open62541 lib and there are freed by UA_Server_addPeriodicServerRegisterCallback with the right arguments.
 
-  test "Configure an LDS Server" do
-    {:ok, lds_pid} = Server.start_link()
-
-    :ok = Server.set_default_config(lds_pid)
-
-    assert :ok == Server.set_lds_config(lds_pid, "urn:opex62541.test.local_discovery_server")
-
-    assert :ok == Server.start(lds_pid)
-  end
-
-  test "Register to a Discovery Server" do
-    {:ok, lds_pid} = Server.start_link()
-    :ok = Server.set_default_config(lds_pid)
-    assert :ok == Server.set_lds_config(lds_pid, "urn:opex62541.test.local_discovery_server")
-    assert :ok == Server.start(lds_pid)
-
-    {:ok, s_pid} = Server.start_link()
-    :ok = Server.set_port(s_pid, 0)
-
-    assert :ok ==
-             Server.discovery_register(s_pid,
-               application_uri: "urn:opex62541.test.local_register_server",
-               server_name: "TestRegister",
-               endpoint: "opc.tcp://localhost:4840"
-             )
-
-    assert :ok == Server.start(s_pid)
-    # Registration time
-    Process.sleep(1500)
-    assert :ok == Server.discovery_unregister(s_pid)
-
-    assert :ok ==
-      Server.discovery_register(s_pid,
-        application_uri: "urn:opex62541.test.local_register_server",
-        server_name: "TestRegister",
-        endpoint: "opc.tcp://localhost:4840"
-      )
-
-    Process.sleep(1500)
-    assert :ok == Server.discovery_unregister(s_pid)
-  end
 
   test "Full Discovery Implementation" do
     {:ok, localhost} = :inet.gethostname()
@@ -143,5 +102,8 @@ defmodule ServerDiscoveryTest do
 
     c_response = Client.find_servers_on_network(c_pid, url)
     assert c_response == desired
+
+    Process.sleep(1500)
+    assert :ok == Server.discovery_unregister(s_pid)
   end
 end
