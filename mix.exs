@@ -8,7 +8,7 @@ defmodule Opex62541.MixProject do
       elixir: "~> 1.9",
       name: "opex62541",
       description: description(),
-      #package: package(),
+      package: package(),
       source_url: "https://github.com/valiot/opex62541",
       start_permanent: Mix.env() == :prod,
       compilers: [:cmake] ++ Mix.compilers(),
@@ -23,6 +23,22 @@ defmodule Opex62541.MixProject do
     "Elixir wrapper for open62541, An open source implementation of OPC UA (OPC Unified Architecture) aka IEC 62541."
   end
 
+  defp package() do
+    [
+      files: [
+        "lib",
+        "src",
+        "test",
+        "mix.exs",
+        "README.md",
+        "LICENSE"
+      ],
+      maintainers: ["valiot"],
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/valiot/opex62541"}
+    ]
+  end
+
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
@@ -34,8 +50,7 @@ defmodule Opex62541.MixProject do
   defp deps do
     [
       {:elixir_cmake, github: "valiot/elixir-cmake", branch: "multi-projects"},
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+      {:ex_doc, "~> 0.21", only: :dev, runtime: false}
     ]
   end
 end
