@@ -38,12 +38,7 @@ else("$ENV{OPEN62541_DOWNLOAD_VERSION}" STREQUAL "")
     set(DOWNLOAD_VERSION $ENV{OPEN62541_DOWNLOAD_VERSION})    
 endif("$ENV{OPEN62541_DOWNLOAD_VERSION}" STREQUAL "")
 
-if("${CMAKE_C_FLAGS}" STREQUAL "")
-    message(STATUS "Blank C Flags")
-    set(CMAKE_C_FLAGS " ")
-endif("${CMAKE_C_FLAGS}" STREQUAL "")
-
-string(REGEX REPLACE "-O([123s]|(fast)|( )|($))" " " CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+string(REGEX REPLACE "-O([123s]|(fast)|( )|($))" " " CMAKE_C_FLAGS  "${CMAKE_C_FLAGS}")
 
 # OPEX62541 SOURCE CODE BUILD
 # C compiler specific settings
@@ -66,7 +61,7 @@ else()
     set(BASE_FLAGS "${BASE_RELEASE_FLAGS}")
 endif()
 
-string(REGEX REPLACE "-O([123s]|(fast)|( )|($))" " " BASE_FLAGS ${BASE_FLAGS})
+string(REGEX REPLACE "-O([123s]|(fast)|( )|($))" " " BASE_FLAGS "${BASE_FLAGS}")
 
 set(BASE_C_FLAGS "-g -Wall -Wextra ${BASE_FLAGS} -lpthread")
 set(BASE_CXX_FLAGS "${BASE_FLAGS}")
