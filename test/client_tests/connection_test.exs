@@ -23,7 +23,7 @@ defmodule ClientConnectionTest do
   end
 
   test "Connect client by url", %{c_pid: c_pid} do
-    url = "opc.tcp://alde-Satellite-S845:4048/"
+    url = "opc.tcp://localhost:4048/"
 
     assert :ok == Client.connect_by_url(c_pid, url: url)
 
@@ -31,7 +31,7 @@ defmodule ClientConnectionTest do
   end
 
   test "Connect client by url, user, password", %{c_pid: c_pid} do
-    url = "opc.tcp://alde-Satellite-S845:4840/"
+    url = "opc.tcp://localhost:4840/"
     user = "alde103"
     password = "secret"
 
@@ -42,14 +42,14 @@ defmodule ClientConnectionTest do
   end
 
   test "Connect client with no session", %{c_pid: c_pid} do
-    url = "opc.tcp://alde-Satellite-S845:4048/"
+    url = "opc.tcp://localhost:4048/"
 
     assert :ok == Client.connect_no_session(c_pid, url: url)
     assert {:ok,  "Secure Channel"} == Client.get_state(c_pid)
   end
 
   test "Disconnects a client", %{c_pid: c_pid} do
-    url = "opc.tcp://alde-Satellite-S845:4048/"
+    url = "opc.tcp://localhost:4048/"
 
     assert :ok == Client.connect_by_url(c_pid, url: url)
     assert {:ok,  "Session"} == Client.get_state(c_pid)

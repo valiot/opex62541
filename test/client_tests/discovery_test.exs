@@ -36,11 +36,12 @@ defmodule ClientDiscoveryTest do
   end
 
   test "Find Server", %{c_pid: c_pid} do
+    {:ok, localhost} = :inet.gethostname()
     desired =
       {:ok,
        [
          %{
-           "discovery_url" => ["opc.tcp://alde-Satellite-S845:4840/"],
+           "discovery_url" => ["opc.tcp://#{localhost}:4840/"],
            "name" => "open62541-based OPC UA Application",
            "product_uri" => "http://open62541.org",
            "application_uri" => "urn:open62541.server.application",
@@ -61,15 +62,15 @@ defmodule ClientDiscoveryTest do
        [
          %{
            "capabilities" => ["LDS"],
-           "discovery_url" => "opc.tcp://alde-Satellite-S845:4840",
+           "discovery_url" => "opc.tcp://localhost:4840",
            "record_id" => 0,
-           "server_name" => "LDS-alde-Satellite-S845"
+           "server_name" => "LDS-localhost"
          },
          %{
            "capabilities" => ["NA"],
-           "discovery_url" => "opc.tcp://alde-Satellite-S845:38365",
+           "discovery_url" => "opc.tcp://localhost:38365",
            "record_id" => 2,
-           "server_name" => "Sample Server-alde-Satellite-S845"
+           "server_name" => "Sample Server-localhost"
          }
        ]}
 

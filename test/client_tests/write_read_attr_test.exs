@@ -103,7 +103,7 @@ defmodule ClientWriteAttrTest do
 
     {:ok, c_pid} = Client.start_link()
     :ok = Client.set_config(c_pid)
-    :ok = Client.connect_by_url(c_pid, url: "opc.tcp://alde-Satellite-S845:4840/")
+    :ok = Client.connect_by_url(c_pid, url: "opc.tcp://localhost:4840/")
 
     %{c_pid: c_pid, ns_index: ns_index}
   end

@@ -106,7 +106,7 @@ defmodule CClientWriteAttrTest do
     # state = :sys.get_state(c_pid)
     # :ok = Client.set_config(c_pid)
 
-    # url = "opc.tcp://alde-Satellite-S845:4840/"
+    # url = "opc.tcp://localhost:4840/"
     # :ok = Client.connect_by_url(c_pid, url: url)
 
     executable = :code.priv_dir(:opex62541) ++ '/opc_ua_client'
@@ -141,7 +141,7 @@ defmodule CClientWriteAttrTest do
           exit(:port_timed_out)
       end
 
-    msg = {:connect_client_by_url, "opc.tcp://alde-Satellite-S845:4840/"}
+    msg = {:connect_client_by_url, "opc.tcp://localhost:4840/"}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     _c_response =
@@ -1168,7 +1168,7 @@ defmodule CClientWriteAttrTest do
           exit(:port_timed_out)
       end
 
-    msg = {:connect_client_by_url, "opc.tcp://alde-Satellite-S845:4840/"}
+    msg = {:connect_client_by_url, "opc.tcp://localhost:4840/"}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     _c_response =

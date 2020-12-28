@@ -41,20 +41,21 @@ defmodule CClientDiscoveryTest do
   end
 
   test "Find server on network", state do
+    {:ok, localhost} = :inet.gethostname
     desired =
       {:ok,
        [
          %{
            "capabilities" => ["LDS"],
-           "discovery_url" => "opc.tcp://alde-Satellite-S845:4840",
+           "discovery_url" => "opc.tcp://#{localhost}:4840",
            "record_id" => 0,
-           "server_name" => "LDS-alde-Satellite-S845"
+           "server_name" => "LDS-#{localhost}"
          },
          %{
            "capabilities" => ["NA"],
-           "discovery_url" => "opc.tcp://alde-Satellite-S845:38365",
+           "discovery_url" => "opc.tcp://#{localhost}:38365",
            "record_id" => 2,
-           "server_name" => "Sample Server-alde-Satellite-S845"
+           "server_name" => "Sample Server-#{localhost}"
          }
        ]}
 
@@ -87,11 +88,12 @@ defmodule CClientDiscoveryTest do
   end
 
   test "Find Server", state do
+    {:ok, localhost} = :inet.gethostname
     desired =
       {:ok,
        [
          %{
-           "discovery_url" => ["opc.tcp://alde-Satellite-S845:4840/"],
+           "discovery_url" => ["opc.tcp://#{localhost}:4840/"],
            "application_uri" => "urn:open62541.example.local_discovery_server",
            "name" => "open62541-based OPC UA Application",
            "product_uri" => "http://open62541.org",
@@ -100,8 +102,8 @@ defmodule CClientDiscoveryTest do
          },
          %{
            "discovery_url" => [
-             "opc.tcp://alde-Satellite-S845:38365/",
-             "opc.tcp://alde-Satellite-S845:38365/"
+             "opc.tcp://#{localhost}:38365/",
+             "opc.tcp://#{localhost}:38365/"
            ],
            "application_uri" => "urn:open62541.example.server_register",
            "name" => "open62541-based OPC UA Application",

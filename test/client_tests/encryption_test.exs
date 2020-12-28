@@ -121,7 +121,7 @@ defmodule ClientEncryptionTest do
     ]
 
     assert :ok == Client.set_config_with_certs(c_pid, certs_config)
-    assert :ok == Client.connect_by_url(c_pid, url: "opc.tcp://alde-Satellite-S845:4840/")
+    assert :ok == Client.connect_by_url(c_pid, url: "opc.tcp://localhost:4840/")
   end
 
   test "Connect a Client to a Server with security policy (sign_and_encrypted)", %{c_pid: c_pid} do
@@ -132,7 +132,7 @@ defmodule ClientEncryptionTest do
     ]
 
     assert :ok == Client.set_config_with_certs(c_pid, certs_config)
-    assert :ok == Client.connect_by_url(c_pid, url: "opc.tcp://alde-Satellite-S845:4840/")
+    assert :ok == Client.connect_by_url(c_pid, url: "opc.tcp://localhost:4840/")
   end
 
   test "Read/write data from a Server with security policy", %{c_pid: c_pid, ns_index: ns_index} do
@@ -144,7 +144,7 @@ defmodule ClientEncryptionTest do
     ]
 
     assert :ok == Client.set_config_with_certs(c_pid, certs_config)
-    assert :ok == Client.connect_by_url(c_pid, url: "opc.tcp://alde-Satellite-S845:4840/")
+    assert :ok == Client.connect_by_url(c_pid, url: "opc.tcp://localhost:4840/")
 
     node_id = NodeId.new(ns_index: ns_index, identifier_type: "string", identifier: "R1_TS1_Temperature")
 
