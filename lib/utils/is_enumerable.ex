@@ -1,21 +1,5 @@
 defmodule IsEnumerable do
-  @moduledoc """
-    Makes your structures enumerable!
-    The `IsEnumerable` module injects `defimpl Enumerable` for your structs,
-    as structs are basically `maps` with special tag (member) `__struct__`.
-    The module hides the tag `__struct__` and delegates all other members
-    to map to be `Enumerable`.
-    ```
-    defmodule Bar do
-      use IsEnumerable
-      defstruct foo: "a", baz: 10
-    end
-    iex> import Bar
-    iex> Enum.map(%Bar{}, fn({k, v}) -> {k, v} end)
-    [baz: 10, foo: "a"]
-    ```
-  """
-
+  @moduledoc false
 
   defmacro __using__(_options) do
     quote do

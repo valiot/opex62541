@@ -1,18 +1,21 @@
 defmodule Opex62541.MixProject do
   use Mix.Project
 
+  @version "0.1.1"
+  @source_url "https://github.com/valiot/opex62541"
+
   def project do
     [
       app: :opex62541,
-      version: "0.1.0",
+      version: @version,
       elixir: "~> 1.9",
-      name: "opex62541",
+      name: "Opex62541",
+      docs: docs(),
       description: description(),
       package: package(),
-      source_url: "https://github.com/valiot/opex62541",
+      source_url: @source_url,
       start_permanent: Mix.env() == :prod,
       compilers: [:cmake] ++ Mix.compilers(),
-      docs: [extras: ["README.md"], main: "readme"],
       build_embedded: true,
       cmake_lists: "src/",
       deps: deps()
@@ -35,7 +38,65 @@ defmodule Opex62541.MixProject do
       ],
       maintainers: ["valiot"],
       licenses: ["MIT"],
-      links: %{"GitHub" => "https://github.com/valiot/opex62541"}
+      links: %{"GitHub" => @source_url}
+    ]
+  end
+
+  defp docs do
+    [
+      main: "readme",
+      source_ref: "v#{@version}",
+      canonical: "http://hexdocs.pm/opex62541",
+      logo: "docs/images/valiot-logo-blue.png",
+      extra_section: "Tutorials",
+      source_url: @source_url,
+      extras: extras(),
+      groups_for_extras: groups_for_extras(),
+      groups_for_modules: [
+        "OPC UA Stack": [
+          OpcUA.Client,
+          OpcUA.Server,
+          OpcUA.Common,
+        ],
+        "Information Modeling": [
+          OpcUA.BaseNodeAttrs,
+          OpcUA.VariableNode,
+          OpcUA.VariableTypeNode,
+          OpcUA.MethodNode,
+          OpcUA.ObjectNode,
+          OpcUA.ObjectTypeNode,
+          OpcUA.ReferenceTypeNode,
+          OpcUA.DataTypeNode,
+          OpcUA.ViewNode,
+          OpcUA.ReferenceNode,
+          OpcUA.MonitoredItem
+        ],
+        "Extra": [
+          OpcUA.ExpandedNodeId,
+          OpcUA.NodeId,
+          OpcUA.QualifiedName,
+          Opex62541 
+        ]
+      ]
+    ]
+  end
+
+  def extras() do
+    [
+      "README.md",
+      "CHANGELOG.md",
+      "docs/introduction/Introduction.md",
+      "docs/tutorials/Discovery.md",
+      "docs/tutorials/Information Manipulation.md",
+      "docs/tutorials/Lifecycle.md",
+      "docs/tutorials/Security.md",
+    ]
+  end
+
+  defp groups_for_extras() do
+    [
+      "Introduction": ~r/docs\/introduction\/.?/,
+      "Tutorials": ~r/docs\/tutorials\/.?/
     ]
   end
 
@@ -50,7 +111,7 @@ defmodule Opex62541.MixProject do
   defp deps do
     [
       {:elixir_cmake, github: "valiot/elixir-cmake", branch: "multi-projects"},
-      {:ex_doc, "~> 0.21", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.20", only: :dev, runtime: false},
     ]
   end
 end
