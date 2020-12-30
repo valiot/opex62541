@@ -1,3 +1,9 @@
+<br>
+<div align="center">
+  <img src="assets/valiot-logo-blue.png" alt="Valiot Logo" width="192" height="57" />
+</div>
+<br>
+
 # Opex62541
 
 Opex62541 is an Elixir wrapper for the [open62541](https://github.com/open62541/open62541) library; open62541 is an open source implementation of OPC UA (OPC Unified Architecture) aka IEC 62541 licensed under Mozilla Public License v2.0.
@@ -106,4 +112,4 @@ See [LICENSE](https://github.com/valiot/opex62541/blob/master/LICENSE).
 ## TODO
   * **Methods**
   * **OPC UA PubSub**
-  * **Better handling c code for the Client and Server common code**
+  * **Better C code handling for the Client and Server common code**

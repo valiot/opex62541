@@ -6,8 +6,9 @@ defmodule OpcUA.NodeId do
   An identifier for a node in the address space of an OPC UA Server.
 
   An OPC UA information model is made up of nodes and references between nodes.
-  Every node has a unique NodeId. NodeIds refer to a namespace with an additional
-  identifier value that can be an integer, a string, a guid or a bytestring.
+  Every node has a unique NodeId. NodeIds refer to a `namespace` with an additional
+  `identifier` value that can be an integer, a string, a guid or a bytestring depending on the selected
+  `identifier_type`.
   """
   alias OpcUA.NodeId
   @enforce_keys [:ns_index, :identifier_type, :identifier]

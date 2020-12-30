@@ -1,7 +1,5 @@
 # Introduction
 
-
-
 ## Content
 
 - [OPC UA](#opc-ua)
@@ -10,6 +8,7 @@
   - [Security](#security)
   - [Discovery](#discovery)
   - [Information Manipuation](#information-manipulation)
+  - [Black Magic](#information-manipulation)
 - [Development](#development)
 
 ## OPC UA

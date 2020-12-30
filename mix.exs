@@ -18,6 +18,7 @@ defmodule Opex62541.MixProject do
       compilers: [:cmake] ++ Mix.compilers(),
       build_embedded: true,
       cmake_lists: "src/",
+      aliases: aliases(),
       deps: deps()
     ]
   end
@@ -86,10 +87,11 @@ defmodule Opex62541.MixProject do
       "README.md",
       "CHANGELOG.md",
       "docs/introduction/Introduction.md",
-      "docs/tutorials/Discovery.md",
-      "docs/tutorials/Information Manipulation.md",
       "docs/tutorials/Lifecycle.md",
       "docs/tutorials/Security.md",
+      "docs/tutorials/Discovery.md",
+      "docs/tutorials/Information Manipulation.md",
+      "docs/tutorials/Terraform.md"
     ]
   end
 
@@ -98,6 +100,17 @@ defmodule Opex62541.MixProject do
       "Introduction": ~r/docs\/introduction\/.?/,
       "Tutorials": ~r/docs\/tutorials\/.?/
     ]
+  end
+
+  defp aliases do
+    [docs: ["docs", &copy_images/1]]
+  end
+
+  defp copy_images(_) do
+    File.ls!("docs/images")
+    |> Enum.each(fn x ->
+      File.cp!("docs/images/#{x}", "doc/assets/#{x}")
+    end)
   end
 
   # Run "mix help compile.app" to learn about applications.
@@ -111,7 +124,7 @@ defmodule Opex62541.MixProject do
   defp deps do
     [
       {:elixir_cmake, github: "valiot/elixir-cmake", branch: "multi-projects"},
-      {:ex_doc, "~> 0.20", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.22", only: :dev, runtime: false},
     ]
   end
 end
