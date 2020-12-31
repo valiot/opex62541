@@ -20,7 +20,7 @@ defmodule OpcUA.NodeId do
             identifier: nil
 
   @doc """
-  Creates an structure for a node in the address space of an OPC UA Server.
+  Creates a structure for a node in the address space of an OPC UA Server.
   """
   @spec new(list()) :: %NodeId{}
   def new(ns_index: ns_index, identifier_type: id_type, identifier: identifier) when is_integer(ns_index) and id_type in @identifier_types do
@@ -58,7 +58,7 @@ defmodule OpcUA.ExpandedNodeId do
             server_index: nil
 
   @doc """
-  Creates an structure for an expanded node in the address space of an OPC UA Server.
+  Creates a structure for an expanded node in the address space of an OPC UA Server.
   """
   @spec new(list()) :: %ExpandedNodeId{}
   def new(node_id: %NodeId{} = node_id, name_space_uri: name_space_uri, server_index: server_index) when is_binary(name_space_uri) and is_integer(server_index) do

@@ -12,7 +12,7 @@ defmodule OpcUA.MonitoredItem do
   defstruct args: nil
 
   @doc """
-  Creates an structure for an Monitored Item of an existing node in a Server.
+  Creates a structure for an Monitored Item of an existing node in a Server.
   The following options must be filled:
     * `:monitored_item` -> %NodeId().
     * `:sampling_time` -> double().

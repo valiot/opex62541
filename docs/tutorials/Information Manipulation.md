@@ -150,7 +150,7 @@ node_id = NodeId.new(ns_index: ns_index, identifier_type: "string", identifier: 
 
 ### Write Event Nodes
 
-Each time a node value is updated, the Server module sends a message to the parent process in de form of{node_id, value}
+Each time a node value is updated, the Server module sends a message to the parent process in de form of {node_id, value}
 
 Therefore, this feature can be handled by a module, as illustrated in the following example:
 

@@ -139,7 +139,7 @@ password = "103adle"
 
 #### No Session
 
-There may be situations where a session is not required, for those cases use `connect_no_session`
+There may be situations where a session is not required, for those cases use `connect_no_session/2`
 
 ```elixir
 url = "opc.tcp://localhost:4048/"
