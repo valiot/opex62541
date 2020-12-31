@@ -159,13 +159,15 @@ Client.find_servers(c_pid, url)
 Finally to get the server endpoints, you can use the `get_endpoints/2` function.
 
 ```elixir
+
+url = "opc.tcp://localhost:4048"
 Client.get_endpoints(c_pid, url)
 
 # this response may change depending on the host
 {:ok,
   [
     %{
-      "endpoint_url" => "opc.tcp://localhost:4050",
+      "endpoint_url" => "opc.tcp://localhost:4048",
       "security_level" => 1,
       "security_mode" => "none",
       "security_profile_uri" => "http://opcfoundation.org/UA/SecurityPolicy#None",
