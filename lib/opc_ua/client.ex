@@ -16,7 +16,7 @@ defmodule OpcUA.Client do
   `configuration/1` and `monitored_items/1` to autoset the configuration and subscription items. It also helps you to
   handle Client's "subscription" events (monitorItems) by overwriting `handle_subscription/2` callback.
 
-  The following example shows a module that takes its configuration from the enviroment (see `test/client_tests/terraform_test.exs`):
+  The following example shows a module that takes its configuration from the environment (see `test/client_tests/terraform_test.exs`):
 
   ```elixir
   defmodule MyClient do

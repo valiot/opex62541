@@ -109,7 +109,7 @@ url = "opc.tcp://localhost:4050/"
 
 Client.find_servers_on_network(c_pid, url)
 
-# this response may change depending on the host
+# this response may change depending your computer
 {:ok,
  [
    %{
@@ -131,7 +131,7 @@ If you require more detailed information you can use the `find_server/2` functio
 ```elixir
 Client.find_servers(c_pid, url)
 
-# this response may change depending on the host
+# this response may change depending your computer
 {:ok,
   [
     %{
@@ -163,7 +163,7 @@ Finally to get the server endpoints, you can use the `get_endpoints/2` function.
 url = "opc.tcp://localhost:4048"
 Client.get_endpoints(c_pid, url)
 
-# this response may change depending on the host
+# this response may change depending your computer
 {:ok,
   [
     %{

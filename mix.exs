@@ -91,7 +91,7 @@ defmodule Opex62541.MixProject do
       "docs/tutorials/Security.md",
       "docs/tutorials/Discovery.md",
       "docs/tutorials/Information Manipulation.md",
-      "docs/tutorials/Project Integration.md"
+      "docs/tutorials/Elixir Integration.md"
     ]
   end
 
