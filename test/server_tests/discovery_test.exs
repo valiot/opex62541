@@ -81,7 +81,7 @@ defmodule ServerDiscoveryTest do
       {:ok,
        [
          %{
-           "endpoint_url" => "opc.tcp://localhost:4050",
+           "endpoint_url" => "opc.tcp://localhost:4048",
            "security_level" => 1,
            "security_mode" => "none",
            "security_profile_uri" => "http://opcfoundation.org/UA/SecurityPolicy#None",
@@ -90,7 +90,7 @@ defmodule ServerDiscoveryTest do
          }
        ]}
 
-    url = "opc.tcp://localhost:4050"
+    url = "opc.tcp://localhost:4048"
 
     c_response = Client.get_endpoints(c_pid, url)
     assert c_response == desired
@@ -118,6 +118,8 @@ defmodule ServerDiscoveryTest do
            "type" => "server"
          }
        ]}
+
+    url = "opc.tcp://localhost:4050"
 
     c_response = Client.find_servers(c_pid, url)
     assert c_response == desired
