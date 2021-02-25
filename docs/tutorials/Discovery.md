@@ -23,7 +23,7 @@ Assuming that an OPC UA Server has been created and configured as shown in [Life
 
 ## LDS Configuration
 
-To spawn a LDS server, follow these steps.
+To spawn an LDS server, follow these steps.
 
 ```elixir
 alias OpcUA.Server
@@ -36,11 +36,11 @@ application_uri = "urn:opex62541.test.local_discovery_server"
 :ok = Server.set_lds_config(lds_pid, application_uri)
 ```
 
-**Note**: LDS Servers only supports the Discovery Services, therefore, it cannot be used in combination with any other capability.
+**Note**: LDS Servers only supports the Discovery Services. Therefore, it cannot be used in combination with any other capability.
 
 ## Registration
 
-The LDS maintains a list of available servers which may be used by servers to announce their existence to clients. Any other server can register with this server using `discovery_register/2` function as shwon bellow:
+The LDS maintains a list of available servers which servers may use to announce their existence to clients. Any other server can register with this server using `discovery_register/2` function as shown below:
 
 ```elixir
 alias OpcUA.Server
@@ -56,7 +56,7 @@ application_uri = "urn:opex62541.test.local_register_server"
         endpoint: "opc.tcp://localhost:4840"
       )
 ```
-where the `endpoint` option represent the LDS endpoint and the `server_name` is the way the registered server will be visible in the network.
+The `endpoint` option represents the LDS endpoint, and the `server_name` is how the registered server will be visible in the network.
 
 The `discovery_unregister` can be used to delete the desired server from the LDS server.
 
@@ -66,7 +66,7 @@ The `discovery_unregister` can be used to delete the desired server from the LDS
 
 ## Client
 
-Clients may request a list of all available servers from the discovery server (LDS) and then use the GetEndpoints service to get connection information from a server.
+Clients may request a list of all available servers from the discovery server (LDS) and then use the GetEndpoints service to get the connection information from a server.
 
 Assuming you have an LDS server with a registered server
 
@@ -96,7 +96,7 @@ Process.sleep(1500)
 
 ### Scanning Network
 
-To discover all OPC UA Server in the network you can use `find_servers_on_network/2`,
+To discover all OPC UA Server in the network, you can use `find_servers_on_network/2`,
 
 ```elixir
 alias OpcUA.Client
@@ -109,7 +109,7 @@ url = "opc.tcp://localhost:4050/"
 
 Client.find_servers_on_network(c_pid, url)
 
-# this response may change depending your computer
+# this response may change depending on your computer
 {:ok,
  [
    %{
@@ -126,12 +126,12 @@ Client.find_servers_on_network(c_pid, url)
    }
  ]}
 ```
-If you require more detailed information you can use the `find_server/2` function
+If you require more detailed information, you can use the `find_server/2` function.
 
 ```elixir
 Client.find_servers(c_pid, url)
 
-# this response may change depending your computer
+# this response may change depending on your computer
 {:ok,
   [
     %{
@@ -156,14 +156,14 @@ Client.find_servers(c_pid, url)
   ]}
 ```
 
-Finally to get the server endpoints, you can use the `get_endpoints/2` function.
+Finally, to get the server endpoints, you can use the `get_endpoints/2` function.
 
 ```elixir
 
 url = "opc.tcp://localhost:4048"
 Client.get_endpoints(c_pid, url)
 
-# this response may change depending your computer
+# this response may change depending on your computer
 {:ok,
   [
     %{

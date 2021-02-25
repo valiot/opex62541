@@ -1,6 +1,6 @@
 # Opex62541
 
-Opex62541 is an Elixir wrapper for the [open62541](https://github.com/open62541/open62541) library; open62541 is an open source implementation of OPC UA (OPC Unified Architecture) aka IEC 62541 licensed under Mozilla Public License v2.0.
+Opex62541 is an Elixir wrapper for the [open62541](https://github.com/open62541/open62541) library; open62541 is an open-source implementation of OPC UA (OPC Unified Architecture) aka IEC 62541 licensed under Mozilla Public License v2.0.
 
 ## Content
 
@@ -25,14 +25,14 @@ This library implements the following features from [open62541](https://github.c
   - Access control for individual nodes
   - Support for adding and removing nodes and references also at runtime.
   - Support for inheritance and instantiation of object and variable-types.
-  - Support for subscriptions/monitoreditems.
+  - Support for subscriptions/monitored items.
 - Client
   - All OPC UA services supported
-  - Support for subscriptions/monitoreditems.
+  - Support for subscriptions/monitored items.
 
 ## Installation
 
-The package can be installed by adding `opex62541` to your list of dependencies in `mix.exs`:
+To install this package, add `opex62541` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
@@ -45,7 +45,7 @@ end
 ### Compatibility
 
 Opex62541 was developed for open62541 "1.0.0" with Elixir 1.10.0. It was tested on:
-  * Ubuntu 18.04 
+  * Ubuntu 18.04
   * Raspbian OS (Raspberry Pi 3B+)
   * Nerves (Raspberry Pi 3B+)
 
@@ -75,7 +75,7 @@ export MANUAL_BUILD=true
 
 export OPEN62541_DOWNLOAD_VERSION=v1.0.1
 ```
-The open62541 project uses CMake to manage the build options, for code generation and to generate build projects for the different systems and IDEs. To overwrite the default options use `OPEN62541_BUILD_ARGS` as follows:
+The open62541 project uses CMake to manage the build options for code generation and to generate build projects for the different systems and IDEs. To overwrite the default options, use `OPEN62541_BUILD_ARGS` as follows:
 
 ```bash
 export OPEN62541_BUILD_ARGS='-DCMAKE_BUILD_TYPE=Release -DUA_NAMESPACE_ZERO=MINIMAL'
@@ -88,13 +88,13 @@ Default values for `OPEN62541_BUILD_ARGS` are `-DBUILD_SHARED_LIBS=ON -DCMAKE_BU
 For detailed documentation and tutorials refer to [hexdocs.pm](https://hexdocs.pm/opex62541).
 
 ## Contributing
-  * Fork our repository on github.
+  * Fork our repository on Github.
   * Fix or add what is needed.
   * Commit to your repository
-  * Issue a github Pull Request.
+  * Issue a Github Pull Request.
   * Fill the pull request template.
 
-If you wish to clone this repository use:
+If you wish to clone this repository, use:
 ```
 git clone https://github.com/valiot/opex62541.git
 ```

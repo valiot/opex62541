@@ -17,9 +17,9 @@ This tutorial will cover the following topics:
 
 ## Server
 
-The code in this example shows the three parts for OPC UA Server lifecycle management: Creating a Server, set configuration Server and running the Server. Basic use of the [Server](https://hexdocs.pm/opex62541/OpcUA.Server.html) module.
+The code in this example shows the three parts for OPC UA Server lifecycle management: Creating a Server, set configuration Server, and running the Server. Basic use of the [Server](https://hexdocs.pm/opex62541/OpcUA.Server.html) module.
 
-The OPC UA Server is based on a `GenServer`, therefore it can be spawn a new server by using `start_link`.
+The OPC UA Server is based on a `GenServer`. Therefore it can spawn a new server by using `start_link`.
 
 ```elixir
 alias OpcUA.Server
@@ -41,7 +41,7 @@ By default the `hostname` is given by the localhost, however it is possible to o
 ```
 **Note**: Be aware of DNS configuration.
 
-It is also possible to change the default port as follows
+It is also possible to change the default port as follows.
 
 ```elixir
 :ok = Server.set_port(server_pid, 4040)
@@ -57,13 +57,13 @@ Security is a fundamental aspect of OPC UA. It is possible to restrict access to
 :ok = Server.set_users(server_pid, [{"alde103", "103alde"}, {"pedro", "ordep"}])
 ```
 
-In this example we declare two users (alde103 and pedro) with their respective passwords.
+In this example, we declare two users (alde103 and pedro) with their respective passwords.
 
-**Note**: This is not the best way to secure your OPC UA Server, refer to [Security](https://hexdocs.pm/opex62541/doc/security.html) tutorial for a better approach.
+**Note**: This is not the best way to secure your OPC UA Server. Refer to [Security](https://hexdocs.pm/opex62541/doc/security.html) tutorial for a better approach.
 
-### Start / Stop 
+### Start / Stop
 
-At this point the server will not accept requests yet, use the `start/1` function to explicitly start the server.
+At this point, the server will not accept requests yet. Use the `start/1` function to start the server explicitly.
 
 ```elixir
 :ok = Server.start(server_pid)
@@ -77,9 +77,9 @@ The Server can be stopped with the `stop_server/1` function.
 
 ## Client
 
-The code in this example shows the three parts for OPC UA Client lifecycle management: creating, configuring and connecting a client to a server. Basic use of the [Client](https://hexdocs.pm/opex62541/OpcUA.Client.html) module.
+The code in this example shows the three parts for OPC UA Client lifecycle management: creating, configuring, and connecting a client to a server. Basic use of the [Client](https://hexdocs.pm/opex62541/OpcUA.Client.html) module.
 
-The OPC UA Client is based on a `GenServer`, therefore it can be spawn a new server by using `start_link`.
+The OPC UA Client is based on a `GenServer`. Therefore it can spawn a new server by using `start_link`.
 
 ```elixir
 alias OpcUA.Client
@@ -128,7 +128,7 @@ url = "opc.tcp://localhost:4048/"
 
 #### By Username
 
-If the Server has some user restriction, the client must provide the username and password to access the Server, if this is your case use `connect_by_username/2`
+If the Server has some user restriction, the client must provide the username and password to access the Server. If this is your case, use `connect_by_username/2`
 
 ```elixir
 url = "opc.tcp://localhost:4840/"
@@ -139,7 +139,7 @@ password = "103adle"
 
 #### No Session
 
-There may be situations where a session is not required, for those cases use `connect_no_session/2`
+There may be situations where a session is not required. For those cases use `connect_no_session/2`
 
 ```elixir
 url = "opc.tcp://localhost:4048/"

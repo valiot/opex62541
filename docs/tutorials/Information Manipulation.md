@@ -5,7 +5,7 @@ This tutorial will cover the following topics:
 ## Content
 
 - [Information Model](#information-model)
-- [Server](#server)  
+- [Server](#server)
   - [Address Space](#address-space)
   - [Nodes](#nodes)
     - [Object Nodes](#object-nodes)
@@ -21,14 +21,14 @@ This tutorial will cover the following topics:
 
 ### Information Model
 
-The information model is an abstract representation of the real objects that you need to manage in your application. The same pieces of physical equipment and the associated pieces of information can be modeled in different ways, according to the requirements of the specific process and environment.
+The information model is an abstract representation of the real objects that you need to manage in your application. The same pieces of physical equipment and the associated pieces of information can be modeled in different ways according to the specific process and environment requirements.
 
 The basic principles of information modeling in OPC UA are as follows:
 * Use of object-oriented techniques, including hierarchies and inheritance.
 * The same mechanism is used to access the types and the instances.
 * The hierarchies of the data types and the links between the nodes are extendable.
 * There are no limitations on how to model information.
-* Information modeling is always placed on the server side.
+* Information modeling is always placed on the server-side.
 
 ## Server
 
@@ -36,7 +36,7 @@ Assuming that an OPC UA Server has been created and configured as shown in [Life
 
 ### Address Space
 
-The set of objects and related information that an OPC UA server makes available to the clients is the address space. The address space of the OPC UA is a set of nodes that are connected by references. Each node has properties, which are called attributes. In this library we are using one namespace per address space, so we will use namespace to refer a address space.
+The set of objects and related information that an OPC UA server makes available to the clients is the address space. The address space of the OPC UA is a set of nodes that are connected by references. Each node has properties, which are called attributes. In this library, we use one namespace per address space, so we will use the namespace to refer to an address space.
 
 To add a new namespace to your server use `add_namespace/2`:
 
@@ -45,7 +45,7 @@ alias OpcUA.{NodeId, QualifiedName, Server}
 {:ok, ns_index} = Server.add_namespace(server_pid, "Room")
 ```
 
-This functions takes a configured OPC UA Server PID and an identifier as a unique string, it will return an index to be used as a reference to create the related nodes.
+These functions take a configured OPC UA Server PID and an identifier as a unique string. It will return an index to be used as a reference to create the related nodes.
 
 ### Nodes
 
@@ -54,15 +54,15 @@ In OPC UA, every entity in the address space is a node. To uniquely identify a N
 ```elixir
 requested_new_node_id = NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 1000)
 ```
-In this example we have created a NodeId corresponding to `i=1000` (namespace index 0, numeric identifier, id 1000, according to OPC UA XML Schema)
+In this example, we have created a NodeId corresponding to `i=1000` (namespace index 0, numeric identifier, id 1000, according to OPC UA XML Schema)
 
-**Note**: You can use the [zero namespace index](https://github.com/OPCFoundation/UA-Nodeset/blob/v1.04/Schema/NodeIds.csv) when you are refering to builtin nodes.
+**Note**: You can use the [zero namespace index](https://github.com/OPCFoundation/UA-Nodeset/blob/v1.04/Schema/NodeIds.csv) when you are referring to builtin nodes.
 
-There are eight standard node classes: variable, object, method, view, data type, variable type, object type, and reference type, however for this tutorial we are going to describe an example of how to define object nodes and variable nodes.
+There are eight standard node classes: variable, object, method, view, data type, variable type, object type, and reference type. However, for this tutorial, we will describe an example of how to define object nodes and variable nodes.
 
-**Note**: Currently only method node is not supported yet.
+**Note**: Currently, only the method node is not supported yet.
 
-For this tutorial, we will model a temperature sensor by creating an object node of the sensor and a variable node that will represent the temperature.
+For this tutorial, we will model a temperature sensor by creating an object node of the sensor and a variable node representing the temperature.
 
 #### Object Nodes
 
@@ -114,7 +114,7 @@ For this case, we are define an object node as a `BaseDataVariableType` defined 
 
 ### Read/Write Nodes
 
-Depending on the type of node (object, variable, reference, etc.) its [attributes](https://documentation.unified-automation.com/uasdkhp/1.0.0/html/_l2_ua_node_classes.html) can change, when the node is created its attributes will have a default value, however you can read and write its value by using the [Server](https://hexdocs.pm/opex62541/OpcUA.Server.html) module. The following example changes the access level and the value of the node.
+Depending on the type of node (object, variable, reference, etc.), it's [attributes](https://documentation.unified-automation.com/uasdkhp/1.0.0/html/_l2_ua_node_classes.html) can change. When the node is created, its attributes will have a default value. However, you can read and write its value using the [Server](https://hexdocs.pm/opex62541/OpcUA.Server.html) module. The following example changes the access level and the value of the node.
 
 ```elixir
 node_id = NodeId.new(ns_index: ns_index, identifier_type: "string", identifier: "R1_TS1_Temperature")
@@ -130,7 +130,7 @@ node_id = NodeId.new(ns_index: ns_index, identifier_type: "string", identifier: 
 {:ok, 103} = Server.read_node_value(server_pid, node_id)
 ```
 
-First we set the `access_level` to `CurrentWrite` and `CurrentRead` (3), therefore the client has access to its value, then we change the value from a `Boolean` (0) to a `Byte` (1) value (this is possible thanks to the variable wildcard that we use before).
+First, we set the `access_level` to `CurrentWrite` and `CurrentRead` (3). Therefore the client has access to its value. Then we change the value from a `Boolean` (0) to a `Byte` (1) value (this is possible thanks to the variable wildcard that we use before).
 
 **Note**: It is recommended to change the writing mask and the access level node attributes.
 
@@ -138,7 +138,7 @@ The `data_type` and `value` argument of `write_node_value/4` must be congruent, 
 
 ### Monitored Items
 
-Clients can subscribe to variable nodes through `monitored items`, a monitored item is used to request a OPC UA server for notifications of each change of value in a specific node.
+Clients can subscribe to variable nodes through `monitored items`. A monitored item is used to request an OPC UA server for notifications of each change of value in a specific node.
 
 ```elixir
 node_id = NodeId.new(ns_index: ns_index, identifier_type: "string", identifier: "R1_TS1_Temperature")
@@ -157,7 +157,7 @@ Therefore, this feature can be handled by a module, as illustrated in the follow
 ```elixir
 defmodule MyServer do
   use OpcUA.Server
-  require Lgger
+  require Logger
 
   def handle_write({node_id, value}, state) do
     Logger.debug("Value changed #{value} in #{node_id} Node")
@@ -172,23 +172,23 @@ More examples can be found in the source code [tests](https://github.com/valiot/
 
 ## Client
 
-Assuming that an OPC UA Client has been created, configured and connected to an OPC UA Server as shown in [Lifecycle](https://hexdocs.pm/opex62541/doc/lifecycle.html) tutorial.
+Assuming that an OPC UA Client has been created, configured, and connected to an OPC UA Server as shown in [Lifecycle](https://hexdocs.pm/opex62541/doc/lifecycle.html) tutorial.
 
 ### Read/Write Node
 
-You can read and write its atribute value by using the [Client](https://hexdocs.pm/opex62541/OpcUA.Client.html) module. The following example changes the value of the node.
+You can read and write its attribute value by using the [Client](https://hexdocs.pm/opex62541/OpcUA.Client.html) module. The following example changes the value of the node.
 
 ```elixir
 node_id = NodeId.new(ns_index: ns_index, identifier_type: "string", identifier: "R1_TS1_Temperature")
-# Writes a Byte 
+# Writes a Byte
 :ok = Client.write_node_value(client_pid, node_id, 1, 21)
-# Reads a Byte 
+# Reads a Byte
 {:ok, 21} = Client.read_node_value(client_pid, node_id)
 ```
 
 ### Monitored Item
 
-To request a monitored item to a server, the client must first request a subscription request, then th client must request the monitored item 
+To request a monitored item to a server, the client must first request a subscription request. Then the client must request the monitored item.
 
 ```elixir
 node_id = NodeId.new(ns_index: ns_index, identifier_type: "string", identifier: "R1_TS1_Temperature")
