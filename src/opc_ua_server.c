@@ -1091,7 +1091,7 @@ static void handle_elixir_request(const char *req, void *cookie)
     //execute all handler
     for (struct request_handler *rh = request_handlers; rh->name != NULL; rh++) {
         if (strcmp(cmd, rh->name) == 0) {
-            decode_caller_metadata(req, &req_index, cmd);
+            handle_caller_metadata(req, &req_index, cmd);
             rh->handler(server, 0, req, &req_index);
             free_caller_metadata();
             return;

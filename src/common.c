@@ -332,9 +332,15 @@ UA_QualifiedName assemble_qualified_name(const char *req, int *req_index)
 void encode_caller_metadata(char *req, int *req_index)
 {   
     ei_encode_atom(req, req_index, caller_function);
-    ei_encode_tuple_header(req, req_index, 2);
-    ei_encode_pid(req, req_index, caller_pid);
-    ei_encode_ref(req, req_index, caller_ref);
+    
+    //Add untouched caller_metadata.
+    int caller_metadata_start_index = *req_index;
+
+    for(int index = 0; index < caller_metadata_size; index ++)
+    {
+        req[*req_index] = caller_metadata_ptr[index];
+        *req_index = *req_index + 1;
+    }
 }
 
 
@@ -934,32 +940,29 @@ void encode_data_response(char *resp, int *resp_index, void *data, int data_type
 /* Elixir Message decoders */
 /***************************/
 
-void decode_caller_metadata(const char *req, int *req_index, const char* cmd)
+void handle_caller_metadata(const char *req, int *req_index, const char* cmd)
 {   
-    int term_type;
-    int term_size;
-    int tuple_arity;
-
-    if(ei_decode_tuple_header(req, req_index, &tuple_arity) < 0 || tuple_arity != 2)
-            errx(EXIT_FAILURE, "caller metadata requires a 2-tuple, term_size = %d", tuple_arity);
-
     caller_function = malloc(strlen(cmd) + 1);
     strcpy(caller_function, cmd);
-    
-    caller_pid = malloc(sizeof(erlang_pid));
-    if (ei_decode_pid(req, req_index, caller_pid) < 0)
-        errx(EXIT_FAILURE, "Expecting pid");
 
-    caller_ref = malloc(sizeof(erlang_ref));
-    if (ei_decode_ref(req, req_index, caller_ref) < 0)
-        errx(EXIT_FAILURE, "Expecting ref");
+    caller_metadata_ptr = (char *)req;
+    int caller_metadata_start_index = *req_index;
+
+    if (ei_skip_term(req, req_index) < 0)
+        errx(EXIT_FAILURE, "Expecting caller metadata");
+
+    caller_metadata_size = *req_index - caller_metadata_start_index;
+
+    caller_metadata_ptr = (char *) malloc(caller_metadata_size);
+
+    for(int index = 0; index < caller_metadata_size; index ++)
+        caller_metadata_ptr[index] = req[caller_metadata_start_index + index];
 }
 
 void free_caller_metadata()
 {  
     free(caller_function);
-    free(caller_pid); 
-    free(caller_ref);
+    free(caller_metadata_ptr);
 }
 
 /***************************/
