@@ -1,7 +1,6 @@
 defmodule ClientLifecycleTest do
   use ExUnit.Case
 
-  #alias OpcUA.{NodeId, Server, QualifiedName}
   alias OpcUA.Client
 
   setup do

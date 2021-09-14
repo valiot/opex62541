@@ -5,7 +5,7 @@ defmodule ClientTerraformTest do
 
   @configuration_server [
     config: [
-      port: 4041,
+      port: 4006,
       users: [{"alde103", "secret"}]
     ]
   ]
@@ -95,7 +95,7 @@ defmodule ClientTerraformTest do
     ],
     conn: [
       by_username: [
-        url: "opc.tcp://#{localhost}:4041/",
+        url: "opc.tcp://#{localhost}:4006/",
         user: "alde103",
         password: "secret"
       ]

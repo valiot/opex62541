@@ -39,8 +39,8 @@ alias OpcUA.Server
 
 certs_config = [
   port: 4840,
-  certificate: File.read!("./certs/server_cert.der"),
-  private_key: File.read!("./certs/server_key.der")
+  certificate: File.read!("./test/demo_certs/server_cert.der"),
+  private_key: File.read!("./test/demo_certs/server_key.der")
 ]
 
 :ok = Server.set_default_config_with_certs(server_pid, certs_config)
@@ -74,7 +74,7 @@ The following code adds the security policy ``SecurityPolicy#None`` to the serve
 
 ```elixir
 certs_info = [
-  certificate: File.read!("./certs/server_cert.der")
+  certificate: File.read!("./test/demo_certs/server_cert.der")
 ]
 
 :ok = Server.add_none_policy(server_pid, certs_info)
@@ -84,8 +84,8 @@ To add the security policy ``SecurityPolicy#Basic128Rsa15`` to the server use th
 
 ```elixir
 certs_info = [
-  certificate: File.read!("./certs/server_cert.der"),
-  private_key: File.read!("./certs/server_key.der")
+  certificate: File.read!("./test/demo_certs/server_cert.der"),
+  private_key: File.read!("./test/demo_certs/server_key.der")
 ]
 
 :ok = Server.add_basic128rsa15_policy(server_pid, certs_info)
@@ -95,8 +95,8 @@ the next code adds the security policy ``SecurityPolicy#Basic256`` to the server
 
 ```elixir
 certs_info = [
-  certificate: File.read!("./certs/server_cert.der"),
-  private_key: File.read!("./certs/server_key.der")
+  certificate: File.read!("./test/demo_certs/server_cert.der"),
+  private_key: File.read!("./test/demo_certs/server_key.der")
 ]
 
 :ok = Server.add_basic256_policy(server_pid, certs_info)
@@ -106,8 +106,8 @@ the security policy ``SecurityPolicy#Basic256Sha256`` can be added to the server
 
 ```elixir
 certs_info = [
-  certificate: File.read!("./certs/server_cert.der"),
-  private_key: File.read!("./certs/server_key.der")
+  certificate: File.read!("./test/demo_certs/server_cert.der"),
+  private_key: File.read!("./test/demo_certs/server_key.der")
 ]
 
 :ok = Server.add_basic256sha256_policy(server_pid, certs_info)
@@ -117,8 +117,8 @@ Using `add_all_policies/2` adds all supported security policies and sets up cert
 
 ```elixir
 certs_info = [
-  certificate: File.read!("./certs/server_cert.der"),
-  private_key: File.read!("./certs/server_key.der")
+  certificate: File.read!("./test/demo_certs/server_cert.der"),
+  private_key: File.read!("./test/demo_certs/server_key.der")
 ]
 
 :ok = Server.add_all_policies(server_pid, certs_info)
@@ -137,8 +137,8 @@ Assuming that an OPC UA Client has been created as shown in [Lifecycle](https://
 ```elixir
 certs_config = [
   security_mode: 2,
-  certificate: File.read!("./certs/client_cert.der"),
-  private_key: File.read!("./certs/client_key.der")
+  certificate: File.read!("./test/demo_certs/client_cert.der"),
+  private_key: File.read!("./test/demo_certs/client_key.der")
 ]
 
 :ok = Client.set_config_with_certs(client_pid, certs_config)

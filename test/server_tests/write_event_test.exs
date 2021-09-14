@@ -10,6 +10,7 @@ defmodule ServerWriteEventTest do
 
     # Use the `init` function to configure your server.
     def init({parent_pid, 103}, s_pid) do
+      :ok = Server.set_port(s_pid, 4024)
 
       {:ok, _ns_index} = Server.add_namespace(s_pid, "Room")
 
@@ -81,7 +82,7 @@ defmodule ServerWriteEventTest do
     }
 
     :ok = Client.set_config(c_pid, config)
-    :ok = Client.connect_by_url(c_pid, url: "opc.tcp://localhost:4840/")
+    :ok = Client.connect_by_url(c_pid, url: "opc.tcp://localhost:4024/")
 
     %{c_pid: c_pid, my_pid: my_pid}
   end

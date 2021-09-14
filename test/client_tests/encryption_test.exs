@@ -7,9 +7,9 @@ defmodule ClientEncryptionTest do
     {:ok, s_pid} = Server.start_link()
 
     certs_config = [
-      port: 4840,
-      certificate: File.read!("./certs/server_cert.der"),
-      private_key: File.read!("./certs/server_key.der")
+      port: 4004,
+      certificate: File.read!("./test/demo_certs/server_cert.der"),
+      private_key: File.read!("./test/demo_certs/server_key.der")
     ]
 
     :ok = Server.set_default_config_with_certs(s_pid, certs_config)
@@ -116,35 +116,35 @@ defmodule ClientEncryptionTest do
   test "Connect a Client to a Server with security policy", %{c_pid: c_pid} do
     certs_config = [
       security_mode: 2,
-      certificate: File.read!("./certs/client_cert.der"),
-      private_key: File.read!("./certs/client_key.der")
+      certificate: File.read!("./test/demo_certs/client_cert.der"),
+      private_key: File.read!("./test/demo_certs/client_key.der")
     ]
 
     assert :ok == Client.set_config_with_certs(c_pid, certs_config)
-    assert :ok == Client.connect_by_url(c_pid, url: "opc.tcp://localhost:4840/")
+    assert :ok == Client.connect_by_url(c_pid, url: "opc.tcp://localhost:4004/")
   end
 
   test "Connect a Client to a Server with security policy (sign_and_encrypted)", %{c_pid: c_pid} do
     certs_config = [
       security_mode: 3,
-      certificate: File.read!("./certs/client_cert.der"),
-      private_key: File.read!("./certs/client_key.der")
+      certificate: File.read!("./test/demo_certs/client_cert.der"),
+      private_key: File.read!("./test/demo_certs/client_key.der")
     ]
 
     assert :ok == Client.set_config_with_certs(c_pid, certs_config)
-    assert :ok == Client.connect_by_url(c_pid, url: "opc.tcp://localhost:4840/")
+    assert :ok == Client.connect_by_url(c_pid, url: "opc.tcp://localhost:4004/")
   end
 
   test "Read/write data from a Server with security policy", %{c_pid: c_pid, ns_index: ns_index} do
 
     certs_config = [
       security_mode: 3,
-      certificate: File.read!("./certs/client_cert.der"),
-      private_key: File.read!("./certs/client_key.der")
+      certificate: File.read!("./test/demo_certs/client_cert.der"),
+      private_key: File.read!("./test/demo_certs/client_key.der")
     ]
 
     assert :ok == Client.set_config_with_certs(c_pid, certs_config)
-    assert :ok == Client.connect_by_url(c_pid, url: "opc.tcp://localhost:4840/")
+    assert :ok == Client.connect_by_url(c_pid, url: "opc.tcp://localhost:4004/")
 
     node_id = NodeId.new(ns_index: ns_index, identifier_type: "string", identifier: "R1_TS1_Temperature")
 
