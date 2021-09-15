@@ -1,7 +1,7 @@
 defmodule Opex62541.MixProject do
   use Mix.Project
 
-  @version "0.1.1"
+  @version "0.1.2"
   @source_url "https://github.com/valiot/opex62541"
 
   def project do
@@ -76,7 +76,7 @@ defmodule Opex62541.MixProject do
           OpcUA.ExpandedNodeId,
           OpcUA.NodeId,
           OpcUA.QualifiedName,
-          Opex62541 
+          Opex62541
         ]
       ]
     ]
