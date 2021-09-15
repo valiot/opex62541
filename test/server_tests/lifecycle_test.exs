@@ -1,7 +1,6 @@
 defmodule ServerLifecycleTest do
   use ExUnit.Case
 
-  #alias OpcUA.{NodeId, Server, QualifiedName}
   alias OpcUA.Server
 
   setup do
@@ -69,6 +68,9 @@ defmodule ServerLifecycleTest do
 
   test "Start/stop server", state do
     response = Server.set_default_config(state.pid)
+    assert response == :ok
+
+    response = Server.set_port(state.pid, 4022)
     assert response == :ok
 
     response = Server.start(state.pid)

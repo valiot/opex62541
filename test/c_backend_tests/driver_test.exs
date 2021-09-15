@@ -18,7 +18,7 @@ defmodule CServerDriverTest do
   end
 
   test "Erlang - C driver test", state do
-    msg = {:test, "x"}
+    msg = {:test, {1,1}, "x"}
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =
@@ -35,6 +35,6 @@ defmodule CServerDriverTest do
           exit(:port_timed_out)
       end
 
-    assert c_response == {:error, "BadSecurityChecksFailed"}
+    assert c_response == {:test, {1,1}, :ok}
   end
 end

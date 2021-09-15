@@ -49,9 +49,10 @@ FILE *log_location;
 uint64_t current_time();
 #endif // UTIL_H
 
-static erlang_pid *caller_pid;
-static erlang_ref *caller_ref;
 static char *caller_function;
+
+static char *caller_metadata_ptr;
+static size_t caller_metadata_size = 0;
 
 //Client and Server common functions
 UA_NodeId assemble_node_id(const char *req, int *req_index);
@@ -75,7 +76,7 @@ void send_ok_response();
 void send_opex_response(uint32_t reason);
 
 //Elixir message decoders
-void decode_caller_metadata(const char *req, int *req_index, const char* cmd);
+void handle_caller_metadata(const char *req, int *req_index, const char* cmd);
 void free_caller_metadata();
 
 //Client and Server common handlers

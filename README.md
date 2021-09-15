@@ -45,7 +45,7 @@ end
 ### Compatibility
 
 Opex62541 was developed for open62541 "1.0.0" with Elixir 1.10.0. It was tested on:
-  * Ubuntu 18.04
+  * Ubuntu 18.04, 20.04
   * Raspbian OS (Raspberry Pi 3B+)
   * Nerves (Raspberry Pi 3B+)
 
@@ -82,6 +82,18 @@ export OPEN62541_BUILD_ARGS='-DCMAKE_BUILD_TYPE=Release -DUA_NAMESPACE_ZERO=MINI
 ```
 
 Default values for `OPEN62541_BUILD_ARGS` are `-DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUA_NAMESPACE_ZERO=FULL -DUA_LOGLEVEL=601 -DUA_ENABLE_DISCOVERY_MULTICAST=ON -DUA_ENABLE_AMALGAMATION=ON -DUA_ENABLE_ENCRYPTION=ON`.
+
+## Docker Container
+
+To build the container locally use:
+
+```bash
+git clone https://github.com/valiot/opex62541
+cd opex62541
+docker build -t <name:tag> .
+```
+
+You can use this container to test this application. 
 
 ## Documentation
 

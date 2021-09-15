@@ -6,6 +6,7 @@ defmodule ServerArrayTest do
   setup do
     {:ok, pid} = OpcUA.Server.start_link()
     Server.set_default_config(pid)
+    Server.set_port(pid, 4008)
     {:ok, ns_index} = OpcUA.Server.add_namespace(pid, "Room")
 
     # Object type Node

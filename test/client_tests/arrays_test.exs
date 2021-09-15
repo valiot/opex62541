@@ -6,6 +6,7 @@ defmodule ClientArraysTest do
   setup do
     {:ok, pid} = OpcUA.Server.start_link()
     Server.set_default_config(pid)
+    :ok = Server.set_port(pid, 4000)
     {:ok, ns_index} = OpcUA.Server.add_namespace(pid, "Room")
 
     # Object Node
@@ -54,7 +55,7 @@ defmodule ClientArraysTest do
 
     {:ok, c_pid} = Client.start_link()
     :ok = Client.set_config(c_pid)
-    :ok = Client.connect_by_url(c_pid, url: "opc.tcp://localhost:4840/")
+    :ok = Client.connect_by_url(c_pid, url: "opc.tcp://localhost:4000/")
 
     %{c_pid: c_pid, s_pid: pid, ns_index: ns_index}
   end
@@ -211,8 +212,8 @@ defmodule ClientArraysTest do
     resp = Client.write_node_value(state.c_pid, node_id, 16, node_id, 3)
     assert resp == :ok
 
-    # resp = Client.write_node_value(state.c_pid, node_id, 16, node_id, 4)
-    # assert resp == {:error, "BadTypeMismatch"}
+    resp = Client.write_node_value(state.c_pid, node_id, 16, node_id, 4)
+    assert resp == {:error, "BadTypeMismatch"}
 
     resp = Client.read_node_value_by_index(state.c_pid, node_id, 0)
     assert resp == {:ok, node_id}

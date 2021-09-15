@@ -4,9 +4,10 @@ defmodule ClientMonitoredItemsTest do
   alias OpcUA.{NodeId, Server, QualifiedName, Client}
 
   setup do
-    {:ok, pid} = OpcUA.Server.start_link()
-    Server.set_default_config(pid)
-    {:ok, ns_index} = OpcUA.Server.add_namespace(pid, "Room")
+    {:ok, pid} = Server.start_link()
+    :ok = Server.set_default_config(pid)
+    :ok = Server.set_port(pid, 4005)
+    {:ok, ns_index} = Server.add_namespace(pid, "Room")
 
     # Object Node
     requested_new_node_id =
@@ -72,7 +73,7 @@ defmodule ClientMonitoredItemsTest do
 
     {:ok, c_pid} = Client.start_link()
     :ok = Client.set_config(c_pid)
-    :ok = Client.connect_by_url(c_pid, url: "opc.tcp://localhost:4840/")
+    :ok = Client.connect_by_url(c_pid, url: "opc.tcp://localhost:4005/")
 
     %{c_pid: c_pid, ns_index: ns_index}
   end

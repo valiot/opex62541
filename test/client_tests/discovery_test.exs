@@ -3,16 +3,22 @@ defmodule ClientDiscoveryTest do
 
   alias OpcUA.{Client, Server}
 
+  # These tests only check the funtionality of the client discovery functions, the tests of the complete integration are in server_tests ("Full Discovery Implementation").
+
+  setup_all do
+    {:ok, s_pid} = Server.start_link()
+    :ok = Server.set_default_config(s_pid)
+    :ok = Server.set_port(s_pid, 4003)
+    :ok = Server.start(s_pid)
+
+    %{s_pid: s_pid}
+  end
+
   setup do
     {:ok, c_pid} = Client.start_link()
     :ok = Client.set_config(c_pid)
 
-    #TODO: add discovery server.
-    {:ok, s_pid} = Server.start_link()
-    :ok = Server.set_default_config(s_pid)
-    :ok = Server.start(s_pid)
-
-    %{c_pid: c_pid, s_pid: s_pid}
+    %{c_pid: c_pid}
   end
 
   test "Get Endpoint", %{c_pid: c_pid} do
@@ -20,7 +26,7 @@ defmodule ClientDiscoveryTest do
       {:ok,
        [
          %{
-           "endpoint_url" => "opc.tcp://localhost:4840",
+           "endpoint_url" => "opc.tcp://localhost:4003",
            "security_level" => 1,
            "security_mode" => "none",
            "security_profile_uri" => "http://opcfoundation.org/UA/SecurityPolicy#None",
@@ -29,7 +35,7 @@ defmodule ClientDiscoveryTest do
          }
        ]}
 
-    url = "opc.tcp://localhost:4840"
+    url = "opc.tcp://localhost:4003"
 
     c_response = Client.get_endpoints(c_pid, url)
     assert c_response == desired
@@ -41,7 +47,7 @@ defmodule ClientDiscoveryTest do
       {:ok,
        [
          %{
-           "discovery_url" => ["opc.tcp://#{localhost}:4840/"],
+           "discovery_url" => ["opc.tcp://#{localhost}:4003/"],
            "name" => "open62541-based OPC UA Application",
            "product_uri" => "http://open62541.org",
            "application_uri" => "urn:open62541.server.application",
@@ -50,7 +56,7 @@ defmodule ClientDiscoveryTest do
          }
        ]}
 
-    url = "opc.tcp://localhost:4840"
+    url = "opc.tcp://localhost:4003"
 
     c_response = Client.find_servers(c_pid, url)
     assert c_response == desired
@@ -62,7 +68,7 @@ defmodule ClientDiscoveryTest do
        [
          %{
            "capabilities" => ["LDS"],
-           "discovery_url" => "opc.tcp://localhost:4840",
+           "discovery_url" => "opc.tcp://localhost:4003",
            "record_id" => 0,
            "server_name" => "LDS-localhost"
          },
@@ -74,7 +80,7 @@ defmodule ClientDiscoveryTest do
          }
        ]}
 
-    url = "opc.tcp://localhost:4840"
+    url = "opc.tcp://localhost:4003"
 
     c_response = Client.find_servers_on_network(c_pid, url)
     #TODO: Add Server discovery

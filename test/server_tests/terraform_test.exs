@@ -5,7 +5,7 @@ defmodule ServerTerraformTest do
 
   @configuration [
     config: [
-      port: 4040,
+      port: 4023,
       users: [{"alde103", "secret"}]
     ]
   ]
@@ -115,7 +115,7 @@ defmodule ServerTerraformTest do
 
   test "Write value event", %{c_pid: c_pid} do
     {:ok, localhost} = :inet.gethostname()
-    url = "opc.tcp://#{localhost}:4040/"
+    url = "opc.tcp://#{localhost}:4023/"
     user = "alde103"
     password = "secret"
 
@@ -161,7 +161,7 @@ defmodule ServerTerraformTest do
     assert :ok == Client.write_node_value(c_pid, node_id, 0, true)
     c_response = Client.read_node_value(c_pid, node_id)
     assert c_response == {:ok, true}
-    assert_receive({node_id, true}, 1000)
+    assert_receive({^node_id, true}, 1000)
 
     assert :ok == Client.disconnect(c_pid)
   end

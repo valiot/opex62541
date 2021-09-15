@@ -10,9 +10,9 @@ defmodule ServerEncryptionTest do
 
   test "Set default configuration with all policies", %{pid: pid} do
     desired_config = [
-      port: 4840,
-      certificate: File.read!("./certs/server_cert.der"),
-      private_key: File.read!("./certs/server_key.der")
+      port: 4014,
+      certificate: File.read!("./test/demo_certs/server_cert.der"),
+      private_key: File.read!("./test/demo_certs/server_key.der")
     ]
 
     response = Server.set_default_config_with_certs(pid, desired_config)
@@ -28,7 +28,7 @@ defmodule ServerEncryptionTest do
     response = Server.set_basics(pid)
     assert response == :ok
 
-    response = Server.set_network_tcp_layer(pid, 4040)
+    response = Server.set_network_tcp_layer(pid, 4015)
     assert response == :ok
   end
 
@@ -36,11 +36,11 @@ defmodule ServerEncryptionTest do
     response = Server.set_basics(pid)
     assert response == :ok
 
-    response = Server.set_network_tcp_layer(pid, 4041)
+    response = Server.set_network_tcp_layer(pid, 4016)
     assert response == :ok
 
     certs_info = [
-      certificate: File.read!("./certs/server_cert.der")
+      certificate: File.read!("./test/demo_certs/server_cert.der")
     ]
 
     response = Server.add_none_policy(pid, certs_info)
@@ -51,12 +51,12 @@ defmodule ServerEncryptionTest do
     response = Server.set_basics(pid)
     assert response == :ok
 
-    response = Server.set_network_tcp_layer(pid, 4042)
+    response = Server.set_network_tcp_layer(pid, 4017)
     assert response == :ok
 
     certs_info = [
-      certificate: File.read!("./certs/server_cert.der"),
-      private_key: File.read!("./certs/server_key.der")
+      certificate: File.read!("./test/demo_certs/server_cert.der"),
+      private_key: File.read!("./test/demo_certs/server_key.der")
     ]
 
     response = Server.add_basic128rsa15_policy(pid, certs_info)
@@ -67,12 +67,12 @@ defmodule ServerEncryptionTest do
     response = Server.set_basics(pid)
     assert response == :ok
 
-    response = Server.set_network_tcp_layer(pid, 4043)
+    response = Server.set_network_tcp_layer(pid, 4018)
     assert response == :ok
 
     certs_info = [
-      certificate: File.read!("./certs/server_cert.der"),
-      private_key: File.read!("./certs/server_key.der")
+      certificate: File.read!("./test/demo_certs/server_cert.der"),
+      private_key: File.read!("./test/demo_certs/server_key.der")
     ]
 
     response = Server.add_basic256_policy(pid, certs_info)
@@ -83,12 +83,12 @@ defmodule ServerEncryptionTest do
     response = Server.set_basics(pid)
     assert response == :ok
 
-    response = Server.set_network_tcp_layer(pid, 4044)
+    response = Server.set_network_tcp_layer(pid, 4019)
     assert response == :ok
 
     certs_info = [
-      certificate: File.read!("./certs/server_cert.der"),
-      private_key: File.read!("./certs/server_key.der")
+      certificate: File.read!("./test/demo_certs/server_cert.der"),
+      private_key: File.read!("./test/demo_certs/server_key.der")
     ]
 
     response = Server.add_basic256sha256_policy(pid, certs_info)
@@ -99,12 +99,12 @@ defmodule ServerEncryptionTest do
     response = Server.set_basics(pid)
     assert response == :ok
 
-    response = Server.set_network_tcp_layer(pid, 4044)
+    response = Server.set_network_tcp_layer(pid, 4020)
     assert response == :ok
 
     certs_info = [
-      certificate: File.read!("./certs/server_cert.der"),
-      private_key: File.read!("./certs/server_key.der")
+      certificate: File.read!("./test/demo_certs/server_cert.der"),
+      private_key: File.read!("./test/demo_certs/server_key.der")
     ]
 
     response = Server.add_all_policies(pid, certs_info)
@@ -115,12 +115,12 @@ defmodule ServerEncryptionTest do
     response = Server.set_basics(pid)
     assert response == :ok
 
-    response = Server.set_network_tcp_layer(pid, 4840)
+    response = Server.set_network_tcp_layer(pid, 4021)
     assert response == :ok
 
     certs_info = [
-      certificate: File.read!("./certs/server_cert.der"),
-      private_key: File.read!("./certs/server_key.der")
+      certificate: File.read!("./test/demo_certs/server_cert.der"),
+      private_key: File.read!("./test/demo_certs/server_key.der")
     ]
 
     # None policy must be added.
