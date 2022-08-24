@@ -114,8 +114,7 @@ defmodule ServerTerraformTest do
   end
 
   test "Write value event", %{c_pid: c_pid} do
-    {:ok, localhost} = :inet.gethostname()
-    url = "opc.tcp://#{localhost}:4023/"
+    url = "opc.tcp://127.0.0.1:4023/"
     user = "alde103"
     password = "secret"
 
