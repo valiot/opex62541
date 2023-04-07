@@ -1,7 +1,7 @@
 defmodule Opex62541.MixProject do
   use Mix.Project
 
-  @version "0.1.2"
+  @version "0.1.3"
   @source_url "https://github.com/valiot/opex62541"
 
   def project do
@@ -123,8 +123,8 @@ defmodule Opex62541.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:elixir_cmake, github: "valiot/elixir-cmake", branch: "multi-projects"},
-      {:ex_doc, "~> 0.22", only: :dev, runtime: false},
+      {:elixir_cmake, "~> 0.8"},
+      {:ex_doc, "~> 0.28", only: :dev, runtime: false},
     ]
   end
 end
