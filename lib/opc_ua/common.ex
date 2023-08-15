@@ -895,7 +895,7 @@ defmodule OpcUA.Common do
       end
 
       defp open_port(executable, valgrind_env) do
-        Logger.warn("(#{__MODULE__}) Valgrind Activated: #{inspect valgrind_env}")
+        Logger.warning("(#{__MODULE__}) Valgrind Activated: #{inspect valgrind_env}")
         Port.open({:spawn_executable, to_charlist("/usr/bin/valgrind.bin")}, [
           {:args,
            [

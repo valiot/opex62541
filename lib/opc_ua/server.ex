@@ -141,7 +141,7 @@ defmodule OpcUA.Server do
       @impl true
       def handle_write(write_event, state) do
         require Logger
-        Logger.warn("No handle_write/2 clause in #{__MODULE__} provided for #{inspect(write_event)}")
+        Logger.warning("No handle_write/2 clause in #{__MODULE__} provided for #{inspect(write_event)}")
         state
       end
 
@@ -1015,7 +1015,7 @@ defmodule OpcUA.Server do
   end
 
   def handle_info({_port, {:exit_status, code}}, state) do
-    Logger.warn("(#{__MODULE__}) Error code: #{inspect(code)}.")
+    Logger.warning("(#{__MODULE__}) Error code: #{inspect(code)}.")
     # retrying delay
     Process.sleep(@c_timeout)
     {:stop, :restart, state}
@@ -1029,7 +1029,7 @@ defmodule OpcUA.Server do
   end
 
   def handle_info(msg, state) do
-    Logger.warn("(#{__MODULE__}) Unhandled message: #{inspect(msg)}.")
+    Logger.warning("(#{__MODULE__}) Unhandled message: #{inspect(msg)}.")
     {:noreply, state}
   end
 

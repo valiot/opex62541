@@ -196,7 +196,7 @@ defmodule OpcUA.Client do
       def handle_subscription_timeout(subscription_id, state) do
         require Logger
 
-        Logger.warn(
+        Logger.warning(
           "No handle_subscription_timeout/2 clause in #{__MODULE__} provided for #{
             inspect(subscription_id)
           }"
@@ -209,7 +209,7 @@ defmodule OpcUA.Client do
       def handle_deleted_subscription(subscription_id, state) do
         require Logger
 
-        Logger.warn(
+        Logger.warning(
           "No handle_deleted_subscription/2 clause in #{__MODULE__} provided for #{
             inspect(subscription_id)
           }"
@@ -222,7 +222,7 @@ defmodule OpcUA.Client do
       def handle_monitored_data(changed_data_event, state) do
         require Logger
 
-        Logger.warn(
+        Logger.warning(
           "No handle_monitored_data/2 clause in #{__MODULE__} provided for #{
             inspect(changed_data_event)
           }"
@@ -235,7 +235,7 @@ defmodule OpcUA.Client do
       def handle_deleted_monitored_item(subscription_id, monitored_id, state) do
         require Logger
 
-        Logger.warn(
+        Logger.warning(
           "No handle_deleted_monitored_item/3 clause in #{__MODULE__} provided for #{
             inspect({subscription_id, monitored_id})
           }"
@@ -825,7 +825,7 @@ defmodule OpcUA.Client do
   end
 
   def handle_info({_port, {:exit_status, code}}, state) do
-    Logger.warn("(#{__MODULE__}) Error code: #{inspect(code)}.")
+    Logger.warning("(#{__MODULE__}) Error code: #{inspect(code)}.")
     # retrying delay
     Process.sleep(@c_timeout)
     {:stop, :restart, state}
@@ -839,7 +839,7 @@ defmodule OpcUA.Client do
   end
 
   def handle_info(msg, state) do
-    Logger.warn("(#{__MODULE__}) Unhandled message: #{inspect(msg)}.")
+    Logger.warning("(#{__MODULE__}) Unhandled message: #{inspect(msg)}.")
     {:noreply, state}
   end
 
