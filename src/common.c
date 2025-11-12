@@ -487,12 +487,17 @@ void encode_endpoint_description_struct(char *resp, int *resp_index, void *data,
 
 void encode_server_config(char *resp, int *resp_index, void *data)
 {   
-    ei_encode_map_header(resp, resp_index, 4);
-    ei_encode_binary(resp, resp_index, "n_threads", 9);
-    ei_encode_long(resp, resp_index,((UA_ServerConfig *)data)->nThreads);
+    // v1.4.x: nThreads and customHostname removed from UA_ServerConfig
+    ei_encode_map_header(resp, resp_index, 2);
+    // nThreads field removed in v1.4.x
+    // ei_encode_binary(resp, resp_index, "n_threads", 9);
+    // ei_encode_long(resp, resp_index,((UA_ServerConfig *)data)->nThreads);
+    
+    // customHostname field removed in v1.4.x, use applicationDescription instead
     ei_encode_binary(resp, resp_index, "hostname", 8);
-    if (((UA_ServerConfig *)data)->customHostname.length)
-        ei_encode_binary(resp, resp_index,((UA_ServerConfig *)data)->customHostname.data, ((UA_ServerConfig *)data)->customHostname.length);
+    if (((UA_ServerConfig *)data)->applicationDescription.applicationName.text.length)
+        ei_encode_binary(resp, resp_index,((UA_ServerConfig *)data)->applicationDescription.applicationName.text.data, 
+                        ((UA_ServerConfig *)data)->applicationDescription.applicationName.text.length);
     else
         ei_encode_binary(resp, resp_index, "localhost", 9);
     
@@ -651,7 +656,8 @@ void encode_array_dimensions_struct(char *resp, int *resp_index, void *data, int
 void encode_variant_scalar_struct(char *resp, int *resp_index, void *data, size_t index)
 {
     UA_Variant value = *(UA_Variant *) data;
-    switch (value.type->typeIndex)
+    // v1.4.x: typeIndex changed to typeKind
+    switch (value.type->typeKind)
     {
         case UA_TYPES_BOOLEAN:
             ei_encode_boolean(resp, resp_index, *((UA_Boolean *)value.data + index));
@@ -3469,7 +3475,7 @@ void handle_read_node_contains_no_loops(void *entity, bool entity_type, const ch
     if(entity_type)
         retval = UA_Client_readContainsNoLoopsAttribute((UA_Client *)entity, node_id, &contains_no_loops);
     else
-        retval = UA_Server_readContainsNoLoop((UA_Server *)entity, node_id, &contains_no_loops);
+        retval = UA_Server_readContainsNoLoops((UA_Server *)entity, node_id, &contains_no_loops);
 
     UA_NodeId_clear(&node_id);
 

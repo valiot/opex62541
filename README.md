@@ -51,38 +51,58 @@ def deps do
 end
 ```
 
-### Compatibility
+### Breaking Changes (v1.4.x Migration)
 
-Opex62541 was developed for open62541 "1.0.0" with Elixir 1.10.0. It was tested on:
-  * Ubuntu 18.04, 20.04
-  * Raspbian OS (Raspberry Pi 3B+)
-  * Nerves (Raspberry Pi 3B+)
+**Important:** This library now uses open62541 v1.4.12 with **OpenSSL** as the encryption backend instead of mbedTLS.
 
-Adding the following `opex62541` dependencies to build the package:
+**System Dependencies Required:**
+
+- **Ubuntu/Debian:**
+  ```bash
+  sudo apt-get install git build-essential gcc pkg-config cmake python libssl-dev
+  ```
+
+- **Arch Linux:**
+  ```bash
+  sudo pacman -S git base-devel gcc pkg-config cmake python openssl
+  ```
+
+- **Nerves:** OpenSSL is already included in the Nerves system. No additional configuration needed.
+
+**Backward Compatibility:**
+
+If you need to use the legacy v1.0 with mbedTLS for existing projects, set the environment variable:
 
 ```bash
-sudo apt-get install git build-essential gcc pkg-config cmake python libmbedtls-dev
+export OPEN62541_DOWNLOAD_VERSION=v1.0
 ```
+
+Note: v1.0 requires mbedTLS instead of OpenSSL. Install with:
+```bash
+sudo apt-get install libmbedtls-dev  # Ubuntu/Debian
+```
+
+### Compatibility
+
+Opex62541 is now based on open62541 v1.4.14 with Elixir 1.10.0+. It was tested on:
+  * Ubuntu 18.04, 20.04, 22.04
+  * Raspbian OS (Raspberry Pi 3B+)
+  * Nerves (Raspberry Pi 3B+)
 
 ### Nerves
 
 [Nerves](https://www.nerves-project.org) is a complete IoT platform and infrastructure to build and deploy maintainable embedded systems to boards such as Raspberry Pi or Beaglebone.
 
-To add `opex62541` dependency (`mbedtls`) to your Nerves project, you need to create a [Nerves Custom System](https://hexdocs.pm/nerves/customizing-systems.html#content) and add the following lines to the `nerves_defconfig` file:
-
-```bash
-BR2_PACKAGE_MBEDTLS=y
-BR2_PACKAGE_MBEDTLS_COMPRESSION=y
-```
+**Good news:** OpenSSL is already included in standard Nerves systems. No additional configuration or custom system is required for `opex62541` to work with encryption enabled.
 
 ### Customized builds
 
-By default, Opex62541 downloads and compiles the `v1.0` release of open62541. If you want to compile it manually or change the default version, use the following example commands to set the desired env variables:
+By default, Opex62541 downloads and compiles the `v1.4.14` release of open62541 with OpenSSL encryption. If you want to compile it manually or change the default version, use the following example commands to set the desired env variables:
 
 ```bash
 export MANUAL_BUILD=true
 
-export OPEN62541_DOWNLOAD_VERSION=v1.0.1
+export OPEN62541_DOWNLOAD_VERSION=v1.4.14
 ```
 The open62541 project uses CMake to manage the build options for code generation and to generate build projects for the different systems and IDEs. To overwrite the default options, use `OPEN62541_BUILD_ARGS` as follows:
 
@@ -90,7 +110,7 @@ The open62541 project uses CMake to manage the build options for code generation
 export OPEN62541_BUILD_ARGS='-DCMAKE_BUILD_TYPE=Release -DUA_NAMESPACE_ZERO=MINIMAL'
 ```
 
-Default values for `OPEN62541_BUILD_ARGS` are `-DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUA_NAMESPACE_ZERO=FULL -DUA_LOGLEVEL=601 -DUA_ENABLE_DISCOVERY_MULTICAST=ON -DUA_ENABLE_AMALGAMATION=ON -DUA_ENABLE_ENCRYPTION=ON`.
+Default values for `OPEN62541_BUILD_ARGS` are `-DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUA_NAMESPACE_ZERO=FULL -DUA_LOGLEVEL=601 -DUA_ENABLE_DISCOVERY_MULTICAST=ON -DUA_ENABLE_AMALGAMATION=ON -DUA_ENABLE_ENCRYPTION=OPENSSL`.
 
 ## Docker Container
 

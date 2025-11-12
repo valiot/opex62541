@@ -3,7 +3,7 @@ defmodule CServerDriverTest do
   doctest Opex62541
 
   setup do
-    executable = :code.priv_dir(:opex62541) ++ '/opc_ua_server'
+    executable = :code.priv_dir(:opex62541) ++ ~c'/opc_ua_server'
 
     port =
       Port.open({:spawn_executable, executable}, [

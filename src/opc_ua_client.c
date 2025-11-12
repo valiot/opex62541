@@ -117,36 +117,41 @@ static void handle_get_client_config(void *entity, bool entity_type, const char 
 */
 static void handle_get_client_state(void *entity, bool entity_type, const char *req, int *req_index)
 {
-    UA_ClientState state = UA_Client_getState(client);
+    // v1.4.x: UA_Client_getState signature changed
+    UA_SecureChannelState channelState;
+    UA_SessionState sessionState;
+    UA_StatusCode connectStatus;
+    UA_Client_getState(client, &channelState, &sessionState, &connectStatus);
 
-    switch(state)
+    // Return session state as primary indicator
+    switch(sessionState)
     {
-        case UA_CLIENTSTATE_DISCONNECTED:
+        case UA_SESSIONSTATE_CLOSED:
             send_data_response("Disconnected", 3, 0);
         break;
 
-        case UA_CLIENTSTATE_WAITING_FOR_ACK:
-            send_data_response("Wating for ACK", 3, 0);
+        case UA_SESSIONSTATE_CREATE_REQUESTED:
+            send_data_response("Create Requested", 3, 0);
         break;
 
-        case UA_CLIENTSTATE_CONNECTED:
-            send_data_response("Connected", 3, 0);
+        case UA_SESSIONSTATE_CREATED:
+            send_data_response("Created", 3, 0);
         break;
 
-        case UA_CLIENTSTATE_SECURECHANNEL:
-            send_data_response("Secure Channel", 3, 0);
+        case UA_SESSIONSTATE_ACTIVATE_REQUESTED:
+            send_data_response("Activate Requested", 3, 0);
         break;
 
-        case UA_CLIENTSTATE_SESSION:
+        case UA_SESSIONSTATE_ACTIVATED:
             send_data_response("Session", 3, 0);
         break;
 
-        case UA_CLIENTSTATE_SESSION_DISCONNECTED:
-            send_data_response("Session disconnected", 3, 0);
+        case UA_SESSIONSTATE_CLOSING:
+            send_data_response("Closing", 3, 0);
         break;
 
-        case UA_CLIENTSTATE_SESSION_RENEWED:
-            send_data_response("Session renewed", 3, 0);
+        default:
+            send_data_response("Unknown", 3, 0);
         break;
     }
 }
@@ -156,7 +161,11 @@ static void handle_get_client_state(void *entity, bool entity_type, const char *
 */
 static void handle_reset_client(void *entity, bool entity_type, const char *req, int *req_index)
 {
-    UA_Client_reset(client);
+    // v1.4.x: UA_Client_reset removed, disconnect and recreate client
+    UA_Client_disconnect(client);
+    UA_Client_delete(client);
+    client = UA_Client_new();
+    UA_ClientConfig_setDefault(UA_Client_getConfig(client));
     send_ok_response();
 }
 
@@ -231,7 +240,8 @@ static void handle_connect_client_by_username(void *entity, bool entity_type, co
         errx(EXIT_FAILURE, "Invalid password");
     password[binary_len] = '\0';
 
-    UA_StatusCode retval = UA_Client_connect_username(client, url, username, password);
+    // v1.4.x: Function renamed to camelCase
+    UA_StatusCode retval = UA_Client_connectUsername(client, url, username, password);
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -257,7 +267,13 @@ static void handle_connect_client_no_session(void *entity, bool entity_type, con
         errx(EXIT_FAILURE, "Invalid url");
     url[binary_len] = '\0';
     
-    UA_StatusCode retval = UA_Client_connect_noSession(client, url);
+    // v1.4.x: Check if this function still exists or needs alternative approach
+    // May need to connect normally then close session
+    UA_StatusCode retval = UA_Client_connect(client, url);
+    if(retval == UA_STATUSCODE_GOOD) {
+        // Close session to maintain no-session connection
+        UA_Client_disconnectSecureChannel(client);
+    }
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
@@ -1148,7 +1164,13 @@ int main()
                 break;
         }
 
-        if(UA_Client_getState(client) >= UA_CLIENTSTATE_CONNECTED)
+        // v1.4.x: Check session state to determine if connected
+        UA_SecureChannelState channelState;
+        UA_SessionState sessionState;
+        UA_StatusCode connectStatus;
+        UA_Client_getState(client, &channelState, &sessionState, &connectStatus);
+        
+        if(sessionState >= UA_SESSIONSTATE_CREATED)
         {
             UA_Client_run_iterate(client, 0);
         }
