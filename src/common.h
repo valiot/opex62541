@@ -92,7 +92,6 @@ void handle_add_reference(void *entity, bool entity_type, const char *req, int *
 void handle_delete_reference(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_delete_node(void *entity, bool entity_type, const char *req, int *req_index);
 
-void handle_write_node_browse_name(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_write_node_display_name(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_write_node_description(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_write_node_write_mask(void *entity, bool entity_type, const char *req, int *req_index);

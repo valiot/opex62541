@@ -1033,7 +1033,6 @@ static struct request_handler request_handlers[] = {
     {"read_node_value_by_data_type", handle_read_node_value_by_data_type},
     {"write_node_node_id", handle_write_node_node_id},
     {"write_node_node_class", handle_write_node_node_class},
-    {"write_node_browse_name", handle_write_node_browse_name},
     {"write_node_display_name", handle_write_node_display_name},
     {"write_node_description", handle_write_node_description},
     {"write_node_write_mask", handle_write_node_write_mask},

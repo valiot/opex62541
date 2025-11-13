@@ -656,90 +656,112 @@ void encode_array_dimensions_struct(char *resp, int *resp_index, void *data, int
 void encode_variant_scalar_struct(char *resp, int *resp_index, void *data, size_t index)
 {
     UA_Variant value = *(UA_Variant *) data;
+    
+    // v1.4.x: Handle special types by comparing with UA_TYPES array
+    if (value.type == &UA_TYPES[UA_TYPES_SEMANTICCHANGESTRUCTUREDATATYPE]) {
+        encode_semantic_change_structure_data_type(resp, resp_index, ((UA_SemanticChangeStructureDataType *)value.data + index));
+        return;
+    }
+    
+    if (value.type == &UA_TYPES[UA_TYPES_TIMESTRING]) {
+        ei_encode_binary(resp, resp_index, (*((UA_TimeString *)value.data + index)).data, (*((UA_TimeString *)value.data + index)).length);
+        return;
+    }
+    
+    if (value.type == &UA_TYPES[UA_TYPES_XVTYPE]) {
+        encode_xv_type(resp, resp_index, ((UA_XVType *)value.data + index));
+        return;
+    }
+    
+    if (value.type == &UA_TYPES[UA_TYPES_ELEMENTOPERAND]) {
+        ei_encode_long(resp, resp_index, (*((UA_ElementOperand *)value.data + index)).index);
+        return;
+    }
+    
     // v1.4.x: typeIndex changed to typeKind
     switch (value.type->typeKind)
     {
-        case UA_TYPES_BOOLEAN:
+        case UA_DATATYPEKIND_BOOLEAN:
             ei_encode_boolean(resp, resp_index, *((UA_Boolean *)value.data + index));
         break;
 
-        case UA_TYPES_SBYTE:
+        case UA_DATATYPEKIND_SBYTE:
             ei_encode_long(resp, resp_index, *((UA_SByte *)value.data + index));
         break;
 
-        case UA_TYPES_BYTE:
+        case UA_DATATYPEKIND_BYTE:
             ei_encode_ulong(resp, resp_index, *((UA_Byte *)value.data + index));
         break;
 
-        case UA_TYPES_INT16:
+        case UA_DATATYPEKIND_INT16:
             ei_encode_long(resp, resp_index, *((UA_Int16 *)value.data + index));
         break;
         
-        case UA_TYPES_UINT16:
+        case UA_DATATYPEKIND_UINT16:
             ei_encode_ulong(resp, resp_index, *((UA_UInt16 *)value.data + index));
         break;
 
-        case UA_TYPES_INT32:
+        case UA_DATATYPEKIND_INT32:
             ei_encode_long(resp, resp_index, *((UA_Int32 *)value.data + index));
         break;
 
-        case UA_TYPES_UINT32:
+        case UA_DATATYPEKIND_UINT32:
             ei_encode_ulong(resp, resp_index, *((UA_UInt32 *)value.data + index));
         break;
 
-        case UA_TYPES_INT64:
+        case UA_DATATYPEKIND_INT64:
             ei_encode_longlong(resp, resp_index, *((UA_Int64 *)value.data + index));
         break;
 
-        case UA_TYPES_UINT64:
+        case UA_DATATYPEKIND_UINT64:
             ei_encode_ulonglong(resp, resp_index, *((UA_UInt64 *)value.data + index));
         break;
 
-        case UA_TYPES_FLOAT:
+        case UA_DATATYPEKIND_FLOAT:
             encode_ua_float(resp, resp_index, ((UA_Float *)value.data + index));
         break;
 
-        case UA_TYPES_DOUBLE:
+        case UA_DATATYPEKIND_DOUBLE:
             ei_encode_double(resp, resp_index, *((UA_Double *)value.data + index));
         break;
 
-        case UA_TYPES_STRING:
+        case UA_DATATYPEKIND_STRING:
             ei_encode_binary(resp, resp_index, (*((UA_String *)value.data + index)).data, (*((UA_String *)value.data + index)).length);
         break;
 
-        case UA_TYPES_DATETIME:
+        case UA_DATATYPEKIND_DATETIME:
             ei_encode_ulonglong(resp, resp_index, *((UA_DateTime *)value.data + index));
         break;
 
-        case UA_TYPES_GUID:
+        case UA_DATATYPEKIND_GUID:
             encode_ua_guid(resp, resp_index, ((UA_Guid *)value.data + index));
         break;
 
-        case UA_TYPES_BYTESTRING:
+        case UA_DATATYPEKIND_BYTESTRING:
             ei_encode_binary(resp, resp_index, (*((UA_ByteString *)value.data + index)).data, (*((UA_ByteString *)value.data + index)).length);
         break;
 
-        case UA_TYPES_XMLELEMENT:
+        case UA_DATATYPEKIND_XMLELEMENT:
             ei_encode_binary(resp, resp_index, (*((UA_XmlElement *)value.data + index)).data, (*((UA_XmlElement *)value.data + index)).length);
         break;
 
-        case UA_TYPES_NODEID:
+        case UA_DATATYPEKIND_NODEID:
             encode_node_id(resp, resp_index, ((UA_NodeId *)value.data + index));
         break;
 
-        case UA_TYPES_EXPANDEDNODEID:
+        case UA_DATATYPEKIND_EXPANDEDNODEID:
             encode_expanded_node_id(resp, resp_index, ((UA_ExpandedNodeId *)value.data + index));
         break;
 
-        case UA_TYPES_STATUSCODE:
+        case UA_DATATYPEKIND_STATUSCODE:
             encode_status_code(resp, resp_index, ((UA_StatusCode *)value.data + index));
         break;
 
-        case UA_TYPES_QUALIFIEDNAME:
+        case UA_DATATYPEKIND_QUALIFIEDNAME:
             encode_qualified_name(resp, resp_index, ((UA_QualifiedName *)value.data + index));
         break;
 
-        case UA_TYPES_LOCALIZEDTEXT:
+        case UA_DATATYPEKIND_LOCALIZEDTEXT:
             encode_localized_text(resp, resp_index, ((UA_LocalizedText *)value.data + index));
         break;
 
@@ -750,28 +772,6 @@ void encode_variant_scalar_struct(char *resp, int *resp_index, void *data, size_
         // // TODO: UA_TYPES_VARIANT
 
         // // TODO: UA_TYPES_DIAGNOSTICINFO
-
-        case UA_TYPES_SEMANTICCHANGESTRUCTUREDATATYPE:
-            encode_semantic_change_structure_data_type(resp, resp_index, ((UA_SemanticChangeStructureDataType *)value.data + index));
-        break;
-
-        case UA_TYPES_TIMESTRING:
-            ei_encode_binary(resp, resp_index, (*((UA_TimeString *)value.data + index)).data, (*((UA_TimeString *)value.data + index)).length);
-        break;
-
-        // // TODO: UA_TYPES_VIEWATTRIBUTES
-
-        case UA_TYPES_UADPNETWORKMESSAGECONTENTMASK:
-            ei_encode_ulong(resp, resp_index, *((UA_UadpDataSetMessageContentMask *)value.data + index));
-        break;
-
-        case UA_TYPES_XVTYPE:
-            encode_xv_type(resp, resp_index, ((UA_XVType *)value.data + index));
-        break;
-
-        case UA_TYPES_ELEMENTOPERAND:
-            ei_encode_long(resp, resp_index, (*((UA_ElementOperand *)value.data + index)).index);
-        break;
     
         default:
             ei_encode_atom(resp, resp_index, "error");
@@ -1530,38 +1530,6 @@ void handle_delete_node(void *entity, bool entity_type, const char *req, int *re
 /***************************************/
 
 /* 
- *  Change the browse name of a node in the server. 
- */
-void handle_write_node_browse_name(void *entity, bool entity_type, const char *req, int *req_index)
-{
-    int term_size;
-    int term_type;
-    UA_StatusCode retval;
-
-    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-        term_size != 2)
-        errx(EXIT_FAILURE, ":handle_write_node_browse_name requires a 2-tuple, term_size = %d", term_size);
-    
-    UA_NodeId node_id = assemble_node_id(req, req_index);
-    UA_QualifiedName browse_name = assemble_qualified_name(req, req_index);
-    
-    if(entity_type)
-        retval = UA_Client_writeBrowseNameAttribute((UA_Client *)entity, node_id, &browse_name);
-    else
-        retval = UA_Server_writeBrowseName((UA_Server *)entity, node_id, browse_name);
-
-    UA_NodeId_clear(&node_id);
-    UA_QualifiedName_clear(&browse_name);
-
-    if(retval != UA_STATUSCODE_GOOD) {
-        send_opex_response(retval);
-        return;
-    }
-
-    send_ok_response();
-}
-
-/* 
  *  Change the display name of a node in the server. 
  */
 void handle_write_node_display_name(void *entity, bool entity_type, const char *req, int *req_index)
@@ -2235,7 +2203,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
-        case UA_TYPES_BYTE:
+        case UA_DATATYPEKIND_BYTE:
         {
             unsigned long byte_data;
             if (ei_decode_ulong(req, req_index, &byte_data) < 0) {
@@ -2250,7 +2218,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
-        case UA_TYPES_INT16:
+        case UA_DATATYPEKIND_INT16:
         {
             long int16_data;
             if (ei_decode_long(req, req_index, &int16_data) < 0) {
@@ -2265,7 +2233,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
-        case UA_TYPES_UINT16:
+        case UA_DATATYPEKIND_UINT16:
         {
             unsigned long uint16_data;
             if (ei_decode_ulong(req, req_index, &uint16_data) < 0) {
@@ -2280,7 +2248,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
-        case UA_TYPES_INT32:
+        case UA_DATATYPEKIND_INT32:
         {
             long int32_data;
             if (ei_decode_long(req, req_index, &int32_data) < 0) {
@@ -2295,7 +2263,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
-        case UA_TYPES_UINT32:
+        case UA_DATATYPEKIND_UINT32:
         {
             unsigned long uint32_data;
             if (ei_decode_ulong(req, req_index, &uint32_data) < 0) {
@@ -2310,7 +2278,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
-        case UA_TYPES_INT64:
+        case UA_DATATYPEKIND_INT64:
         {
             long long int64_data;
             if (ei_decode_longlong(req, req_index, &int64_data) < 0) {
@@ -2325,7 +2293,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
-        case UA_TYPES_UINT64:
+        case UA_DATATYPEKIND_UINT64:
         {
             unsigned long long uint64_data;
             if (ei_decode_ulonglong(req, req_index, &uint64_data) < 0) {
@@ -2340,7 +2308,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
-        case UA_TYPES_FLOAT:
+        case UA_DATATYPEKIND_FLOAT:
         {
             double float_data;
             if (ei_decode_double(req, req_index, &float_data) < 0) {
@@ -2355,7 +2323,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
-        case UA_TYPES_DOUBLE:
+        case UA_DATATYPEKIND_DOUBLE:
         {
             double double_data;
             if (ei_decode_double(req, req_index, &double_data) < 0) {
@@ -2372,7 +2340,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
-        case UA_TYPES_STRING:
+        case UA_DATATYPEKIND_STRING:
         {
             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid string (size)");
@@ -2396,7 +2364,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
-        case UA_TYPES_DATETIME:
+        case UA_DATATYPEKIND_DATETIME:
         {
             long long date_time_data;
             if (ei_decode_longlong(req, req_index, &date_time_data) < 0) {
@@ -2413,7 +2381,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
-        case UA_TYPES_GUID:
+        case UA_DATATYPEKIND_GUID:
         {
             UA_Guid guid;
 
@@ -2452,7 +2420,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
-        case UA_TYPES_BYTESTRING:
+        case UA_DATATYPEKIND_BYTESTRING:
         {
             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid byte_string (size)");
@@ -2476,7 +2444,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
-        case UA_TYPES_XMLELEMENT:
+        case UA_DATATYPEKIND_XMLELEMENT:
         {
             if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
                 errx(EXIT_FAILURE, "Invalid xml (size)");
@@ -2500,7 +2468,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
-        case UA_TYPES_NODEID:
+        case UA_DATATYPEKIND_NODEID:
         {
             node_id_arg_1 = assemble_node_id(req, req_index);
             if (is_scalar || is_null)
@@ -2514,7 +2482,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
-        case UA_TYPES_EXPANDEDNODEID:
+        case UA_DATATYPEKIND_EXPANDEDNODEID:
         {
             expanded_node_id_arg_1 = assemble_expanded_node_id(req, req_index);
             if (is_scalar || is_null)
@@ -2527,7 +2495,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
-        case UA_TYPES_STATUSCODE:
+        case UA_DATATYPEKIND_STATUSCODE:
         {
             unsigned long status_code_data;
             if (ei_decode_ulong(req, req_index, &status_code_data) < 0) {
@@ -2542,7 +2510,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
-        case UA_TYPES_QUALIFIEDNAME:
+        case UA_DATATYPEKIND_QUALIFIEDNAME:
         {
             qualified_name = assemble_qualified_name(req, req_index);
             if (is_scalar || is_null)
@@ -2555,7 +2523,7 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
         }
         break;
 
-        case UA_TYPES_LOCALIZEDTEXT:
+        case UA_DATATYPEKIND_LOCALIZEDTEXT:
         {
             if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
                 term_size != 2)
@@ -2818,7 +2786,7 @@ void handle_write_node_blank_array(void *entity, bool entity_type, const char *r
         }
         break;
 
-        case UA_TYPES_BYTE:
+        case UA_DATATYPEKIND_BYTE:
         {
             UA_Byte data[array_raw_size];
             for(size_t i = 0; i < array_raw_size; i++)
@@ -2829,7 +2797,7 @@ void handle_write_node_blank_array(void *entity, bool entity_type, const char *r
         }
         break;
 
-        case UA_TYPES_INT16:
+        case UA_DATATYPEKIND_INT16:
         {
             UA_Int16 data[array_raw_size];
             for(size_t i = 0; i < array_raw_size; i++)
@@ -2840,7 +2808,7 @@ void handle_write_node_blank_array(void *entity, bool entity_type, const char *r
         }
         break;
 
-        case UA_TYPES_UINT16:
+        case UA_DATATYPEKIND_UINT16:
         {
             UA_UInt16 data[array_raw_size];
             for(size_t i = 0; i < array_raw_size; i++)
@@ -2851,7 +2819,7 @@ void handle_write_node_blank_array(void *entity, bool entity_type, const char *r
         }
         break;
 
-        case UA_TYPES_INT32:
+        case UA_DATATYPEKIND_INT32:
         {
             UA_Int32 data[array_raw_size];
             for(size_t i = 0; i < array_raw_size; i++)
@@ -2862,7 +2830,7 @@ void handle_write_node_blank_array(void *entity, bool entity_type, const char *r
         }
         break;
 
-        case UA_TYPES_UINT32:
+        case UA_DATATYPEKIND_UINT32:
         {
             UA_UInt32 data[array_raw_size];
             for(size_t i = 0; i < array_raw_size; i++)
@@ -2873,7 +2841,7 @@ void handle_write_node_blank_array(void *entity, bool entity_type, const char *r
         }
         break;
 
-        case UA_TYPES_INT64:
+        case UA_DATATYPEKIND_INT64:
         {
             UA_Int64 data[array_raw_size];
             for(size_t i = 0; i < array_raw_size; i++)
@@ -2884,7 +2852,7 @@ void handle_write_node_blank_array(void *entity, bool entity_type, const char *r
         }
         break;
 
-        case UA_TYPES_UINT64:
+        case UA_DATATYPEKIND_UINT64:
         {
             UA_UInt64 data[array_raw_size];
             for(size_t i = 0; i < array_raw_size; i++)
@@ -2895,7 +2863,7 @@ void handle_write_node_blank_array(void *entity, bool entity_type, const char *r
         }
         break;
 
-        case UA_TYPES_FLOAT:
+        case UA_DATATYPEKIND_FLOAT:
         {
             UA_Float data[array_raw_size];
             for(size_t i = 0; i < array_raw_size; i++)
@@ -2906,7 +2874,7 @@ void handle_write_node_blank_array(void *entity, bool entity_type, const char *r
         }
         break;
 
-        case UA_TYPES_DOUBLE:
+        case UA_DATATYPEKIND_DOUBLE:
         {
             UA_Double data[array_raw_size];
             for(size_t i = 0; i < array_raw_size; i++)
@@ -2917,7 +2885,7 @@ void handle_write_node_blank_array(void *entity, bool entity_type, const char *r
         }
         break;
 
-        case UA_TYPES_STRING:
+        case UA_DATATYPEKIND_STRING:
         {
             UA_String data[array_raw_size];
             for(size_t i = 0; i < array_raw_size; i++)
@@ -2932,7 +2900,7 @@ void handle_write_node_blank_array(void *entity, bool entity_type, const char *r
         }
         break;
 
-        case UA_TYPES_DATETIME:
+        case UA_DATATYPEKIND_DATETIME:
         {
             UA_DateTime data[array_raw_size];
             for(size_t i = 0; i < array_raw_size; i++)
@@ -2943,7 +2911,7 @@ void handle_write_node_blank_array(void *entity, bool entity_type, const char *r
         }
         break;
 
-        case UA_TYPES_GUID:
+        case UA_DATATYPEKIND_GUID:
         {
             UA_Guid data[array_raw_size];
             for(size_t i = 0; i < array_raw_size; i++)
@@ -2954,7 +2922,7 @@ void handle_write_node_blank_array(void *entity, bool entity_type, const char *r
         }
         break;
 
-        case UA_TYPES_BYTESTRING:
+        case UA_DATATYPEKIND_BYTESTRING:
         {
             UA_ByteString data[array_raw_size];
             for(size_t i = 0; i < array_raw_size; i++)
@@ -2969,7 +2937,7 @@ void handle_write_node_blank_array(void *entity, bool entity_type, const char *r
         }
         break;
 
-        case UA_TYPES_XMLELEMENT:
+        case UA_DATATYPEKIND_XMLELEMENT:
         {
             UA_XmlElement data[array_raw_size];
             for(size_t i = 0; i < array_raw_size; i++)
@@ -2984,7 +2952,7 @@ void handle_write_node_blank_array(void *entity, bool entity_type, const char *r
         }
         break;
 
-        case UA_TYPES_NODEID:
+        case UA_DATATYPEKIND_NODEID:
         {
             UA_NodeId data[array_raw_size];
             for(size_t i = 0; i < array_raw_size; i++)
@@ -2999,7 +2967,7 @@ void handle_write_node_blank_array(void *entity, bool entity_type, const char *r
         }
         break;
 
-        case UA_TYPES_EXPANDEDNODEID:
+        case UA_DATATYPEKIND_EXPANDEDNODEID:
         {
             UA_ExpandedNodeId data[array_raw_size];
             for(size_t i = 0; i < array_raw_size; i++)
@@ -3014,7 +2982,7 @@ void handle_write_node_blank_array(void *entity, bool entity_type, const char *r
         }
         break;
 
-        case UA_TYPES_STATUSCODE:
+        case UA_DATATYPEKIND_STATUSCODE:
         {
             UA_StatusCode data[array_raw_size];
             for(size_t i = 0; i < array_raw_size; i++)
@@ -3025,7 +2993,7 @@ void handle_write_node_blank_array(void *entity, bool entity_type, const char *r
         }
         break;
 
-        case UA_TYPES_QUALIFIEDNAME:
+        case UA_DATATYPEKIND_QUALIFIEDNAME:
         {
             UA_QualifiedName data[array_raw_size];
             for(size_t i = 0; i < array_raw_size; i++)
@@ -3040,7 +3008,7 @@ void handle_write_node_blank_array(void *entity, bool entity_type, const char *r
         }
         break;
 
-        case UA_TYPES_LOCALIZEDTEXT:
+        case UA_DATATYPEKIND_LOCALIZEDTEXT:
         {
             UA_LocalizedText data[array_raw_size];
             for(size_t i = 0; i < array_raw_size; i++)
@@ -3941,79 +3909,79 @@ void handle_read_node_value_by_data_type(void *entity, bool entity_type, const c
             send_data_response(value->data, 1, 0);
         break;
 
-        case UA_TYPES_BYTE:
+        case UA_DATATYPEKIND_BYTE:
             send_data_response(value->data, 2, 0);
         break;
 
-        case UA_TYPES_INT16:
+        case UA_DATATYPEKIND_INT16:
             send_data_response(value->data, 1, 0);
         break;
         
-        case UA_TYPES_UINT16:
+        case UA_DATATYPEKIND_UINT16:
             send_data_response(value->data, 2, 0);
         break;
 
-        case UA_TYPES_INT32:
+        case UA_DATATYPEKIND_INT32:
             send_data_response(value->data, 1, 0);
         break;
 
-        case UA_TYPES_UINT32:
+        case UA_DATATYPEKIND_UINT32:
             send_data_response(value->data, 2, 0);
         break;
 
-        case UA_TYPES_INT64:
+        case UA_DATATYPEKIND_INT64:
             send_data_response(value->data, 15, 0);
         break;
 
-        case UA_TYPES_UINT64:
+        case UA_DATATYPEKIND_UINT64:
             send_data_response(value->data, 16, 0);
         break;
 
-        case UA_TYPES_FLOAT:
+        case UA_DATATYPEKIND_FLOAT:
             send_data_response(value->data, 17, 0);
         break;
 
-        case UA_TYPES_DOUBLE:
+        case UA_DATATYPEKIND_DOUBLE:
             send_data_response(value->data, 4, 0);
         break;
 
-        case UA_TYPES_STRING:
+        case UA_DATATYPEKIND_STRING:
             send_data_response((*(UA_String *)value->data).data, 5, (*(UA_String *)value->data).length);
         break;
 
-        case UA_TYPES_DATETIME:
+        case UA_DATATYPEKIND_DATETIME:
             send_data_response(value->data, 15, 0);
         break;
 
-        case UA_TYPES_GUID:
+        case UA_DATATYPEKIND_GUID:
             send_data_response(value->data, 18, 0);
         break;
 
-        case UA_TYPES_BYTESTRING:
+        case UA_DATATYPEKIND_BYTESTRING:
             send_data_response((*(UA_ByteString *)value->data).data, 5, (*(UA_ByteString *)value->data).length);
         break;
 
-        case UA_TYPES_XMLELEMENT:
+        case UA_DATATYPEKIND_XMLELEMENT:
             send_data_response((*(UA_XmlElement *)value->data).data, 5, (*(UA_XmlElement *)value->data).length);
         break;
 
-        case UA_TYPES_NODEID:
+        case UA_DATATYPEKIND_NODEID:
             send_data_response(value->data, 12, 0);
         break;
 
-        case UA_TYPES_EXPANDEDNODEID:
+        case UA_DATATYPEKIND_EXPANDEDNODEID:
             send_data_response(value->data, 19, 0);
         break;
 
-        case UA_TYPES_STATUSCODE:
+        case UA_DATATYPEKIND_STATUSCODE:
             send_data_response(value->data, 20, 0);
         break;
 
-        case UA_TYPES_QUALIFIEDNAME:
+        case UA_DATATYPEKIND_QUALIFIEDNAME:
             send_data_response(value->data, 13, 0);
         break;
 
-        case UA_TYPES_LOCALIZEDTEXT:
+        case UA_DATATYPEKIND_LOCALIZEDTEXT:
             send_data_response(value->data, 14, 0);
         break;
 
