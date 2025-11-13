@@ -758,8 +758,9 @@ void handle_add_namespace(void *entity, bool entity_type, const char *req, int *
     namespace[binary_len] = '\0';
 
     UA_UInt16 ns_id = UA_Server_addNamespace(server, namespace);
+    uint32_t ns_id_32 = (uint32_t)ns_id;
 
-    send_data_response(&ns_id, 2, 0);
+    send_data_response(&ns_id_32, 2, 0);
 }
 
 /* 

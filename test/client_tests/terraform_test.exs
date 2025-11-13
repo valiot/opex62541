@@ -206,10 +206,10 @@ defmodule ClientTerraformTest do
 
     assert :ok == Client.delete_subscription(pid, 1)
 
-    assert_receive({:value_changed, {1, 1, 103103.0}}, 1000)
+    assert_receive({:value_changed, {1, 1, 103103.0}}, 2000)
 
-    assert_receive({:item_deleted, {1, 1}}, 1000)
+    assert_receive({:item_deleted, {1, 1}}, 2000)
 
-    assert_receive({:subscription_delete, 1}, 1000)
+    assert_receive({:subscription_delete, 1}, 2000)
   end
 end

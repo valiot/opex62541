@@ -514,7 +514,7 @@ void encode_node_id(char *resp, int *resp_index, void *data)
     enum node_type{Numeric, String = 3, GUID, ByteString};
     ei_encode_tuple_header(resp, resp_index, 3);
     //Namespace Index
-    ei_encode_ulong(resp, resp_index,((UA_NodeId *)data)->namespaceIndex);
+    ei_encode_ulong(resp, resp_index, (unsigned long)((UA_NodeId *)data)->namespaceIndex);
     //encode NodeID type (Opex)
     switch(((UA_NodeId *)data)->identifierType)
     {
@@ -550,7 +550,7 @@ void encode_node_id(char *resp, int *resp_index, void *data)
 void encode_qualified_name(char *resp, int *resp_index, void *data)
 {   
     ei_encode_tuple_header(resp, resp_index, 2);
-    ei_encode_ulong(resp, resp_index,((UA_QualifiedName *)data)->namespaceIndex);
+    ei_encode_ulong(resp, resp_index, (unsigned long)((UA_QualifiedName *)data)->namespaceIndex);
     ei_encode_binary(resp, resp_index,((UA_QualifiedName *)data)->name.data, ((UA_QualifiedName *)data)->name.length); 
 }
 
@@ -583,7 +583,7 @@ void encode_expanded_node_id(char *resp, int *resp_index, void *data)
     enum node_type{Numeric, String = 3, GUID, ByteString};
     ei_encode_tuple_header(resp, resp_index, 5);
     //Namespace Index
-    ei_encode_ulong(resp, resp_index,((UA_ExpandedNodeId *)data)->nodeId.namespaceIndex);
+    ei_encode_ulong(resp, resp_index, (unsigned long)((UA_ExpandedNodeId *)data)->nodeId.namespaceIndex);
     //encode NodeID type (Opex)
     switch(((UA_ExpandedNodeId *)data)->nodeId.identifierType)
     {
@@ -2508,7 +2508,8 @@ void handle_write_node_value(void *entity, bool entity_type, const char *req, in
             else
             {
                 UA_NodeId_clear(((UA_NodeId *)value.data + data_index));
-                *((UA_NodeId *)value.data + data_index) = node_id_arg_1;
+                /* v1.4.x: Use UA_NodeId_copy to properly copy NodeId with string internals */
+                UA_NodeId_copy(&node_id_arg_1, ((UA_NodeId *)value.data + data_index));
             }
         }
         break;

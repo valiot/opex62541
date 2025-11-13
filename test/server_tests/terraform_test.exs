@@ -5,8 +5,7 @@ defmodule ServerTerraformTest do
 
   @configuration [
     config: [
-      port: 4023,
-      users: [{"alde103", "secret"}]
+      users: {[{"alde103", "secret"}], 4023}
     ]
   ]
 
@@ -100,6 +99,9 @@ defmodule ServerTerraformTest do
     Application.put_env(:opex62541, :configuration, @configuration)
 
     {:ok, _pid} = MyServer.start_link({self(), 103})
+    
+    # Give server time to start
+    Process.sleep(100)
 
     {:ok, c_pid} = Client.start_link()
 
