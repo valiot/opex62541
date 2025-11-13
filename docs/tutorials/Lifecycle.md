@@ -139,10 +139,10 @@ password = "103adle"
 
 #### No Session
 
-There may be situations where a session is not required. For those cases use `connect_no_session/2`
+There may be situations where a session is not required. For those cases use `connect_secure_channel/2` to connect only the secure channel without creating a session.
 
 ```elixir
 url = "opc.tcp://localhost:4048/"
-:ok = Client.connect_no_session(c_pid, url: url)
+:ok = Client.connect_secure_channel(c_pid, url: url)
 {:ok,  "Secure Channel"} = Client.get_state(c_pid)
 ```

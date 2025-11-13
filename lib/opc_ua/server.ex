@@ -304,12 +304,26 @@ defmodule OpcUA.Server do
   end
 
   @doc """
-  Adds users (and passwords) the Server.
+  Adds users (and passwords) to the Server with optional port configuration.
+
   Users must be a tuple list ([{user, password}]).
+  Port defaults to 4840 (standard OPC UA port).
+
+  ## Examples
+
+      # Use default port 4840
+      Server.set_users(pid, [{"user1", "pass1"}])
+
+      # Specify custom port
+      Server.set_users(pid, [{"user1", "pass1"}], 4002)
+
+  ## Note
+  v1.4.x: This follows the working pattern from open62541's server_access_control.c example.
+  It does NOT call setMinimal (which would destroy the valid configuration).
   """
-  @spec set_users(GenServer.server(), list()) :: :ok | {:error, binary()} | {:error, :einval}
-  def set_users(pid, users) when is_list(users) do
-    GenServer.call(pid, {:config, {:users, users}})
+  @spec set_users(GenServer.server(), list(), integer()) :: :ok | {:error, binary()} | {:error, :einval}
+  def set_users(pid, users, port \\ 4840) when is_list(users) and is_integer(port) do
+    GenServer.call(pid, {:config, {:users, {users, port}}})
   end
 
   @doc """
@@ -714,8 +728,10 @@ defmodule OpcUA.Server do
     {:noreply, state}
   end
 
-  def handle_call({:config, {:users, users}}, caller_info, state) do
-    call_port(state, :set_users, caller_info, users)
+  # v1.4.x: Always send {users_list, port} tuple to C
+  # Elixir handles the default port value (4840)
+  def handle_call({:config, {:users, {users, port}}}, caller_info, state) when is_list(users) and is_integer(port) do
+    call_port(state, :set_users, caller_info, {users, port})
     {:noreply, state}
   end
 

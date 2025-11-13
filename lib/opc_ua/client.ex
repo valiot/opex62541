@@ -391,13 +391,13 @@ defmodule OpcUA.Client do
   end
 
   @doc """
-    Connects the OPC UA Client by a url without a session.
+    Connects the OPC UA Client secure channel without creating a session.
     The following must be filled:
     * `:url` -> binary().
   """
-  @spec connect_no_session(GenServer.server(), list()) :: :ok | {:error, term} | {:error, :einval}
-  def connect_no_session(pid, args) when is_list(args) do
-    GenServer.call(pid, {:conn, {:no_session, args}})
+  @spec connect_secure_channel(GenServer.server(), list()) :: :ok | {:error, term} | {:error, :einval}
+  def connect_secure_channel(pid, args) when is_list(args) do
+    GenServer.call(pid, {:conn, {:secure_channel, args}})
   end
 
   @doc """
@@ -684,9 +684,9 @@ defmodule OpcUA.Client do
     {:noreply, state}
   end
 
-  def handle_call({:conn, {:no_session, args}}, caller_info, state) do
+  def handle_call({:conn, {:secure_channel, args}}, caller_info, state) do
     url = Keyword.fetch!(args, :url)
-    call_port(state, :connect_client_no_session, caller_info, url)
+    call_port(state, :connect_client_secure_channel, caller_info, url)
     {:noreply, state}
   end
 
@@ -904,7 +904,7 @@ defmodule OpcUA.Client do
     state
   end
 
-  defp handle_c_response({:connect_client_no_session, caller_metadata, c_response}, state) do
+  defp handle_c_response({:connect_client_secure_channel, caller_metadata, c_response}, state) do
     GenServer.reply(caller_metadata, c_response)
     state
   end

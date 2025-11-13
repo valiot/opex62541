@@ -104,17 +104,56 @@ if(NOT MANUAL_BUILD)
     set(EXTRACTED_FILE "open62541-${FILE_NAME}")
 
     if ((NOT EXISTS "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/lib") AND (NOT EXISTS "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/include"))
-        file(DOWNLOAD "${DOWNLOAD_URL}" "${DOWNLOAD_PATH}")
+        message(STATUS "Downloading from: ${DOWNLOAD_URL}")
+        message(STATUS "Download path: ${DOWNLOAD_PATH}")
+        
+        file(DOWNLOAD "${DOWNLOAD_URL}" "${DOWNLOAD_PATH}" STATUS DOWNLOAD_STATUS)
+        list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+        list(GET DOWNLOAD_STATUS 1 ERROR_MESSAGE)
+        
+        if(NOT STATUS_CODE EQUAL 0)
+            message(FATAL_ERROR "Failed to download open62541 from ${DOWNLOAD_URL}\nError: ${ERROR_MESSAGE}")
+        endif()
+        
+        # Verify the file was downloaded and has content
+        if(NOT EXISTS "${DOWNLOAD_PATH}")
+            message(FATAL_ERROR "Download file not found at ${DOWNLOAD_PATH}")
+        endif()
+        
+        file(SIZE "${DOWNLOAD_PATH}" DOWNLOAD_SIZE)
+        if(DOWNLOAD_SIZE LESS 1000)
+            message(FATAL_ERROR "Downloaded file is too small (${DOWNLOAD_SIZE} bytes), likely invalid. URL: ${DOWNLOAD_URL}")
+        endif()
+        
+        message(STATUS "Extracting ${DOWNLOAD_PATH} (${DOWNLOAD_SIZE} bytes)...")
         execute_process(
-            COMMAND ${UNPACK_CMD} ${UNPACK_CMD_OPTIONS} ${DOWNLOAD_PATH} ${EXTRACTED_FILE}
-            WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-        file(REMOVE "${DOWNLOAD_PATH}")
+            COMMAND ${UNPACK_CMD} ${UNPACK_CMD_OPTIONS} ${DOWNLOAD_PATH}
+            WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+            RESULT_VARIABLE EXTRACT_RESULT
+            ERROR_VARIABLE EXTRACT_ERROR)
+        
+        if(NOT EXTRACT_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to extract ${DOWNLOAD_PATH}\nError: ${EXTRACT_ERROR}")
+        endif()
+        
+        # Verify extracted directories exist
+        if(NOT EXISTS "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${EXTRACTED_FILE}/lib")
+            message(FATAL_ERROR "Extracted lib directory not found at ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${EXTRACTED_FILE}/lib")
+        endif()
+        
+        if(NOT EXISTS "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${EXTRACTED_FILE}/include")
+            message(FATAL_ERROR "Extracted include directory not found at ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${EXTRACTED_FILE}/include")
+        endif()
+        
         file(COPY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${EXTRACTED_FILE}/lib" DESTINATION "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
         file(COPY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${EXTRACTED_FILE}/include" DESTINATION "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
         
+        # Clean up downloaded file and extracted directory
+        file(REMOVE "${DOWNLOAD_PATH}")
+        file(REMOVE_RECURSE "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${EXTRACTED_FILE}")
+        
+        message(STATUS "Successfully extracted open62541 libraries")
     endif()
-
-    file(REMOVE_RECURSE "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${EXTRACTED_FILE}")
 
     set(install_dir ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/lib)
 

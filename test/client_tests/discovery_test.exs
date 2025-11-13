@@ -27,7 +27,7 @@ defmodule ClientDiscoveryTest do
        [
          %{
            "endpoint_url" => "opc.tcp://localhost:4003",
-           "security_level" => 1,
+           "security_level" => 0,
            "security_mode" => "none",
            "security_profile_uri" => "http://opcfoundation.org/UA/SecurityPolicy#None",
            "transport_profile_uri" =>
@@ -47,7 +47,7 @@ defmodule ClientDiscoveryTest do
       {:ok,
        [
          %{
-           "discovery_url" => ["opc.tcp://#{localhost}:4003/"],
+           "discovery_url" => ["opc.tcp://#{localhost}:4003"],
            "name" => "open62541-based OPC UA Application",
            "product_uri" => "http://open62541.org",
            "application_uri" => "urn:open62541.server.application",

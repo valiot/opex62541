@@ -14,9 +14,10 @@ typedef struct Users_list{
     size_t list_size;
     char **username;
     char **password;
+    UA_UsernamePasswordLogin *logins;  // v1.4.x: Keep logins persistent for UA_AccessControl_default
 }User_list;
 
-User_list users_list = {.list_size = 0};
+User_list users_list = {.list_size = 0, .username = NULL, .password = NULL, .logins = NULL};
 
 pthread_t server_tid;
 pthread_attr_t server_attr;
@@ -67,6 +68,7 @@ void set_users_list_size(int size)
     users_list.list_size = size;
     users_list.username = (char **)calloc(size, sizeof(char *));
     users_list.password = (char **)calloc(size, sizeof(char *));
+    users_list.logins = (UA_UsernamePasswordLogin *)calloc(size, sizeof(UA_UsernamePasswordLogin));  // v1.4.x
 }
 
 void delete_users_list()
@@ -78,11 +80,18 @@ void delete_users_list()
     {
         free(users_list.username[i]);
         free(users_list.password[i]);
+        /* v1.4.x: Also clear the UA_STRING copies in logins */
+        if(users_list.logins) {
+            UA_String_clear(&users_list.logins[i].username);
+            UA_String_clear(&users_list.logins[i].password);
+        }
     }
     
     users_list.list_size = 0;
     free(users_list.username);
     free(users_list.password);
+    free(users_list.logins);  // v1.4.x
+    users_list.logins = NULL;
 }
 
 void delete_discovery_params()
@@ -152,15 +161,17 @@ static void handle_set_network_tcp_layer(void *entity, bool entity_type, const c
             errx(EXIT_FAILURE, "expecting command atom");
     }
 
-    // v1.4.x: Network layer is configured via setMinimal which already includes TCP
-    // The port was already set if setMinimal was called, so this is now a no-op
-    // or we need to reconfigure the server with the new port
-    UA_StatusCode retval = UA_ServerConfig_setMinimal(UA_Server_getConfig(server), (UA_UInt16) port_number, NULL);
+    /* v1.4.x: Network layer is configured via setMinimal which includes TCP */
+    UA_ServerConfig *config = UA_Server_getConfig(server);
+    UA_StatusCode retval = UA_ServerConfig_setMinimal(config, (UA_UInt16) port_number, NULL);
 
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
-    }    
+    }
+    
+    /* Enable password transmission without encryption for SecurityPolicy#None */
+    config->allowNonePolicyPassword = true;
 
     send_ok_response();
 }
@@ -182,22 +193,16 @@ static void handle_set_hostname(void *entity, bool entity_type, const char *req,
         errx(EXIT_FAILURE, "Invalid hostname");
     host_name[binary_len] = '\0';
 
-    UA_String hostname;
-    UA_String_init(&hostname);
-    hostname.length = binary_len;
-    hostname.data = (UA_Byte *) host_name;
-
-    // v1.4.x: setCustomHostname removed, set via applicationDescription instead
-    UA_ServerConfig *config = UA_Server_getConfig(server);
-    // Store hostname in discovery URLs or application name
-    // For now, just acknowledge - full hostname customization may need different approach
-    // TODO: Implement proper hostname setting in v1.4.x if needed
+    /* v1.4.x: setCustomHostname removed, set via applicationDescription instead
+     * TODO: Implement proper hostname setting in v1.4.x if needed
+     */
+    (void)host_name; /* Currently unused, reserved for future implementation */
 
     send_ok_response();
 }
 
 /* 
-*   sets the server port. 
+*   Sets the server port. 
 */
 static void handle_set_port(void *entity, bool entity_type, const char *req, int *req_index)
 {
@@ -206,18 +211,26 @@ static void handle_set_port(void *entity, bool entity_type, const char *req, int
         return;
     }
 
-    UA_StatusCode retval = UA_ServerConfig_setMinimal(UA_Server_getConfig(server), (UA_Int16) port_number, NULL);
+    UA_ServerConfig *config = UA_Server_getConfig(server);
+    UA_StatusCode retval = UA_ServerConfig_setMinimal(config, (UA_UInt16) port_number, NULL);
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
     }
+    
+    /* Enable password transmission without encryption for SecurityPolicy#None */
+    config->allowNonePolicyPassword = true;
 
     send_ok_response();
 }
 
 /* 
-*   Sets the server port. 
-*   TODO: free usernames/password allocated array.
+*   Configures users and passwords for authentication.
+*   v1.4.x: Uses the successful pattern from server_access_control.c example
+*   - Accepts a port parameter (default: 4840)
+*   - For port 4840: uses default configuration from UA_Server_new()
+*   - For other ports: calls setMinimal to configure the custom port
+*   - Follows the pattern: allowNonePolicyPassword -> UA_AccessControl_default
 */
 static void handle_set_users_and_passwords(void *entity, bool entity_type, const char *req, int *req_index)
 {
@@ -225,18 +238,26 @@ static void handle_set_users_and_passwords(void *entity, bool entity_type, const
     int tuple_arity;
     int term_type;
     int term_size;
+    unsigned long port;
 
+    /* Expect format: {[{user, pass}, ...], port} - Elixir handles the default */
+    if(ei_decode_tuple_header(req, req_index, &tuple_arity) < 0 || tuple_arity != 2)
+        errx(EXIT_FAILURE, ":handle_set_users_and_passwords requires a 2-tuple {users_list, port}, got arity = %d", tuple_arity);
+
+    /* Decode the users list */
     if(ei_decode_list_header(req, req_index, &list_arity) < 0)
-        errx(EXIT_FAILURE, ":handle_set_users_and_passwords has an empty list");
+        errx(EXIT_FAILURE, ":handle_set_users_and_passwords users list required");
 
-    UA_UsernamePasswordLogin logins[list_arity];
-
+    /* Save the number of users before it gets overwritten */
+    int num_users = list_arity;
+    
     delete_users_list();
-    set_users_list_size(list_arity);
+    set_users_list_size(num_users);
 
-    for(size_t i = 0; i < list_arity; i++) {
+    /* Decode username/password pairs */
+    for(size_t i = 0; i < num_users; i++) {
         if(ei_decode_tuple_header(req, req_index, &tuple_arity) < 0 || tuple_arity != 2)
-            errx(EXIT_FAILURE, ":handle_set_users_and_passwords requires a 2-tuple, term_size = %d", tuple_arity);
+            errx(EXIT_FAILURE, ":handle_set_users_and_passwords user entry requires a 2-tuple, term_size = %d", tuple_arity);
 
         if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
             errx(EXIT_FAILURE, "Invalid username (size)");
@@ -252,27 +273,66 @@ static void handle_set_users_and_passwords(void *entity, bool entity_type, const
 
         users_list.password[i] = (char *)malloc(term_size + 1);
         if (ei_decode_binary(req, req_index, users_list.password[i], &binary_len) < 0) 
-            errx(EXIT_FAILURE, "Invalid hostname");
+            errx(EXIT_FAILURE, "Invalid password");
         users_list.password[i][binary_len] = '\0';
 
-        logins[i].username = UA_STRING(users_list.username[i]);
-        logins[i].password = UA_STRING(users_list.password[i]);
+        /* Store logins in persistent structure using UA_STRING_ALLOC */
+        users_list.logins[i].username = UA_STRING_ALLOC(users_list.username[i]);
+        users_list.logins[i].password = UA_STRING_ALLOC(users_list.password[i]);
+    }
+    
+    /* Decode the list terminator (empty list tail) */
+    if(ei_decode_list_header(req, req_index, &list_arity) < 0 || list_arity != 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    /* Decode the port */
+    if (ei_decode_ulong(req, req_index, &port) < 0) {
+        send_error_response("einval");
+        return;
     }
 
     UA_ServerConfig *config = UA_Server_getConfig(server);
+    
+    /* v1.4.x: In v1.4.14, UA_Server_new() creates a server with 1 endpoint and 1 security policy
+     * on port 4840 by default. Following the official example pattern:
+     * - If port is 4840: use the default configuration from UA_Server_new()
+     * - If port is NOT 4840: call setMinimal to configure the custom port
+     */
+    UA_StatusCode retval = UA_STATUSCODE_GOOD;
+    if(port != 4840) {
+        retval = UA_ServerConfig_setMinimal(config, (UA_UInt16)port, NULL);
+        if(retval != UA_STATUSCODE_GOOD) {
+            send_opex_response(retval);
+            return;
+        }
+    }
+    
+    /* Enable password transmission without encryption for SecurityPolicy#None */
+    config->allowNonePolicyPassword = true;
+    
+    /* Clear existing access control before reconfiguring */
     config->accessControl.clear(&config->accessControl);
-    /* Disable anonymous logins, enable two user/password logins */
-    UA_StatusCode retval = UA_AccessControl_default(config, false, &config->securityPolicies[config->securityPoliciesSize-1].policyUri, list_arity, logins);
+    
+    /* Configure authentication following the working example pattern */
+    UA_Boolean allowAnonymous = true; /* Allow both anonymous AND username/password */
+    UA_String encryptionPolicy = config->securityPolicies[config->securityPoliciesSize-1].policyUri;
+    
+    retval = UA_AccessControl_default(config, allowAnonymous, &encryptionPolicy, 
+                                      num_users, users_list.logins);
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
     }
 
+    /* Restore custom access control callbacks */
     config->accessControl.allowAddNode = allowAddNode;
     config->accessControl.allowAddReference = allowAddReference;
     config->accessControl.allowDeleteNode = allowDeleteNode;
     config->accessControl.allowDeleteReference = allowDeleteReference;
 
+    port_number = port;
     send_ok_response();
 }
 

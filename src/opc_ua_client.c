@@ -113,7 +113,13 @@ static void handle_get_client_config(void *entity, bool entity_type, const char 
 }
 
 /*
- * Gets the current client connection state. 
+ * Gets the current client connection state.
+ * 
+ * TODO: v1.4.x - Return all 3 states (channelState, sessionState, connectStatus) as a tuple
+ * instead of a single global state string. This would match the UA_Client_getState API better
+ * and provide more detailed information to the Elixir layer.
+ * Current: returns single string like "Session", "Secure Channel", "Disconnected"
+ * Proposed: return {channelState, sessionState, connectStatus} tuple
 */
 static void handle_get_client_state(void *entity, bool entity_type, const char *req, int *req_index)
 {
@@ -123,7 +129,13 @@ static void handle_get_client_state(void *entity, bool entity_type, const char *
     UA_StatusCode connectStatus;
     UA_Client_getState(client, &channelState, &sessionState, &connectStatus);
 
-    // Return session state as primary indicator
+    // Special case: If session is closed but channel is open, return channel state (for no-session connections)
+    if(sessionState == UA_SESSIONSTATE_CLOSED && channelState == UA_SECURECHANNELSTATE_OPEN) {
+        send_data_response("Secure Channel", 3, 0);
+        return;
+    }
+
+    // Return session state for all other cases
     switch(sessionState)
     {
         case UA_SESSIONSTATE_CLOSED:
@@ -250,10 +262,10 @@ static void handle_connect_client_by_username(void *entity, bool entity_type, co
     send_ok_response();
 }
 
-/* Connect to the server without creating a session.
+/* Connect to the server secure channel without creating a session.
  *
  * @return Indicates whether the operation succeeded or returns an error code */
-static void handle_connect_client_no_session(void *entity, bool entity_type, const char *req, int *req_index)
+static void handle_connect_client_secure_channel(void *entity, bool entity_type, const char *req, int *req_index)
 {
     int term_size;
     int term_type;
@@ -267,18 +279,13 @@ static void handle_connect_client_no_session(void *entity, bool entity_type, con
         errx(EXIT_FAILURE, "Invalid url");
     url[binary_len] = '\0';
     
-    // v1.4.x: Check if this function still exists or needs alternative approach
-    // May need to connect normally then close session
-    UA_StatusCode retval = UA_Client_connect(client, url);
-    if(retval == UA_STATUSCODE_GOOD) {
-        // Close session to maintain no-session connection
-        UA_Client_disconnectSecureChannel(client);
-    }
+    // v1.4.x: Use UA_Client_connectSecureChannel to connect only the secure channel without creating a session
+    UA_StatusCode retval = UA_Client_connectSecureChannel(client, url);
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
         return;
     }
-    
+
     send_ok_response();
 }
 
@@ -1072,7 +1079,7 @@ static struct request_handler request_handlers[] = {
     // connections functions
     {"connect_client_by_url", handle_connect_client_by_url},
     {"connect_client_by_username", handle_connect_client_by_username},     
-    {"connect_client_no_session", handle_connect_client_no_session},     
+    {"connect_client_secure_channel", handle_connect_client_secure_channel},     
     {"disconnect_client", handle_disconnect_client}, 
     // discovery functions
     {"find_servers_on_network", handle_find_servers_on_network},
