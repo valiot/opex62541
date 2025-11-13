@@ -5,8 +5,7 @@ defmodule ClientTerraformTest do
 
   @configuration_server [
     config: [
-      port: 4006,
-      users: [{"alde103", "secret"}]
+      users: {[{"alde103", "secret"}], 4006}
     ]
   ]
 
