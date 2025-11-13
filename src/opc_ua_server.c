@@ -446,6 +446,12 @@ static void handle_set_config_with_security_policies(void *entity, bool entity_t
                                                        issuer_list, issuer_list_size,
                                                        revocation_list, revocation_list_size);
 
+    /* v1.4.x: For testing, accept all certificates */
+    if(retval == UA_STATUSCODE_GOOD) {
+        UA_CertificateVerification_AcceptAll(&config->sessionPKI);
+        UA_CertificateVerification_AcceptAll(&config->secureChannelPKI);
+    }
+
     UA_ByteString_clear(&certificate);
     UA_ByteString_clear(&private_key);
 
