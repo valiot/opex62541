@@ -326,6 +326,44 @@ UA_QualifiedName assemble_qualified_name(const char *req, int *req_index)
     return UA_QUALIFIEDNAME(ns_index, node_qualified_name_str);
 }
 
+UA_LocalizedText assemble_localized_text(const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_LocalizedText localized_text;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, "assemble_localized_text requires a 2-tuple, term_size = %d", term_size);
+
+    // Locale
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid locale (size)");
+
+    char *locale_str;
+    locale_str = (char *)malloc(term_size + 1);
+    long locale_len;
+    if (ei_decode_binary(req, req_index, locale_str, &locale_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid locale");
+    locale_str[locale_len] = '\0';
+
+    // Text
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
+        errx(EXIT_FAILURE, "Invalid text (size)");
+
+    char *text_str;
+    text_str = (char *)malloc(term_size + 1);
+    long text_len;
+    if (ei_decode_binary(req, req_index, text_str, &text_len) < 0) 
+        errx(EXIT_FAILURE, "Invalid text");
+    text_str[text_len] = '\0';
+
+    localized_text.locale = UA_STRING(locale_str);
+    localized_text.text = UA_STRING(text_str);
+
+    return localized_text;
+}
+
 /***************************/
 /* Elixir Message encoders */
 /***************************/
@@ -1184,16 +1222,20 @@ void handle_add_variable_node(void *entity, bool entity_type, const char *req, i
     UA_StatusCode retval;
 
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-        term_size != 5)
-        errx(EXIT_FAILURE, ":handle_add_variable_node requires a 5-tuple, term_size = %d", term_size);
+        term_size != 7)
+        errx(EXIT_FAILURE, ":handle_add_variable_node requires a 7-tuple, term_size = %d", term_size);
     
     UA_NodeId requested_new_node_id = assemble_node_id(req, req_index);
     UA_NodeId parent_node_id = assemble_node_id(req, req_index);
     UA_NodeId reference_type_node_id = assemble_node_id(req, req_index);
     UA_QualifiedName browse_name = assemble_qualified_name(req, req_index);
     UA_NodeId type_definition = assemble_node_id(req, req_index);
+    UA_LocalizedText display_name = assemble_localized_text(req, req_index);
+    UA_LocalizedText description = assemble_localized_text(req, req_index);
 
     UA_VariableAttributes vAttr = UA_VariableAttributes_default;
+    vAttr.displayName = display_name;
+    vAttr.description = description;
     
     if(entity_type)
         retval = UA_Client_addVariableNode((UA_Client *)entity, requested_new_node_id, parent_node_id, reference_type_node_id, browse_name, type_definition, vAttr, NULL);
@@ -1211,6 +1253,8 @@ void handle_add_variable_node(void *entity, bool entity_type, const char *req, i
     UA_NodeId_clear(&reference_type_node_id);
     UA_QualifiedName_clear(&browse_name);
     UA_NodeId_clear(&type_definition);
+    UA_LocalizedText_clear(&display_name);
+    UA_LocalizedText_clear(&description);
 
     if(retval != UA_STATUSCODE_GOOD) {
         send_opex_response(retval);
@@ -1528,6 +1572,45 @@ void handle_delete_node(void *entity, bool entity_type, const char *req, int *re
 /***************************************/
 /* Reading and Writing Node Attributes */
 /***************************************/
+
+/* 
+ *  Change the browse name of a node in the server.
+ *  Note: Only available for server, not client (BrowseName is immutable via client since open62541 v1.0.4)
+ */
+void handle_write_node_browse_name_server(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    int term_size;
+    int term_type;
+    UA_StatusCode retval;
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":handle_write_node_browse_name_server requires a 2-tuple, term_size = %d", term_size);
+    
+    UA_NodeId node_id = assemble_node_id(req, req_index);
+    UA_QualifiedName browse_name = assemble_qualified_name(req, req_index);
+    
+    // Only server can write BrowseName directly (not through attribute service)
+    if(entity_type) {
+        // Client cannot write BrowseName (immutable since open62541 v1.0.4)
+        UA_NodeId_clear(&node_id);
+        UA_QualifiedName_clear(&browse_name);
+        send_opex_response(UA_STATUSCODE_BADWRITENOTSUPPORTED);
+        return;
+    }
+    
+    retval = UA_Server_writeBrowseName((UA_Server *)entity, node_id, browse_name);
+
+    UA_NodeId_clear(&node_id);
+    UA_QualifiedName_clear(&browse_name);
+
+    if(retval != UA_STATUSCODE_GOOD) {
+        send_opex_response(retval);
+        return;
+    }
+
+    send_ok_response();
+}
 
 /* 
  *  Change the display name of a node in the server. 

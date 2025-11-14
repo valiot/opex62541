@@ -99,7 +99,7 @@ defmodule ServerTerraformTest do
     Application.put_env(:opex62541, :configuration, @configuration)
 
     {:ok, _pid} = MyServer.start_link({self(), 103})
-    
+
     # Give server time to start
     Process.sleep(100)
 

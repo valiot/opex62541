@@ -1,7 +1,7 @@
 defmodule OpcUA.Server do
   use OpcUA.Common
 
-  alias OpcUA.{NodeId}
+  alias OpcUA.{NodeId, QualifiedName}
 
   @moduledoc """
 
@@ -514,12 +514,21 @@ defmodule OpcUA.Server do
 
   @doc """
   Add a new variable node to the server.
-  The following must be filled:
+
+  Required parameters:
     * `:requested_new_node_id` -> %NodeID{}.
     * `:parent_node_id` -> %NodeID{}.
     * `:reference_type_node_id` -> %NodeID{}.
     * `:browse_name` -> %QualifiedName{}.
     * `:type_definition` -> %NodeID{}.
+
+  Optional parameters:
+    * `:display_name` -> {locale :: String.t(), text :: String.t()}. Defaults to {"en-US", ""}.
+    * `:description` -> {locale :: String.t(), text :: String.t()}. Defaults to {"en-US", ""}.
+
+  Note: DisplayName and Description with locale can ONLY be set during node creation.
+  After creation, you cannot change a displayName/description without locale to one with locale.
+  This is a limitation in open62541 v1.4.x (commit dc6740311, July 2022).
   """
   @spec add_variable_node(GenServer.server(), list()) ::
           :ok | {:error, binary()} | {:error, :einval}
@@ -672,6 +681,17 @@ defmodule OpcUA.Server do
           :ok | {:error, binary()} | {:error, :einval}
   def delete_monitored_item(pid, monitored_item_id) when is_integer(monitored_item_id) do
     GenServer.call(pid, {:delete_monitored_item, monitored_item_id})
+  end
+
+
+  @doc """
+  Change the browse name of a node.
+  Note: Only works for Server. BrowseName is immutable via Client since open62541 v1.0.4.
+  """
+  @spec write_node_browse_name(GenServer.server(), %NodeId{}, %QualifiedName{}) ::
+          :ok | {:error, binary()} | {:error, :einval}
+  def write_node_browse_name(pid, %NodeId{} = node_id, browse_name) do
+    GenServer.call(pid, {:write, {:browse_name, node_id, browse_name}})
   end
 
   @doc false
@@ -883,10 +903,12 @@ defmodule OpcUA.Server do
     reference_type_node_id = Keyword.fetch!(args, :reference_type_node_id) |> to_c()
     browse_name = Keyword.fetch!(args, :browse_name) |> to_c()
     type_definition = Keyword.fetch!(args, :type_definition) |> to_c()
+    display_name = Keyword.get(args, :display_name, {"en-US", ""}) |> to_c()
+    description = Keyword.get(args, :description, {"en-US", ""}) |> to_c()
 
     c_args =
       {requested_new_node_id, parent_node_id, reference_type_node_id, browse_name,
-       type_definition}
+       type_definition, display_name, description}
 
     call_port(state, :add_variable_node, caller_info, c_args)
     {:noreply, state}
@@ -1015,6 +1037,12 @@ defmodule OpcUA.Server do
 
   def handle_call({:delete_monitored_item, monitored_item_id}, caller_info, state) do
     call_port(state, :delete_monitored_item, caller_info, monitored_item_id)
+    {:noreply, state}
+  end
+
+  def handle_call({:write, {:browse_name, node_id, browse_name}}, caller_info, state) do
+    c_args = {to_c(node_id), to_c(browse_name)}
+    call_port(state, :write_node_browse_name, caller_info, c_args)
     {:noreply, state}
   end
 

@@ -73,7 +73,9 @@ defmodule ClientWriteAttrTest do
       parent_node_id: parent_node_id,
       reference_type_node_id: reference_type_node_id,
       browse_name: browse_name,
-      type_definition: type_definition
+      type_definition: type_definition,
+      display_name: {"en-US", "Var Display Name"},
+      description: {"en-US", "Variable description"}
     )
 
     :ok = Server.write_node_write_mask(s_pid, requested_new_node_id, 0x3FFFFF)
@@ -109,7 +111,7 @@ defmodule ClientWriteAttrTest do
     %{c_pid: c_pid, ns_index: ns_index}
   end
 
-  test "Write and Read Attributes", %{c_pid: c_pid, ns_index: ns_index} do
+  test "Write and Read Attributes", %{c_pid: c_pid, ns_index: _ns_index} do
     node_id =  NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10001)
 
     new_node_id =  NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10003)
@@ -169,9 +171,18 @@ defmodule ClientWriteAttrTest do
     c_response = Client.write_node_event_notifier(c_pid, node_id, 103)
     assert c_response == {:error, "BadNodeClassInvalid"}
 
-    assert :ok == Client.write_node_display_name(c_pid, node_id, "en-US", "var")
+    # DisplayName: Now we create nodes with localized displayName during creation
     c_response = Client.read_node_display_name(c_pid, node_id)
-    assert c_response == {:ok, {"en-US", "var"}}
+    assert c_response == {:ok, {"en-US", "Var Display Name"}}
+
+    # We can modify displayName text while keeping the locale
+    assert :ok == Client.write_node_display_name(c_pid, node_id, "en-US", "Modified Display Name")
+    c_response = Client.read_node_display_name(c_pid, node_id)
+    assert c_response == {:ok, {"en-US", "Modified Display Name"}}
+
+    # Description was also set during creation
+    c_response = Client.read_node_description(c_pid, node_id)
+    assert c_response == {:ok, {"en-US", "Variable description"}}
 
     assert :ok == Client.write_node_description(c_pid, node_id, "en-US", "variable")
     c_response = Client.read_node_description(c_pid, node_id)

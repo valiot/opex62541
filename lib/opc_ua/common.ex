@@ -664,6 +664,11 @@ defmodule OpcUA.Common do
 
       # Write nodes Attributes C handlers
 
+      defp handle_c_response({:write_node_browse_name, caller_metadata, data}, state) do
+        GenServer.reply(caller_metadata, data)
+        state
+      end
+
       defp handle_c_response({:write_node_display_name, caller_metadata, data}, state) do
         GenServer.reply(caller_metadata, data)
         state
@@ -907,6 +912,10 @@ defmodule OpcUA.Common do
 
       defp to_c(%QualifiedName{ns_index: ns_index, name: name}),
         do: {ns_index, name}
+
+      # LocalizedText tuple {locale, text}
+      defp to_c({locale, text}) when is_binary(locale) and is_binary(text),
+        do: {locale, text}
 
       defp to_c(_invalid_struct), do: raise("Invalid Data type")
 

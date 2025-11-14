@@ -58,6 +58,7 @@ static size_t caller_metadata_size = 0;
 UA_NodeId assemble_node_id(const char *req, int *req_index);
 UA_ExpandedNodeId assemble_expanded_node_id(const char *req, int *req_index);
 UA_QualifiedName assemble_qualified_name(const char *req, int *req_index);
+UA_LocalizedText assemble_localized_text(const char *req, int *req_index);
 
 // Elixir Message assemblers
 void encode_client_config(char *resp, int *resp_index, void *data);
@@ -92,6 +93,7 @@ void handle_add_reference(void *entity, bool entity_type, const char *req, int *
 void handle_delete_reference(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_delete_node(void *entity, bool entity_type, const char *req, int *req_index);
 
+void handle_write_node_browse_name_server(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_write_node_display_name(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_write_node_description(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_write_node_write_mask(void *entity, bool entity_type, const char *req, int *req_index);
