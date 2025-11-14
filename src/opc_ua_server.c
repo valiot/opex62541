@@ -19,12 +19,21 @@ typedef struct Users_list{
 
 User_list users_list = {.list_size = 0, .username = NULL, .password = NULL, .logins = NULL};
 
+// v1.4.x: Structure to hold discovery registration callback data
+typedef struct {
+    UA_Client *client;
+    char *discoveryUrl;
+    UA_Server *server;
+    UA_UInt64 callbackId;  // To track and remove the callback
+} DiscoveryCallbackData;
+
 pthread_t server_tid;
 pthread_attr_t server_attr;
 UA_Boolean running = true;
 
 UA_Server *server;
 UA_Client *discoveryClient;
+DiscoveryCallbackData *discoveryData = NULL;
 unsigned long port_number = 4840;
 
 static UA_Boolean
@@ -46,6 +55,96 @@ static UA_Boolean
 allowDeleteReference(UA_Server *server, UA_AccessControl *ac,
                      const UA_NodeId *sessionId, void *sessionContext,
                      const UA_DeleteReferencesItem *item) {return UA_FALSE;}
+
+// v1.4.x: Periodic callback for discovery server registration
+// This function connects to the discovery server and calls RegisterServer2
+static void periodicServerRegister(UA_Server *srv, void *data) {
+    if (!data) return;
+    
+    DiscoveryCallbackData *callbackData = (DiscoveryCallbackData *)data;
+    
+    // Connect to discovery server
+    UA_StatusCode retval = UA_Client_connect(callbackData->client, callbackData->discoveryUrl);
+    if (retval != UA_STATUSCODE_GOOD) {
+        // Connection failed, will retry on next callback
+        return;
+    }
+    
+    // Get server configuration to build RegisterServer2 request
+    UA_ServerConfig *config = UA_Server_getConfig(srv);
+    
+    // Create RegisteredServer structure (shallow copy, we'll manage memory properly)
+    UA_RegisteredServer registeredServer;
+    UA_RegisteredServer_init(&registeredServer);
+    
+    // Copy server URIs (need deep copy)
+    UA_String_copy(&config->applicationDescription.applicationUri, &registeredServer.serverUri);
+    UA_String_copy(&config->applicationDescription.productUri, &registeredServer.productUri);
+    registeredServer.serverType = config->applicationDescription.applicationType;
+    registeredServer.gatewayServerUri = UA_STRING_NULL;
+    registeredServer.isOnline = UA_TRUE;
+    
+    // Copy server names
+    registeredServer.serverNamesSize = 1;
+    registeredServer.serverNames = (UA_LocalizedText *)UA_Array_new(1, &UA_TYPES[UA_TYPES_LOCALIZEDTEXT]);
+    if (registeredServer.serverNames) {
+        UA_LocalizedText_copy(&config->applicationDescription.applicationName, 
+                             &registeredServer.serverNames[0]);
+    }
+    
+    // Build discovery URLs from applicationDescription.discoveryUrls
+    // v1.4.x: Use discoveryUrls from applicationDescription which has correct hostname
+    // These URLs are built by open62541 from network layers and include the hostname
+    // Add trailing slash to each URL as required by OPC UA discovery protocol
+    if (config->applicationDescription.discoveryUrlsSize > 0) {
+        registeredServer.discoveryUrlsSize = config->applicationDescription.discoveryUrlsSize;
+        registeredServer.discoveryUrls = (UA_String *)UA_Array_new(registeredServer.discoveryUrlsSize, 
+                                                                    &UA_TYPES[UA_TYPES_STRING]);
+        
+        if (registeredServer.discoveryUrls) {
+            for (size_t i = 0; i < config->applicationDescription.discoveryUrlsSize; i++) {
+                UA_String *sourceUrl = &config->applicationDescription.discoveryUrls[i];
+                
+                // Check if URL already has trailing slash
+                UA_Boolean hasSlash = (sourceUrl->length > 0 && 
+                                      sourceUrl->data[sourceUrl->length - 1] == '/');
+                
+                if (hasSlash) {
+                    // Just copy as-is
+                    UA_String_copy(sourceUrl, &registeredServer.discoveryUrls[i]);
+                } else {
+                    // Add trailing slash
+                    size_t newLen = sourceUrl->length + 1;
+                    registeredServer.discoveryUrls[i].data = (UA_Byte *)UA_malloc(newLen);
+                    if (registeredServer.discoveryUrls[i].data) {
+                        memcpy(registeredServer.discoveryUrls[i].data, sourceUrl->data, sourceUrl->length);
+                        registeredServer.discoveryUrls[i].data[sourceUrl->length] = '/';
+                        registeredServer.discoveryUrls[i].length = newLen;
+                    }
+                }
+            }
+        }
+    }
+    
+    // Create the RegisterServer2 request
+    UA_RegisterServer2Request request;
+    UA_RegisterServer2Request_init(&request);
+    request.server = registeredServer;
+    request.discoveryConfigurationSize = 0;
+    request.discoveryConfiguration = NULL;
+    
+    // Call the RegisterServer2 service
+    UA_RegisterServer2Response response;
+    __UA_Client_Service(callbackData->client, &request, &UA_TYPES[UA_TYPES_REGISTERSERVER2REQUEST],
+                       &response, &UA_TYPES[UA_TYPES_REGISTERSERVER2RESPONSE]);
+    
+    // Clean up (this will properly free all allocated memory)
+    UA_RegisterServer2Request_clear(&request);
+    UA_RegisterServer2Response_clear(&response);
+    
+    // Disconnect from discovery server
+    UA_Client_disconnect(callbackData->client);
+}
 
 void* server_runner(void* arg)
 {
@@ -893,21 +992,23 @@ void handle_discovery_register(void *entity, bool entity_type, const char *req, 
     
     config->mdnsConfig.mdnsServerName = server_name;
 
-    // endpoint
+    // endpoint (discovery server URL)
     if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
             errx(EXIT_FAILURE, "Invalid endpoint (type)");
 
-    //char *endpoint = (char *)malloc(term_size + 1);
-    char endpoint[term_size + 1];
-    if (ei_decode_binary(req, req_index, endpoint, &binary_len) < 0) 
+    char *endpoint = (char *)malloc(term_size + 1);
+    if (ei_decode_binary(req, req_index, endpoint, &binary_len) < 0) {
+        free(endpoint);
         errx(EXIT_FAILURE, "Invalid endpoint");
+    }
     endpoint[binary_len] = '\0';
 
-    // timeout
+    // timeout (in milliseconds)
     long timeout;
     if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_ATOM_EXT)
     {
         if (ei_decode_ulong(req, req_index, &timeout) < 0) {
+            free(endpoint);
             send_error_response("einval");
             return;
         }
@@ -915,54 +1016,145 @@ void handle_discovery_register(void *entity, bool entity_type, const char *req, 
     else
     {
         char nil[4];
-        if (ei_decode_atom(req, req_index, nil) < 0)
+        if (ei_decode_atom(req, req_index, nil) < 0) {
+            free(endpoint);
             errx(EXIT_FAILURE, "expecting command atom");
-        timeout = 10 * 60 * 1000;
+        }
+        timeout = 10 * 60 * 1000;  // Default: 10 minutes
     }
 
-    if(discoveryClient != NULL)
-        UA_Client_delete(discoveryClient);
+    // Clean up previous discovery registration if exists
+    if (discoveryData != NULL) {
+        if (discoveryData->callbackId > 0) {
+            UA_Server_removeRepeatedCallback(server, discoveryData->callbackId);
+        }
+        if (discoveryData->client != NULL) {
+            UA_Client_disconnect(discoveryData->client);
+            UA_Client_delete(discoveryData->client);
+        }
+        if (discoveryData->discoveryUrl != NULL) {
+            free(discoveryData->discoveryUrl);
+        }
+        free(discoveryData);
+        discoveryData = NULL;
+    }
 
+    // Create new discovery client
     discoveryClient = UA_Client_new();
+    if (discoveryClient == NULL) {
+        free(endpoint);
+        send_error_response("enomem");
+        return;
+    }
     UA_ClientConfig_setDefault(UA_Client_getConfig(discoveryClient));
 
-    // v1.4.x: Use UA_Server_addRepeatedCallback for periodic discovery registration
-    // Create a callback wrapper since the signature changed
-    UA_UInt64 callbackId;
-    retval = UA_Server_addRepeatedCallback(server, 
-                                           (UA_ServerCallback)UA_Server_registerDiscovery, 
-                                           discoveryClient, 
-                                           (UA_Double)timeout, 
-                                           &callbackId);
-    
-    if(retval != UA_STATUSCODE_GOOD) {
-        UA_Client_disconnect(discoveryClient);
+    // v1.4.x: Setup discovery callback data structure
+    discoveryData = (DiscoveryCallbackData *)malloc(sizeof(DiscoveryCallbackData));
+    if (discoveryData == NULL) {
         UA_Client_delete(discoveryClient);
+        free(endpoint);
+        send_error_response("enomem");
+        return;
+    }
+    
+    discoveryData->client = discoveryClient;
+    discoveryData->discoveryUrl = endpoint;  // Transfer ownership
+    discoveryData->server = server;
+    discoveryData->callbackId = 0;
+
+    // v1.4.x: Add periodic callback for discovery registration
+    // Convert timeout from milliseconds to seconds (UA_Double)
+    UA_Double timeoutSeconds = (UA_Double)timeout / 1000.0;
+    
+    retval = UA_Server_addRepeatedCallback(server, 
+                                           periodicServerRegister, 
+                                           discoveryData, 
+                                           timeoutSeconds, 
+                                           &discoveryData->callbackId);
+    
+    if (retval != UA_STATUSCODE_GOOD) {
+        UA_Client_delete(discoveryClient);
+        free(discoveryData->discoveryUrl);
+        free(discoveryData);
+        discoveryData = NULL;
         send_opex_response(retval);
         return;
     }
+
+    // Perform immediate registration (don't wait for first callback)
+    periodicServerRegister(server, discoveryData);
 
     send_ok_response();
 }
 
 /* 
  *  Unregister the server from the discovery server.
+ *  v1.4.x: Stops the periodic registration callback and sends final unregister request
  */
 void handle_discovery_unregister(void *entity, bool entity_type, const char *req, int *req_index)
 {
-    // Note: v1.4.x API change - UA_Server_deregisterDiscovery requires UA_ClientConfig
-    // TODO: Implement proper deregistration with UA_ClientConfig
-    // UA_ClientConfig cc;
-    // memset(&cc, 0, sizeof(UA_ClientConfig));
-    // UA_ClientConfig_setDefault(&cc);
-    // UA_String discoveryUrl = UA_STRING("opc.tcp://localhost:4840");
-    // UA_StatusCode retval = UA_Server_deregisterDiscovery(server, &cc, discoveryUrl);
-    // UA_ClientConfig_clear(&cc);
-    
-    UA_Client_disconnect(discoveryClient);
-    //UA_Client_delete(discoveryClient);
+    if (discoveryData == NULL) {
+        // No active discovery registration
+        send_ok_response();
+        return;
+    }
 
-    // For now, return success since old API is not available
+    // Remove the periodic callback
+    if (discoveryData->callbackId > 0) {
+        UA_Server_removeRepeatedCallback(server, discoveryData->callbackId);
+    }
+
+    // Send final unregister request (isOnline = false)
+    if (discoveryData->client != NULL && discoveryData->discoveryUrl != NULL) {
+        UA_StatusCode retval = UA_Client_connect(discoveryData->client, discoveryData->discoveryUrl);
+        if (retval == UA_STATUSCODE_GOOD) {
+            UA_ServerConfig *config = UA_Server_getConfig(server);
+            
+            // Create RegisteredServer structure with isOnline = false
+            UA_RegisteredServer registeredServer;
+            UA_RegisteredServer_init(&registeredServer);
+            
+            // Copy server URIs (need deep copy)
+            UA_String_copy(&config->applicationDescription.applicationUri, &registeredServer.serverUri);
+            UA_String_copy(&config->applicationDescription.productUri, &registeredServer.productUri);
+            registeredServer.serverType = config->applicationDescription.applicationType;
+            registeredServer.gatewayServerUri = UA_STRING_NULL;
+            registeredServer.isOnline = UA_FALSE;  // Unregister
+            
+            // Copy server names
+            registeredServer.serverNamesSize = 1;
+            registeredServer.serverNames = (UA_LocalizedText *)UA_Array_new(1, &UA_TYPES[UA_TYPES_LOCALIZEDTEXT]);
+            if (registeredServer.serverNames) {
+                UA_LocalizedText_copy(&config->applicationDescription.applicationName, 
+                                     &registeredServer.serverNames[0]);
+            }
+            
+            // Create RegisterServer2 request
+            UA_RegisterServer2Request request;
+            UA_RegisterServer2Request_init(&request);
+            request.server = registeredServer;
+            
+            UA_RegisterServer2Response response;
+            __UA_Client_Service(discoveryData->client, &request, &UA_TYPES[UA_TYPES_REGISTERSERVER2REQUEST],
+                               &response, &UA_TYPES[UA_TYPES_REGISTERSERVER2RESPONSE]);
+            
+            // Clean up (properly free all allocated memory)
+            UA_RegisterServer2Request_clear(&request);
+            UA_RegisterServer2Response_clear(&response);
+            UA_Client_disconnect(discoveryData->client);
+        }
+        
+        UA_Client_delete(discoveryData->client);
+    }
+
+    // Clean up discovery data
+    if (discoveryData->discoveryUrl != NULL) {
+        free(discoveryData->discoveryUrl);
+    }
+    free(discoveryData);
+    discoveryData = NULL;
+    discoveryClient = NULL;
+
     send_ok_response();
 }
 

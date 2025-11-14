@@ -163,35 +163,6 @@ defmodule DisplayNameLocaleTest do
   end
 
   @tag :integration
-  @tag :skip
-  test "Reference: How open62541 tests create nodes with localized displayName", %{} do
-    # This test is skipped but documents how open62541's own tests create nodes
-    # with localized displayName. From tests/client/check_client_highlevel.c:
-    #
-    # UA_VariableAttributes attr = UA_VariableAttributes_default;
-    # attr.description = UA_LOCALIZEDTEXT("en-US", "Int");
-    # attr.displayName = UA_LOCALIZEDTEXT("en-US", "Int");  // <-- Set during creation
-    # attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
-    # attr.writeMask = 0xFFFFFFFF;
-    # attr.dataType = UA_TYPES[UA_TYPES_INT32].typeId;
-    #
-    # retval = UA_Client_addVariableNode(client, UA_NODEID_NULL,
-    #                                    nodeReadWriteUnitTest,
-    #                                    UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
-    #                                    UA_QUALIFIEDNAME(1, "Int"),
-    #                                    UA_NODEID_NULL, attr, &nodeReadWriteInt);
-    #
-    # After this creation, UA_Client_writeDisplayNameAttribute CAN modify the displayName
-    # because it already has a locale.
-    #
-    # Our API limitation: Server.add_variable_node(pid, args) doesn't expose
-    # VariableAttributes, only the required creation arguments (node_ids, browse_name, etc).
-    # To support this use case, we would need to extend the API.
-
-    :ok
-  end
-
-  @tag :integration
   test "DisplayName text can be modified even without locale", %{
     s_pid: s_pid,
     c_pid: c_pid,

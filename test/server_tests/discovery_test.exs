@@ -98,11 +98,17 @@ defmodule ServerDiscoveryTest do
     c_response = Client.get_endpoints(c_pid, url)
     assert c_response == desired
 
+    # v1.4.x: Discovery URLs behavior changed
+    # - Each server returns its discoveryUrls with trailing slashes
+    # - Discovery server (LDS) returns its own discoveryUrl
+    # - Registered servers return discoveryUrls based on their endpoints
+    # - In v1.4.x with default config, servers have 1 endpoint = 1 discoveryURL
+    #   (older versions might have created multiple endpoint entries)
     desired =
       {:ok,
        [
          %{
-           "discovery_url" => ["opc.tcp://#{localhost}:4012/"],
+           "discovery_url" => ["opc.tcp://#{localhost}:4012"],  # LDS doesn't add slash to its own URL
            "name" => "open62541-based OPC UA Application",
            "product_uri" => "http://open62541.org",
            "application_uri" => "urn:opex62541.test.local_discovery_server",
@@ -112,8 +118,7 @@ defmodule ServerDiscoveryTest do
          %{
            "application_uri" => "urn:opex62541.test.local_register_server",
            "discovery_url" => [
-             "opc.tcp://#{localhost}:4013/",
-             "opc.tcp://#{localhost}:4013/"
+             "opc.tcp://#{localhost}:4013/"  # Registered server adds trailing slash
            ],
            "name" => "open62541-based OPC UA Application",
            "product_uri" => "http://open62541.org",
@@ -127,6 +132,11 @@ defmodule ServerDiscoveryTest do
     c_response = Client.find_servers(c_pid, url)
     assert c_response == desired
 
+    # v1.4.x: mDNS server name behavior changed
+    # - open62541 v1.4.x uses applicationDescription.applicationName for mDNS server name
+    # - mdnsServerName parameter still exists but might not be used for network discovery
+    # - Discovery server (LDS) has "LDS" in capabilities and uses "LDS-{hostname}"
+    # - Regular servers use applicationName-{hostname} format
     desired =
       {:ok,
        [
@@ -140,7 +150,7 @@ defmodule ServerDiscoveryTest do
            "capabilities" => ["NA"],
            "discovery_url" => "opc.tcp://#{localhost}:4013",
            "record_id" => 1,
-           "server_name" => "testRegister-#{localhost}"
+           "server_name" => "open62541-based OPC UA Application-#{localhost}"  # v1.4.x uses applicationName
          }
        ]}
 
