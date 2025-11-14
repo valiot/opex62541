@@ -283,14 +283,6 @@ defmodule OpcUA.Server do
   end
 
   @doc """
-  Sets the host name for the Server.
-  """
-  @spec set_hostname(GenServer.server(), binary()) :: :ok | {:error, binary()} | {:error, :einval}
-  def set_hostname(pid, hostname) when is_binary(hostname) do
-    GenServer.call(pid, {:config, {:hostname, hostname}})
-  end
-
-  @doc """
   Sets a port number for the Server.
   """
   @spec set_port(GenServer.server(), integer()) :: :ok | {:error, binary()} | {:error, :einval}
@@ -738,10 +730,7 @@ defmodule OpcUA.Server do
     {:noreply, state}
   end
 
-  def handle_call({:config, {:hostname, hostname}}, caller_info, state) do
-    call_port(state, :set_hostname, caller_info, hostname)
-    {:noreply, state}
-  end
+  # handle_call for {:config, {:hostname, _}} removed - deprecated in v1.4.x
 
   def handle_call({:config, {:port, port}}, caller_info, state) do
     call_port(state, :set_port, caller_info, port)
@@ -1114,10 +1103,7 @@ defmodule OpcUA.Server do
     state
   end
 
-  defp handle_c_response({:set_hostname, caller_metadata, data}, state) do
-    GenServer.reply(caller_metadata, data)
-    state
-  end
+  # handle_c_response for :set_hostname removed - deprecated in v1.4.x
 
   defp handle_c_response({:set_port, caller_metadata, data}, state) do
     GenServer.reply(caller_metadata, data)

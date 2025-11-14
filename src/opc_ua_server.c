@@ -177,31 +177,6 @@ static void handle_set_network_tcp_layer(void *entity, bool entity_type, const c
 }
 
 /* 
-*   sets the server hostname. 
-*/
-static void handle_set_hostname(void *entity, bool entity_type, const char *req, int *req_index)
-{
-    int term_size;
-    int term_type;
-
-    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 || term_type != ERL_BINARY_EXT)
-        errx(EXIT_FAILURE, "Invalid hostname (size)");
-
-    char host_name[term_size + 1];
-    long binary_len;
-    if (ei_decode_binary(req, req_index, host_name, &binary_len) < 0) 
-        errx(EXIT_FAILURE, "Invalid hostname");
-    host_name[binary_len] = '\0';
-
-    /* v1.4.x: setCustomHostname removed, set via applicationDescription instead
-     * TODO: Implement proper hostname setting in v1.4.x if needed
-     */
-    (void)host_name; /* Currently unused, reserved for future implementation */
-
-    send_ok_response();
-}
-
-/* 
 *   Sets the server port. 
 */
 static void handle_set_port(void *entity, bool entity_type, const char *req, int *req_index)
@@ -1125,7 +1100,7 @@ static struct request_handler request_handlers[] = {
     {"set_default_server_config", handle_set_default_server_config},
     {"set_basics", handle_set_basics},
     {"set_network_tcp_layer", handle_set_network_tcp_layer},
-    {"set_hostname", handle_set_hostname},
+    // "set_hostname" removed - UA_ServerConfig_setCustomHostname deprecated in v1.4.x
     {"set_port", handle_set_port},
     {"set_users", handle_set_users_and_passwords},
     {"add_all_endpoints", handle_add_all_endpoints},

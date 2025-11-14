@@ -525,25 +525,147 @@ void encode_endpoint_description_struct(char *resp, int *resp_index, void *data,
 
 void encode_server_config(char *resp, int *resp_index, void *data)
 {   
-    // v1.4.x: nThreads and customHostname removed from UA_ServerConfig
-    ei_encode_map_header(resp, resp_index, 2);
-    // nThreads field removed in v1.4.x
-    // ei_encode_binary(resp, resp_index, "n_threads", 9);
-    // ei_encode_long(resp, resp_index,((UA_ServerConfig *)data)->nThreads);
+    UA_ServerConfig *config = (UA_ServerConfig *)data;
     
-    // customHostname field removed in v1.4.x, use applicationDescription instead
+    // Count how many fields we'll include
+    int field_count = 3; // hostname, endpoints, application_description (base fields)
+    
+    // Add optional fields
+    if (config->serverUrlsSize > 0) field_count++;
+    field_count++; // tcp_config (always present)
+    field_count++; // limits (always present)
+    field_count++; // security_config (always present)
+    field_count++; // shutdown_delay (always present)
+#ifdef UA_ENABLE_SUBSCRIPTIONS
+    field_count++; // subscriptions
+#endif
+#ifdef UA_ENABLE_DISCOVERY
+    field_count++; // discovery
+#endif
+    
+    ei_encode_map_header(resp, resp_index, field_count);
+    
+    // 1. Hostname (derived from applicationDescription)
     ei_encode_binary(resp, resp_index, "hostname", 8);
-    if (((UA_ServerConfig *)data)->applicationDescription.applicationName.text.length)
-        ei_encode_binary(resp, resp_index,((UA_ServerConfig *)data)->applicationDescription.applicationName.text.data, 
-                        ((UA_ServerConfig *)data)->applicationDescription.applicationName.text.length);
+    if (config->applicationDescription.applicationName.text.length)
+        ei_encode_binary(resp, resp_index, config->applicationDescription.applicationName.text.data, 
+                        config->applicationDescription.applicationName.text.length);
     else
         ei_encode_binary(resp, resp_index, "localhost", 9);
     
+    // 2. Endpoint descriptions
     ei_encode_binary(resp, resp_index, "endpoint_description", 20);
-    encode_endpoint_description_struct(resp, resp_index, ((UA_ServerConfig *)data)->endpoints, ((UA_ServerConfig *)data)->endpointsSize);
+    encode_endpoint_description_struct(resp, resp_index, config->endpoints, config->endpointsSize);
 
+    // 3. Application description
     ei_encode_binary(resp, resp_index, "application_description", 23);
-    encode_application_description_struct(resp, resp_index, &((UA_ServerConfig *)data)->applicationDescription, 1);
+    encode_application_description_struct(resp, resp_index, &config->applicationDescription, 1);
+    
+    // 4. Server URLs (v1.4.x)
+    if (config->serverUrlsSize > 0) {
+        ei_encode_binary(resp, resp_index, "server_urls", 11);
+        ei_encode_list_header(resp, resp_index, config->serverUrlsSize);
+        for(size_t i = 0; i < config->serverUrlsSize; i++) {
+            ei_encode_binary(resp, resp_index, config->serverUrls[i].data, config->serverUrls[i].length);
+        }
+        ei_encode_empty_list(resp, resp_index);
+    }
+    
+    // 5. TCP Configuration (v1.4.x)
+    ei_encode_binary(resp, resp_index, "tcp_config", 10);
+    ei_encode_map_header(resp, resp_index, 5);
+    
+    ei_encode_binary(resp, resp_index, "enabled", 7);
+    ei_encode_boolean(resp, resp_index, config->tcpEnabled);
+    
+    ei_encode_binary(resp, resp_index, "buf_size", 8);
+    ei_encode_ulong(resp, resp_index, config->tcpBufSize);
+    
+    ei_encode_binary(resp, resp_index, "max_msg_size", 12);
+    ei_encode_ulong(resp, resp_index, config->tcpMaxMsgSize);
+    
+    ei_encode_binary(resp, resp_index, "max_chunks", 10);
+    ei_encode_ulong(resp, resp_index, config->tcpMaxChunks);
+    
+    ei_encode_binary(resp, resp_index, "reuse_addr", 10);
+    ei_encode_boolean(resp, resp_index, config->tcpReuseAddr);
+    
+    // 6. Server Limits (v1.4.x)
+    ei_encode_binary(resp, resp_index, "limits", 6);
+    ei_encode_map_header(resp, resp_index, 8);
+    
+    ei_encode_binary(resp, resp_index, "max_secure_channels", 19);
+    ei_encode_ulong(resp, resp_index, config->maxSecureChannels);
+    
+    ei_encode_binary(resp, resp_index, "max_security_token_lifetime", 27);
+    ei_encode_ulong(resp, resp_index, config->maxSecurityTokenLifetime);
+    
+    ei_encode_binary(resp, resp_index, "max_sessions", 12);
+    ei_encode_ulong(resp, resp_index, config->maxSessions);
+    
+    ei_encode_binary(resp, resp_index, "max_session_timeout", 19);
+    ei_encode_double(resp, resp_index, config->maxSessionTimeout);
+    
+    ei_encode_binary(resp, resp_index, "max_nodes_per_read", 18);
+    ei_encode_ulong(resp, resp_index, config->maxNodesPerRead);
+    
+    ei_encode_binary(resp, resp_index, "max_nodes_per_write", 19);
+    ei_encode_ulong(resp, resp_index, config->maxNodesPerWrite);
+    
+    ei_encode_binary(resp, resp_index, "max_nodes_per_browse", 20);
+    ei_encode_ulong(resp, resp_index, config->maxNodesPerBrowse);
+    
+    ei_encode_binary(resp, resp_index, "max_references_per_node", 23);
+    ei_encode_ulong(resp, resp_index, config->maxReferencesPerNode);
+    
+    // 7. Security Configuration (v1.4.x)
+    ei_encode_binary(resp, resp_index, "security_config", 15);
+    ei_encode_map_header(resp, resp_index, 3);
+    
+    ei_encode_binary(resp, resp_index, "security_policies_count", 23);
+    ei_encode_ulong(resp, resp_index, config->securityPoliciesSize);
+    
+    ei_encode_binary(resp, resp_index, "none_policy_discovery_only", 26);
+    ei_encode_boolean(resp, resp_index, config->securityPolicyNoneDiscoveryOnly);
+    
+    ei_encode_binary(resp, resp_index, "allow_none_policy_password", 26);
+    ei_encode_boolean(resp, resp_index, config->allowNonePolicyPassword);
+    
+    // 8. Shutdown delay (v1.4.x)
+    ei_encode_binary(resp, resp_index, "shutdown_delay", 14);
+    ei_encode_double(resp, resp_index, config->shutdownDelay);
+    
+#ifdef UA_ENABLE_SUBSCRIPTIONS
+    // 9. Subscriptions (if enabled)
+    ei_encode_binary(resp, resp_index, "subscriptions", 13);
+    ei_encode_map_header(resp, resp_index, 4);
+    
+    ei_encode_binary(resp, resp_index, "enabled", 7);
+    ei_encode_boolean(resp, resp_index, config->subscriptionsEnabled);
+    
+    ei_encode_binary(resp, resp_index, "max_subscriptions", 17);
+    ei_encode_ulong(resp, resp_index, config->maxSubscriptions);
+    
+    ei_encode_binary(resp, resp_index, "max_monitored_items", 19);
+    ei_encode_ulong(resp, resp_index, config->maxMonitoredItems);
+    
+    ei_encode_binary(resp, resp_index, "publishing_interval_limits", 26);
+    ei_encode_tuple_header(resp, resp_index, 2);
+    ei_encode_double(resp, resp_index, config->publishingIntervalLimits.min);
+    ei_encode_double(resp, resp_index, config->publishingIntervalLimits.max);
+#endif
+
+#ifdef UA_ENABLE_DISCOVERY
+    // 10. Discovery (if enabled)
+    ei_encode_binary(resp, resp_index, "discovery", 9);
+    ei_encode_map_header(resp, resp_index, 2);
+    
+    ei_encode_binary(resp, resp_index, "cleanup_timeout", 15);
+    ei_encode_ulong(resp, resp_index, config->discoveryCleanupTimeout);
+    
+    ei_encode_binary(resp, resp_index, "mdns_enabled", 12);
+    ei_encode_boolean(resp, resp_index, config->mdnsEnabled);
+#endif
 }
 
 //{ns_index, node_id_type, identifier}
