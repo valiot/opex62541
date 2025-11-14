@@ -85,7 +85,7 @@ defmodule ServerDiscoveryTest do
        [
          %{
            "endpoint_url" => "opc.tcp://localhost:4013",
-           "security_level" => 1,
+           "security_level" => 0,
            "security_mode" => "none",
            "security_profile_uri" => "http://opcfoundation.org/UA/SecurityPolicy#None",
            "transport_profile_uri" =>

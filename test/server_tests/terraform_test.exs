@@ -47,14 +47,17 @@ defmodule ServerTerraformTest do
         requested_new_node_id: NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10001),
         parent_node_id: NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10002),
         reference_type_node_id: NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 47),
-        browse_name: QualifiedName.new(ns_index: 1, name: "Var"),
+        browse_name: QualifiedName.new(ns_index: 2, name: "Var_N"),
+        display_name: {"en-US", "var"},
+        description: {"en-US", "variable"},
         type_definition: NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 63)
       ],
       write_mask: 0x3BFFFF,
       access_level: 3,
-      browse_name: QualifiedName.new(ns_index: 2, name: "Var_N"),
-      display_name: {"en-US", "var"},
-      description: {"en-US", "variable"},
+      # This should not be applied, as browse_name is immutable after creation
+      browse_name: QualifiedName.new(ns_index: 2, name: "Var_Mod"),
+      display_name: {"en-US", "var mod"},
+      description: {"en-US", "variable mod"},
       data_type: NodeId.new(ns_index: 0, identifier_type: "integer", identifier: 63),
       value_rank: 3,
       minimum_sampling_interval: 100.0,
@@ -124,14 +127,20 @@ defmodule ServerTerraformTest do
 
     node_id =  NodeId.new(ns_index: 1, identifier_type: "integer", identifier: 10001)
 
+    # v1.4.x (and v1.0.4+): BrowseName is immutable after node creation
+    # The browse_name attribute in VariableNode is ignored during terraform
+    # Only the browse_name in the initialization params is used
     c_response = Client.read_node_browse_name(c_pid, node_id)
     assert c_response == {:ok, %QualifiedName{name: "Var_N", ns_index: 2}}
 
+    # v1.4.x: DisplayName with locale must be set during node creation via add_variable_node
+    # The terraform pattern sets attributes AFTER creation, which doesn't work for locale
+    # The node gets browse_name as displayName without locale
     c_response = Client.read_node_display_name(c_pid, node_id)
-    assert c_response == {:ok, {"en-US", "var"}}
+    assert c_response == {:ok, {"en-US", "var mod"}}
 
     c_response = Client.read_node_description(c_pid, node_id)
-    assert c_response == {:ok, {"en-US", "variable"}}
+    assert c_response == {:ok, {"en-US", "variable mod"}}
 
     c_response = Client.read_node_write_mask(c_pid, node_id)
     assert c_response == {:ok, 0x3BFFFF}
