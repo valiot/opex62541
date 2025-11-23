@@ -73,6 +73,9 @@ defmodule ServerWriteEventTest do
   setup() do
     {:ok, my_pid} = MyServer.start_link({self(), 103})
 
+    # v1.4.x: Give server time to fully initialize and start accepting connections
+    Process.sleep(1000)
+
     {:ok, c_pid} = Client.start_link()
 
     config = %{

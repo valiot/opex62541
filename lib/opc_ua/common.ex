@@ -29,15 +29,6 @@ defmodule OpcUA.Common do
       # Write nodes Attributes functions
 
       @doc """
-      Change the browse name of a node in the server.
-      """
-      @spec write_node_browse_name(GenServer.server(), %NodeId{}, %QualifiedName{}) ::
-              :ok | {:error, binary()} | {:error, :einval}
-      def write_node_browse_name(pid, %NodeId{} = node_id, browse_name) do
-        GenServer.call(pid, {:write, {:browse_name, node_id, browse_name}})
-      end
-
-      @doc """
       Change the display name attribute of a node in the server.
       """
       @spec write_node_display_name(GenServer.server(), %NodeId{}, binary(), binary()) ::
@@ -399,12 +390,6 @@ defmodule OpcUA.Common do
       end
 
       # Write nodes Attributes handlers
-      def handle_call({:write, {:browse_name, node_id, browse_name}}, caller_info, state) do
-        c_args = {to_c(node_id), to_c(browse_name)}
-        call_port(state, :write_node_browse_name, caller_info, c_args)
-        {:noreply, state}
-      end
-
       def handle_call({:write, {:display_name, node_id, {locale, name}}}, caller_info, state)
           when is_binary(locale) and is_binary(name) do
         c_args = {to_c(node_id), locale, name}
@@ -928,12 +913,16 @@ defmodule OpcUA.Common do
       defp to_c(%QualifiedName{ns_index: ns_index, name: name}),
         do: {ns_index, name}
 
+      # LocalizedText tuple {locale, text}
+      defp to_c({locale, text}) when is_binary(locale) and is_binary(text),
+        do: {locale, text}
+
       defp to_c(_invalid_struct), do: raise("Invalid Data type")
 
       # For NodeId, QualifiedName.
       defp value_to_c(data_type, value) when data_type in [16, 17, 19], do: to_c(value)
-      # SEMANTICCHANGESTRUCTUREDATATYPE
-      defp value_to_c(data_type, {arg1, arg2}) when data_type == 25, do: {to_c(arg1), to_c(arg2)}
+      # SEMANTICCHANGESTRUCTUREDATATYPE (v1.4.x: value changed from 25 to 350)
+      defp value_to_c(data_type, {arg1, arg2}) when data_type == 350, do: {to_c(arg1), to_c(arg2)}
       defp value_to_c(_data_type, value), do: value
 
       defp parse_browse_name({:ok, {ns_index, name}}),

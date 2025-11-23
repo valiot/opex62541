@@ -1,7 +1,7 @@
 defmodule OpcUA.Server do
   use OpcUA.Common
 
-  alias OpcUA.{NodeId}
+  alias OpcUA.{NodeId, QualifiedName}
 
   @moduledoc """
 
@@ -283,14 +283,6 @@ defmodule OpcUA.Server do
   end
 
   @doc """
-  Sets the host name for the Server.
-  """
-  @spec set_hostname(GenServer.server(), binary()) :: :ok | {:error, binary()} | {:error, :einval}
-  def set_hostname(pid, hostname) when is_binary(hostname) do
-    GenServer.call(pid, {:config, {:hostname, hostname}})
-  end
-
-  @doc """
   Sets a port number for the Server.
   """
   @spec set_port(GenServer.server(), integer()) :: :ok | {:error, binary()} | {:error, :einval}
@@ -304,12 +296,26 @@ defmodule OpcUA.Server do
   end
 
   @doc """
-  Adds users (and passwords) the Server.
+  Adds users (and passwords) to the Server with optional port configuration.
+
   Users must be a tuple list ([{user, password}]).
+  Port defaults to 4840 (standard OPC UA port).
+
+  ## Examples
+
+      # Use default port 4840
+      Server.set_users(pid, [{"user1", "pass1"}])
+
+      # Specify custom port
+      Server.set_users(pid, [{"user1", "pass1"}], 4002)
+
+  ## Note
+  v1.4.x: This follows the working pattern from open62541's server_access_control.c example.
+  It does NOT call setMinimal (which would destroy the valid configuration).
   """
-  @spec set_users(GenServer.server(), list()) :: :ok | {:error, binary()} | {:error, :einval}
-  def set_users(pid, users) when is_list(users) do
-    GenServer.call(pid, {:config, {:users, users}})
+  @spec set_users(GenServer.server(), list(), integer()) :: :ok | {:error, binary()} | {:error, :einval}
+  def set_users(pid, users, port \\ 4840) when is_list(users) and is_integer(port) do
+    GenServer.call(pid, {:config, {:users, {users, port}}})
   end
 
   @doc """
@@ -500,12 +506,21 @@ defmodule OpcUA.Server do
 
   @doc """
   Add a new variable node to the server.
-  The following must be filled:
+
+  Required parameters:
     * `:requested_new_node_id` -> %NodeID{}.
     * `:parent_node_id` -> %NodeID{}.
     * `:reference_type_node_id` -> %NodeID{}.
     * `:browse_name` -> %QualifiedName{}.
     * `:type_definition` -> %NodeID{}.
+
+  Optional parameters:
+    * `:display_name` -> {locale :: String.t(), text :: String.t()}. Defaults to {"en-US", ""}.
+    * `:description` -> {locale :: String.t(), text :: String.t()}. Defaults to {"en-US", ""}.
+
+  Note: DisplayName and Description with locale can ONLY be set during node creation.
+  After creation, you cannot change a displayName/description without locale to one with locale.
+  This is a limitation in open62541 v1.4.x (commit dc6740311, July 2022).
   """
   @spec add_variable_node(GenServer.server(), list()) ::
           :ok | {:error, binary()} | {:error, :einval}
@@ -660,6 +675,17 @@ defmodule OpcUA.Server do
     GenServer.call(pid, {:delete_monitored_item, monitored_item_id})
   end
 
+
+  @doc """
+  Change the browse name of a node.
+  Note: Only works for Server. BrowseName is immutable via Client since open62541 v1.0.4.
+  """
+  @spec write_node_browse_name(GenServer.server(), %NodeId{}, %QualifiedName{}) ::
+          :ok | {:error, binary()} | {:error, :einval}
+  def write_node_browse_name(pid, %NodeId{} = node_id, browse_name) do
+    GenServer.call(pid, {:write, {:browse_name, node_id, browse_name}})
+  end
+
   @doc false
   def test(pid) do
     GenServer.call(pid, {:test, nil}, :infinity)
@@ -704,18 +730,17 @@ defmodule OpcUA.Server do
     {:noreply, state}
   end
 
-  def handle_call({:config, {:hostname, hostname}}, caller_info, state) do
-    call_port(state, :set_hostname, caller_info, hostname)
-    {:noreply, state}
-  end
+  # handle_call for {:config, {:hostname, _}} removed - deprecated in v1.4.x
 
   def handle_call({:config, {:port, port}}, caller_info, state) do
     call_port(state, :set_port, caller_info, port)
     {:noreply, state}
   end
 
-  def handle_call({:config, {:users, users}}, caller_info, state) do
-    call_port(state, :set_users, caller_info, users)
+  # v1.4.x: Always send {users_list, port} tuple to C
+  # Elixir handles the default port value (4840)
+  def handle_call({:config, {:users, {users, port}}}, caller_info, state) when is_list(users) and is_integer(port) do
+    call_port(state, :set_users, caller_info, {users, port})
     {:noreply, state}
   end
 
@@ -867,10 +892,12 @@ defmodule OpcUA.Server do
     reference_type_node_id = Keyword.fetch!(args, :reference_type_node_id) |> to_c()
     browse_name = Keyword.fetch!(args, :browse_name) |> to_c()
     type_definition = Keyword.fetch!(args, :type_definition) |> to_c()
+    display_name = Keyword.get(args, :display_name, {"en-US", ""}) |> to_c()
+    description = Keyword.get(args, :description, {"en-US", ""}) |> to_c()
 
     c_args =
       {requested_new_node_id, parent_node_id, reference_type_node_id, browse_name,
-       type_definition}
+       type_definition, display_name, description}
 
     call_port(state, :add_variable_node, caller_info, c_args)
     {:noreply, state}
@@ -1002,6 +1029,12 @@ defmodule OpcUA.Server do
     {:noreply, state}
   end
 
+  def handle_call({:write, {:browse_name, node_id, browse_name}}, caller_info, state) do
+    c_args = {to_c(node_id), to_c(browse_name)}
+    call_port(state, :write_node_browse_name, caller_info, c_args)
+    {:noreply, state}
+  end
+
   # Catch all
 
   def handle_call({:test, nil}, caller_info, state) do
@@ -1070,10 +1103,7 @@ defmodule OpcUA.Server do
     state
   end
 
-  defp handle_c_response({:set_hostname, caller_metadata, data}, state) do
-    GenServer.reply(caller_metadata, data)
-    state
-  end
+  # handle_c_response for :set_hostname removed - deprecated in v1.4.x
 
   defp handle_c_response({:set_port, caller_metadata, data}, state) do
     GenServer.reply(caller_metadata, data)

@@ -18,12 +18,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY $ENV{MIX_COMPILE_PATH}/../priv)
 include(ProcessorCount)
 ProcessorCount(N_CORES)
 
-#if crosscompiling (another target), set mbedtls directory
-if(NOT $ENV{MIX_TARGET} STREQUAL "host")
-    set(MBEDTLS_FOLDER_LIBRARY "$ENV{NERVES_SDK_SYSROOT}/usr/lib")
-    set(MBEDTLS_FOLDER_INCLUDE "$ENV{NERVES_SDK_SYSROOT}/usr/include")
-endif()
-
 # enable/disable Manual Build
 if($ENV{MANUAL_BUILD})
     set(MANUAL_BUILD ON)
@@ -33,7 +27,7 @@ endif($ENV{MANUAL_BUILD})
 
 # set version
 if("$ENV{OPEN62541_DOWNLOAD_VERSION}" STREQUAL "")
-    set(DOWNLOAD_VERSION "v1.0")    
+    set(DOWNLOAD_VERSION "v1.4.14")    
 else("$ENV{OPEN62541_DOWNLOAD_VERSION}" STREQUAL "")
     set(DOWNLOAD_VERSION $ENV{OPEN62541_DOWNLOAD_VERSION})    
 endif("$ENV{OPEN62541_DOWNLOAD_VERSION}" STREQUAL "")
@@ -110,17 +104,56 @@ if(NOT MANUAL_BUILD)
     set(EXTRACTED_FILE "open62541-${FILE_NAME}")
 
     if ((NOT EXISTS "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/lib") AND (NOT EXISTS "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/include"))
-        file(DOWNLOAD "${DOWNLOAD_URL}" "${DOWNLOAD_PATH}")
+        message(STATUS "Downloading from: ${DOWNLOAD_URL}")
+        message(STATUS "Download path: ${DOWNLOAD_PATH}")
+        
+        file(DOWNLOAD "${DOWNLOAD_URL}" "${DOWNLOAD_PATH}" STATUS DOWNLOAD_STATUS)
+        list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+        list(GET DOWNLOAD_STATUS 1 ERROR_MESSAGE)
+        
+        if(NOT STATUS_CODE EQUAL 0)
+            message(FATAL_ERROR "Failed to download open62541 from ${DOWNLOAD_URL}\nError: ${ERROR_MESSAGE}")
+        endif()
+        
+        # Verify the file was downloaded and has content
+        if(NOT EXISTS "${DOWNLOAD_PATH}")
+            message(FATAL_ERROR "Download file not found at ${DOWNLOAD_PATH}")
+        endif()
+        
+        file(SIZE "${DOWNLOAD_PATH}" DOWNLOAD_SIZE)
+        if(DOWNLOAD_SIZE LESS 1000)
+            message(FATAL_ERROR "Downloaded file is too small (${DOWNLOAD_SIZE} bytes), likely invalid. URL: ${DOWNLOAD_URL}")
+        endif()
+        
+        message(STATUS "Extracting ${DOWNLOAD_PATH} (${DOWNLOAD_SIZE} bytes)...")
         execute_process(
-            COMMAND ${UNPACK_CMD} ${UNPACK_CMD_OPTIONS} ${DOWNLOAD_PATH} ${EXTRACTED_FILE}
-            WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-        file(REMOVE "${DOWNLOAD_PATH}")
+            COMMAND ${UNPACK_CMD} ${UNPACK_CMD_OPTIONS} ${DOWNLOAD_PATH}
+            WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+            RESULT_VARIABLE EXTRACT_RESULT
+            ERROR_VARIABLE EXTRACT_ERROR)
+        
+        if(NOT EXTRACT_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to extract ${DOWNLOAD_PATH}\nError: ${EXTRACT_ERROR}")
+        endif()
+        
+        # Verify extracted directories exist
+        if(NOT EXISTS "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${EXTRACTED_FILE}/lib")
+            message(FATAL_ERROR "Extracted lib directory not found at ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${EXTRACTED_FILE}/lib")
+        endif()
+        
+        if(NOT EXISTS "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${EXTRACTED_FILE}/include")
+            message(FATAL_ERROR "Extracted include directory not found at ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${EXTRACTED_FILE}/include")
+        endif()
+        
         file(COPY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${EXTRACTED_FILE}/lib" DESTINATION "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
         file(COPY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${EXTRACTED_FILE}/include" DESTINATION "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
         
+        # Clean up downloaded file and extracted directory
+        file(REMOVE "${DOWNLOAD_PATH}")
+        file(REMOVE_RECURSE "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${EXTRACTED_FILE}")
+        
+        message(STATUS "Successfully extracted open62541 libraries")
     endif()
-
-    file(REMOVE_RECURSE "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${EXTRACTED_FILE}")
 
     set(install_dir ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/lib)
 
@@ -154,21 +187,21 @@ else(NOT MANUAL_BUILD)
     if($ENV{OPEN62541_BUILD_ARGS})
     set(OPEN62541_BUILD_ARGS $ENV{OPEN62541_BUILD_ARGS})
     else($ENV{OPEN62541_BUILD_ARGS})
-    set(OPEN62541_BUILD_ARGS -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUA_NAMESPACE_ZERO=FULL -DUA_LOGLEVEL=601 -DUA_ENABLE_DISCOVERY_MULTICAST=ON -DUA_ENABLE_AMALGAMATION=ON -DUA_ENABLE_ENCRYPTION=ON)
+    set(OPEN62541_BUILD_ARGS -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DUA_NAMESPACE_ZERO=FULL -DUA_LOGLEVEL=601 -DUA_ENABLE_DISCOVERY_MULTICAST=ON -DUA_ENABLE_AMALGAMATION=ON -DUA_ENABLE_ENCRYPTION=OPENSSL)
     endif($ENV{OPEN62541_BUILD_ARGS})
     
     include(ExternalProject)
     
     # open62541 logs collide with opex62541 backend interface, therefore logs are turned off (-DUA_LOGLEVEL > 600).
+    # Note: v1.4.x doesn't allow 'make install' with amalgamation, so we copy files manually
     ExternalProject_Add(open62541
         GIT_REPOSITORY    https://github.com/open62541/open62541.git
         GIT_TAG           ${DOWNLOAD_VERSION}
         SOURCE_DIR        "${CMAKE_BINARY_DIR}/open62541-src"
         BINARY_DIR        "${CMAKE_BINARY_DIR}/open62541-build"
         CONFIGURE_COMMAND ""
-        BUILD_COMMAND     MBEDTLS_FOLDER_LIBRARY=${MBEDTLS_FOLDER_LIBRARY} MBEDTLS_FOLDER_INCLUDE=${MBEDTLS_FOLDER_INCLUDE} cmake ${CMAKE_BINARY_DIR}/open62541-src ${OPEN62541_BUILD_ARGS}  -DCMAKE_INSTALL_PREFIX=${CMAKE_LIBRARY_OUTPUT_DIRECTORY} && make -j ${N_CORES}
-        INSTALL_COMMAND   make install
-        PATCH_COMMAND     cp ${CMAKE_SOURCE_DIR}/FindMbedTLS.cmake ${CMAKE_BINARY_DIR}/open62541-src/tools/cmake//FindMbedTLS.cmake
+        BUILD_COMMAND     cmake ${CMAKE_BINARY_DIR}/open62541-src ${OPEN62541_BUILD_ARGS}  -DCMAKE_INSTALL_PREFIX=${CMAKE_LIBRARY_OUTPUT_DIRECTORY} && make -j ${N_CORES}
+        INSTALL_COMMAND   sh -c "mkdir -p ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/lib ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/include && cp ${CMAKE_BINARY_DIR}/open62541-build/bin/libopen62541.so* ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/lib/ && cp ${CMAKE_BINARY_DIR}/open62541-build/open62541.h ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/include/"
     )
 
     include_directories($ENV{ERL_EI_INCLUDE_DIR})
@@ -195,4 +228,4 @@ else(NOT MANUAL_BUILD)
 
 endif(NOT MANUAL_BUILD)
 
-message(STATUS "Debugs CMAKE_C_FAGS=${CMAKE_C_FLAGS}; BASE_C_FLAGS=${BASE_C_FLAGS}; MBEDTLS_FOLDER_LIBRARY=${MBEDTLS_FOLDER_LIBRARY} MBEDTLS_FOLDER_INCLUDE=${MBEDTLS_FOLDER_INCLUDE}")
+message(STATUS "Debugs CMAKE_C_FAGS=${CMAKE_C_FLAGS}; BASE_C_FLAGS=${BASE_C_FLAGS}")

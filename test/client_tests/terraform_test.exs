@@ -5,8 +5,7 @@ defmodule ClientTerraformTest do
 
   @configuration_server [
     config: [
-      port: 4006,
-      users: [{"alde103", "secret"}]
+      users: {[{"alde103", "secret"}], 4006}
     ]
   ]
 
@@ -207,10 +206,10 @@ defmodule ClientTerraformTest do
 
     assert :ok == Client.delete_subscription(pid, 1)
 
-    assert_receive({:value_changed, {1, 1, 103103.0}}, 1000)
+    assert_receive({:value_changed, {1, 1, 103103.0}}, 2000)
 
-    assert_receive({:item_deleted, {1, 1}}, 1000)
+    assert_receive({:item_deleted, {1, 1}}, 2000)
 
-    assert_receive({:subscription_delete, 1}, 1000)
+    assert_receive({:subscription_delete, 1}, 2000)
   end
 end

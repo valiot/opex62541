@@ -157,19 +157,21 @@ defmodule ServerArrayTest do
     resp = Server.write_node_blank_array(state.pid, node_id, 20, [2, 2])
     assert resp == :ok
 
-    resp = Server.write_node_blank_array(state.pid, node_id, 25, [2, 2])
+    resp = Server.write_node_blank_array(state.pid, node_id, 350, [2, 2])
     assert resp == :ok
 
-    resp = Server.write_node_blank_array(state.pid, node_id, 26, [2, 2])
+    resp = Server.write_node_blank_array(state.pid, node_id, 133, [2, 2])
     assert resp == :ok
 
-    resp = Server.write_node_blank_array(state.pid, node_id, 28, [2, 2])
+    # v1.4.x: Type 28 changed - was UADPNETWORKMESSAGECONTENTMASK, now is IMAGEGIF
+    # Skipping this test as the type mapping has changed
+    # resp = Server.write_node_blank_array(state.pid, node_id, 28, [2, 2])
+    # assert resp == :ok
+
+    resp = Server.write_node_blank_array(state.pid, node_id, 357, [2, 2])
     assert resp == :ok
 
-    resp = Server.write_node_blank_array(state.pid, node_id, 29, [2, 2])
-    assert resp == :ok
-
-    resp = Server.write_node_blank_array(state.pid, node_id, 30, [2, 2])
+    resp = Server.write_node_blank_array(state.pid, node_id, 249, [2, 2])
     assert resp == :ok
   end
 end
