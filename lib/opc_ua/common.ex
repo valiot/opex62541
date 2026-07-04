@@ -366,6 +366,22 @@ defmodule OpcUA.Common do
       end
 
       @doc """
+      Batch reads 'value' attribute of multiple nodes in a single OPC-UA request (client only).
+      Input: list of %NodeId{} (1 to 100 nodes).
+      Returns {:ok, [{:ok, value} | {:error, reason}]} or {:error, reason}.
+      Returns {:error, :overflow} when the encoded response exceeds the 64KB port frame.
+      """
+      @spec read_node_values(GenServer.server(), [%NodeId{}]) ::
+              {:ok, list()} | {:error, binary() | atom()}
+      def read_node_values(pid, node_ids) when is_list(node_ids) do
+        if(@mix_env != :test) do
+          GenServer.call(pid, {:read, {:values, node_ids}})
+        else
+          GenServer.call(pid, {:read, {:values, node_ids}}, :infinity)
+        end
+      end
+
+      @doc """
       Reads 'value' attribute of a node in the server.
       Note: If the value is an array you can search a scalar using `index` parameter.
       """
@@ -639,6 +655,12 @@ defmodule OpcUA.Common do
         {:noreply, state}
       end
 
+      def handle_call({:read, {:values, node_ids}}, caller_info, state) do
+        c_args = Enum.map(node_ids, &to_c/1)
+        call_port(state, :read_node_values, caller_info, c_args)
+        {:noreply, state}
+      end
+
       def handle_call({:read, {:value_by_index, {node_id, index}}}, caller_info, state) do
         c_args = {to_c(node_id), index}
         call_port(state, :read_node_value_by_index, caller_info, c_args)
@@ -849,6 +871,16 @@ defmodule OpcUA.Common do
       defp handle_c_response({:read_node_value, caller_metadata, value_response}, state) do
         response = parse_value(value_response)
         GenServer.reply(caller_metadata, response)
+        state
+      end
+
+      defp handle_c_response({:read_node_values, caller_metadata, {:ok, results}}, state) do
+        GenServer.reply(caller_metadata, {:ok, Enum.map(results, &parse_value/1)})
+        state
+      end
+
+      defp handle_c_response({:read_node_values, caller_metadata, {:error, _} = error}, state) do
+        GenServer.reply(caller_metadata, error)
         state
       end
 

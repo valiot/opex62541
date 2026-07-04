@@ -15,6 +15,7 @@ defmodule Opex62541.MixProject do
       package: package(),
       source_url: @source_url,
       start_permanent: Mix.env() == :prod,
+      elixirc_options: [warnings_as_errors: true],
       compilers: [:cmake] ++ Mix.compilers(),
       build_embedded: true,
       cmake_lists: "src/",
@@ -103,7 +104,10 @@ defmodule Opex62541.MixProject do
   end
 
   defp aliases do
-    [docs: ["docs", &copy_images/1]]
+    [
+      docs: ["docs", &copy_images/1],
+      precommit: ["compile", "credo --strict", "format", "test"]
+    ]
   end
 
   defp copy_images(_) do
@@ -125,6 +129,7 @@ defmodule Opex62541.MixProject do
     [
       {:elixir_cmake, "~> 0.8"},
       {:ex_doc, "~> 0.28", only: :dev, runtime: false},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end
 end

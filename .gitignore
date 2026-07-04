@@ -28,3 +28,5 @@ opex62541-*.tar
 /certs/
 
 /.vscode/
+/.claude/
+/.mcp.json

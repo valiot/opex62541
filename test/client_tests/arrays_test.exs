@@ -6,7 +6,7 @@ defmodule ClientArraysTest do
   setup do
     {:ok, pid} = OpcUA.Server.start_link()
     Server.set_default_config(pid)
-    :ok = Server.set_port(pid, 4000)
+    :ok = Server.set_port(pid, 4030)
     {:ok, ns_index} = OpcUA.Server.add_namespace(pid, "Room")
 
     # Object Node
@@ -55,7 +55,7 @@ defmodule ClientArraysTest do
 
     {:ok, c_pid} = Client.start_link()
     :ok = Client.set_config(c_pid)
-    :ok = Client.connect_by_url(c_pid, url: "opc.tcp://localhost:4000/")
+    :ok = Client.connect_by_url(c_pid, url: "opc.tcp://localhost:4030/")
 
     %{c_pid: c_pid, s_pid: pid, ns_index: ns_index}
   end

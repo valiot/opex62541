@@ -368,12 +368,17 @@ UA_LocalizedText assemble_localized_text(const char *req, int *req_index)
 /* Elixir Message encoders */
 /***************************/
 void encode_caller_metadata(char *req, int *req_index)
-{   
+{
     ei_encode_atom(req, req_index, caller_function);
-    
-    //Add untouched caller_metadata.
-    int caller_metadata_start_index = *req_index;
 
+    // ei convention: a NULL buffer only computes the encoded size.
+    if(req == NULL)
+    {
+        *req_index = *req_index + caller_metadata_size;
+        return;
+    }
+
+    //Add untouched caller_metadata.
     for(int index = 0; index < caller_metadata_size; index ++)
     {
         req[*req_index] = caller_metadata_ptr[index];
@@ -3932,7 +3937,127 @@ void handle_read_node_value(void *entity, bool entity_type, const char *req, int
     UA_Variant_delete(value);
 }
 
-/* 
+/*
+ *  Encodes the full batch read response message. Following the ei convention,
+ *  a NULL resp buffer only computes the encoded size into resp_index.
+ */
+static void encode_read_node_values_response(char *resp, int *resp_index, UA_ReadResponse *readResponse)
+{
+    if(resp != NULL)
+        resp[*resp_index] = response_id;
+    *resp_index = *resp_index + 1;
+    ei_encode_version(resp, resp_index);
+    ei_encode_tuple_header(resp, resp_index, 3);
+    encode_caller_metadata(resp, resp_index);
+
+    if(readResponse->responseHeader.serviceResult != UA_STATUSCODE_GOOD) {
+        ei_encode_tuple_header(resp, resp_index, 2);
+        ei_encode_atom(resp, resp_index, "error");
+        const char *status = UA_StatusCode_name(readResponse->responseHeader.serviceResult);
+        ei_encode_binary(resp, resp_index, status, strlen(status));
+        return;
+    }
+
+    ei_encode_tuple_header(resp, resp_index, 2);
+    ei_encode_atom(resp, resp_index, "ok");
+
+    int result_count = (int)readResponse->resultsSize;
+    if(result_count > 0)
+        ei_encode_list_header(resp, resp_index, result_count);
+
+    for(int i = 0; i < result_count; i++) {
+        UA_DataValue *dv = &readResponse->results[i];
+        if(dv->status != UA_STATUSCODE_GOOD) {
+            ei_encode_tuple_header(resp, resp_index, 2);
+            ei_encode_atom(resp, resp_index, "error");
+            const char *status = UA_StatusCode_name(dv->status);
+            ei_encode_binary(resp, resp_index, status, strlen(status));
+        } else {
+            ei_encode_tuple_header(resp, resp_index, 2);
+            ei_encode_atom(resp, resp_index, "ok");
+            encode_variant_struct(resp, resp_index, &dv->value);
+        }
+    }
+    ei_encode_empty_list(resp, resp_index);
+}
+
+/*
+ *  Batch read 'value' attribute of multiple nodes using UA_Client_Service_read (client only).
+ *  Input: list of node_id tuples
+ *  Output: {:ok, [{:ok, value} | {:error, reason}]} | {:error, reason}
+ */
+void handle_read_node_values(void *entity, bool entity_type, const char *req, int *req_index)
+{
+    // Batch read is backed by UA_Client_Service_read, only clients support it.
+    if(!entity_type) {
+        send_error_response("not_supported");
+        return;
+    }
+
+    int list_count;
+    if(ei_decode_list_header(req, req_index, &list_count) < 0)
+        errx(EXIT_FAILURE, ":handle_read_node_values requires a list");
+
+    int node_count = list_count;
+
+    if(node_count == 0 || node_count > 100) {
+        send_error_response("einval");
+        return;
+    }
+
+    UA_ReadValueId *nodesToRead = (UA_ReadValueId *)UA_Array_new(
+        node_count, &UA_TYPES[UA_TYPES_READVALUEID]);
+    if(nodesToRead == NULL) {
+        send_error_response("enomem");
+        return;
+    }
+
+    for(int i = 0; i < node_count; i++) {
+        nodesToRead[i].nodeId = assemble_node_id(req, req_index);
+        nodesToRead[i].attributeId = UA_ATTRIBUTEID_VALUE;
+        nodesToRead[i].indexRange = UA_STRING_NULL;
+    }
+
+    // Decode list tail
+    ei_decode_list_header(req, req_index, &list_count);
+
+    UA_ReadRequest readRequest;
+    UA_ReadRequest_init(&readRequest);
+    readRequest.nodesToRead = nodesToRead;
+    readRequest.nodesToReadSize = node_count;
+
+    UA_ReadResponse readResponse = UA_Client_Service_read((UA_Client *)entity, readRequest);
+
+    // Size pass first: the response must fit the {:packet, 2} port frame
+    // (uint16_t length), so it is bounds-checked before any byte is written.
+    int resp_size = sizeof(uint16_t);
+    encode_read_node_values_response(NULL, &resp_size, &readResponse);
+
+    if(resp_size > ERLCMD_BUF_SIZE * 2) {
+        UA_ReadResponse_clear(&readResponse);
+        UA_Array_delete(nodesToRead, node_count, &UA_TYPES[UA_TYPES_READVALUEID]);
+        send_error_response("overflow");
+        return;
+    }
+
+    char *resp = (char *)malloc(resp_size);
+    if(resp == NULL) {
+        UA_ReadResponse_clear(&readResponse);
+        UA_Array_delete(nodesToRead, node_count, &UA_TYPES[UA_TYPES_READVALUEID]);
+        send_error_response("enomem");
+        return;
+    }
+
+    int resp_index = sizeof(uint16_t);
+    encode_read_node_values_response(resp, &resp_index, &readResponse);
+    erlcmd_send(resp, resp_index);
+
+    free(resp);
+    UA_ReadResponse_clear(&readResponse);
+    UA_Array_delete(nodesToRead, node_count, &UA_TYPES[UA_TYPES_READVALUEID]);
+}
+
+/*
  *  Read 'value' of a node in the server.
  */
 void handle_read_node_value_by_index(void *entity, bool entity_type, const char *req, int *req_index)

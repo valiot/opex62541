@@ -131,3 +131,4 @@ void handle_read_node_event_notifier(void *entity, bool entity_type, const char 
 void handle_read_node_value(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_read_node_value_by_index(void *entity, bool entity_type, const char *req, int *req_index);
 void handle_read_node_value_by_data_type(void *entity, bool entity_type, const char *req, int *req_index);
+void handle_read_node_values(void *entity, bool entity_type, const char *req, int *req_index);
