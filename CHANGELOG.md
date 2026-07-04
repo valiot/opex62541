@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* [Added] `Client.read_node_values/2` batch-reads up to 100 node values in a single OPC-UA request.
+
 ## 0.1.4
 
 * Elixir 1.15 (OTP 26) warnings fixed.

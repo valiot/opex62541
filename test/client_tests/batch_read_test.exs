@@ -10,7 +10,8 @@ defmodule ClientBatchReadTest do
 
     {:ok, ns_index} = Server.add_namespace(s_pid, "BatchTest")
 
-    parent_id = NodeId.new(ns_index: ns_index, identifier_type: "string", identifier: "BatchParent")
+    parent_id =
+      NodeId.new(ns_index: ns_index, identifier_type: "string", identifier: "BatchParent")
 
     :ok =
       Server.add_object_node(s_pid,
@@ -59,8 +60,7 @@ defmodule ClientBatchReadTest do
       :ok = Client.write_node_value(c_pid, node_id, 10, (i + 1) * 10.0)
     end)
 
-    batch = Enum.map(node_ids, fn node_id -> {node_id, 0} end)
-    {:ok, results} = Client.read_node_values(c_pid, batch)
+    {:ok, results} = Client.read_node_values(c_pid, node_ids)
 
     assert length(results) == 5
     assert Enum.at(results, 0) == {:ok, 10.0}
@@ -71,8 +71,7 @@ defmodule ClientBatchReadTest do
   end
 
   test "batch read with nil values (unset)", %{c_pid: c_pid, node_ids: node_ids} do
-    batch = Enum.map(node_ids, fn node_id -> {node_id, 0} end)
-    {:ok, results} = Client.read_node_values(c_pid, batch)
+    {:ok, results} = Client.read_node_values(c_pid, node_ids)
 
     assert length(results) == 5
     assert Enum.all?(results, fn r -> r == {:ok, nil} end)
@@ -89,9 +88,7 @@ defmodule ClientBatchReadTest do
     bad_node =
       NodeId.new(ns_index: ns_index, identifier_type: "string", identifier: "NonExistent")
 
-    batch = [{Enum.at(node_ids, 0), 0}, {bad_node, 0}]
-
-    {:ok, results} = Client.read_node_values(c_pid, batch)
+    {:ok, results} = Client.read_node_values(c_pid, [Enum.at(node_ids, 0), bad_node])
     assert length(results) == 2
     assert {:ok, _} = Enum.at(results, 0)
     assert {:error, _} = Enum.at(results, 1)
@@ -101,7 +98,7 @@ defmodule ClientBatchReadTest do
     node_id = Enum.at(node_ids, 0)
     :ok = Client.write_node_value(c_pid, node_id, 10, 42.0)
 
-    {:ok, results} = Client.read_node_values(c_pid, [{node_id, 0}])
+    {:ok, results} = Client.read_node_values(c_pid, [node_id])
     assert results == [{:ok, 42.0}]
   end
 
@@ -111,12 +108,41 @@ defmodule ClientBatchReadTest do
     :ok = Client.write_node_value(c_pid, Enum.at(node_ids, 2), 10, 3.14)
     :ok = Client.write_node_value(c_pid, Enum.at(node_ids, 3), 11, "hello")
 
-    batch = Enum.map(Enum.take(node_ids, 4), fn node_id -> {node_id, 0} end)
-    {:ok, results} = Client.read_node_values(c_pid, batch)
+    {:ok, results} = Client.read_node_values(c_pid, Enum.take(node_ids, 4))
 
     assert {:ok, true} = Enum.at(results, 0)
     assert {:ok, 42} = Enum.at(results, 1)
     assert {:ok, 3.14} = Enum.at(results, 2)
     assert {:ok, "hello"} = Enum.at(results, 3)
+  end
+
+  test "batch read is not supported on servers", %{s_pid: s_pid, node_ids: node_ids} do
+    assert {:error, :not_supported} = Server.read_node_values(s_pid, node_ids)
+  end
+
+  test "batch read response larger than the port frame returns overflow error", %{
+    c_pid: c_pid,
+    node_ids: node_ids
+  } do
+    # 5 nodes x 15KB strings encode to ~75KB, above the 64KB port frame limit.
+    big_string = String.duplicate("x", 15_000)
+
+    Enum.each(node_ids, fn node_id ->
+      :ok = Client.write_node_value(c_pid, node_id, 11, big_string)
+    end)
+
+    assert {:error, :overflow} = Client.read_node_values(c_pid, node_ids)
+  end
+
+  test "batch read with more than 100 nodes returns einval", %{
+    c_pid: c_pid,
+    ns_index: ns_index
+  } do
+    node_ids =
+      for i <- 1..101 do
+        NodeId.new(ns_index: ns_index, identifier_type: "string", identifier: "Fake_#{i}")
+      end
+
+    assert {:error, :einval} = Client.read_node_values(c_pid, node_ids)
   end
 end
