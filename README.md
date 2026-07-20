@@ -46,7 +46,7 @@ To install this package, add `opex62541` to your list of dependencies in `mix.ex
 ```elixir
 def deps do
   [
-    {:opex62541, git: "https://github.com/valiot/opex62541"}
+    {:opex62541, "~> 0.1.2"}
   ]
 end
 ```
